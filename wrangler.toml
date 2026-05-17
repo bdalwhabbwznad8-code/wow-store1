@@ -1,0 +1,7 @@
+name = "wow-store1"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "DATABASE"
+id = "369651676322450986156405e94fbd32"
