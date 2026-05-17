@@ -1,13 +1,11 @@
 // ═══════════════════════════════════════════════════════════════
-// WOW STORE — Cloudflare Worker — v4.0 FINAL
+// WOW STORE — Cloudflare Worker — v5.0 FINAL (KV Only)
 // KV Binding : env.DATABASE
-// R2 Binding : env.IMAGES  (bucket: wow-images)
 // ═══════════════════════════════════════════════════════════════
 // wrangler.toml:
 //   [[kv_namespaces]]
-//   binding = "DATABASE" / id = "YOUR_KV_ID"
-//   [[r2_buckets]]
-//   binding = "IMAGES" / bucket_name = "wow-images"
+//   binding = "DATABASE"
+//   id      = "YOUR_KV_NAMESPACE_ID"
 // ═══════════════════════════════════════════════════════════════
 
 async function hashPass(str) {
@@ -21,7 +19,7 @@ const BLOCK_MS        = 8000 * 3600000;
 const MAX_ATT         = 5;
 
 const CORS = {
-  "Access-Control-Allow-Origin":"*",
+  "Access-Control-Allow-Origin" :"*",
   "Access-Control-Allow-Methods":"GET,POST,PUT,DELETE,OPTIONS,PATCH",
   "Access-Control-Allow-Headers":"Content-Type,X-Admin-Key",
 };
@@ -30,216 +28,216 @@ function R(body, status=200, extra={}) {
   const isStr = typeof body === "string";
   return new Response(isStr ? body : JSON.stringify(body), {
     status,
-    headers: { ...CORS, "Content-Type": isStr ? "text/html;charset=utf-8" : "application/json", ...extra }
+    headers:{...CORS,"Content-Type":isStr?"text/html;charset=utf-8":"application/json",...extra}
   });
 }
 
-async function kvGet(env, key, def=null) {
-  try { const v = await env.DATABASE.get(key,{cacheTtl:60}); return v ? JSON.parse(v) : def; } catch { return def; }
+async function kvGet(env,key,def=null){
+  try{const v=await env.DATABASE.get(key,{cacheTtl:60});return v?JSON.parse(v):def;}catch{return def;}
 }
-async function kvSet(env, key, val, opts={}) { await env.DATABASE.put(key, JSON.stringify(val), opts); }
+async function kvSet(env,key,val,opts={}){await env.DATABASE.put(key,JSON.stringify(val),opts);}
 
-async function isAdmin(req) {
-  const k = req.headers.get("X-Admin-Key")||"";
-  return k ? (await hashPass(k)) === ADMIN_PASS_HASH : false;
+async function isAdmin(req){
+  const k=req.headers.get("X-Admin-Key")||"";
+  return k?(await hashPass(k))===ADMIN_PASS_HASH:false;
 }
 
-function getFP(req) {
-  const ip = req.headers.get("CF-Connecting-IP")||req.headers.get("X-Forwarded-For")||"unknown";
-  const ua = (req.headers.get("User-Agent")||"").substring(0,80);
+function getFP(req){
+  const ip=req.headers.get("CF-Connecting-IP")||req.headers.get("X-Forwarded-For")||"unknown";
+  const ua=(req.headers.get("User-Agent")||"").substring(0,80);
   return "fp:"+btoa(ip+"|"+ua).replace(/[^a-zA-Z0-9]/g,"").substring(0,48);
 }
 
-async function chkRL(env, fp) {
-  const d = await kvGet(env, fp, {a:0,b:0});
-  if (d.b && Date.now() < d.b) return {blocked:true};
-  return {blocked:false, attempts:d.a||0};
+async function chkRL(env,fp){
+  const d=await kvGet(env,fp,{a:0,b:0});
+  if(d.b&&Date.now()<d.b)return{blocked:true};
+  return{blocked:false,attempts:d.a||0};
 }
-async function incRL(env, fp) {
-  const d = await kvGet(env, fp, {a:0,b:0});
-  d.a = (d.a||0)+1;
-  if (d.a >= MAX_ATT) { d.b = Date.now()+BLOCK_MS; d.a=0; await env.DATABASE.put(fp,JSON.stringify(d)); return {blocked:true}; }
-  await env.DATABASE.put(fp, JSON.stringify(d), {expirationTtl:3600});
-  return {blocked:false, remaining:MAX_ATT-d.a};
+async function incRL(env,fp){
+  const d=await kvGet(env,fp,{a:0,b:0});
+  d.a=(d.a||0)+1;
+  if(d.a>=MAX_ATT){d.b=Date.now()+BLOCK_MS;d.a=0;await env.DATABASE.put(fp,JSON.stringify(d));return{blocked:true};}
+  await env.DATABASE.put(fp,JSON.stringify(d),{expirationTtl:3600});
+  return{blocked:false,remaining:MAX_ATT-d.a};
 }
-async function clrRL(env, fp) { await env.DATABASE.delete(fp); }
+async function clrRL(env,fp){await env.DATABASE.delete(fp);}
 
-async function sendPush(env, title, body) {
-  try {
-    const sub = await kvGet(env,"push_subscription",null);
-    if (!sub?.endpoint) return;
+async function sendPush(env,title,body){
+  try{
+    const sub=await kvGet(env,"push_subscription",null);
+    if(!sub?.endpoint)return;
     await fetch(sub.endpoint,{method:"POST",headers:{"Content-Type":"application/json","TTL":"86400"},body:JSON.stringify({title,body,timestamp:Date.now()})}).catch(()=>{});
-  } catch {}
+  }catch{}
 }
 
 // ══════════════════════════════════════════
 export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    const path = url.pathname;
-    const method = request.method;
-    if (method==="OPTIONS") return new Response(null,{headers:CORS});
+  async fetch(request,env){
+    const url=new URL(request.url);
+    const path=url.pathname;
+    const method=request.method;
+    if(method==="OPTIONS")return new Response(null,{headers:CORS});
 
-    // AUTH
-    if (path==="/api/auth" && method==="POST") {
-      const fp = getFP(request);
-      const rl = await chkRL(env, fp);
-      if (rl.blocked) return R({ok:false,stall:true});
-      let body; try { body=await request.json(); } catch { return R({ok:false},400); }
-      const ih = await hashPass(body.password||"");
-      if (ih===ADMIN_PASS_HASH) {
+    // ── AUTH ──
+    if(path==="/api/auth"&&method==="POST"){
+      const fp=getFP(request);
+      const rl=await chkRL(env,fp);
+      if(rl.blocked)return R({ok:false,stall:true});
+      let body;try{body=await request.json();}catch{return R({ok:false},400);}
+      const ih=await hashPass(body.password||"");
+      if(ih===ADMIN_PASS_HASH){
         await clrRL(env,fp);
-        const token = await hashPass(ADMIN_PASS_RAW+"|"+Math.floor(Date.now()/3600000));
+        const token=await hashPass(ADMIN_PASS_RAW+"|"+Math.floor(Date.now()/3600000));
         return R({ok:true,token});
       }
-      const after = await incRL(env,fp);
-      sendPush(env,"Tentative de connexion echouee",`Tentative ${MAX_ATT-(after.remaining||0)}/${MAX_ATT}`);
-      if (after.blocked) return R({ok:false,stall:true});
+      const after=await incRL(env,fp);
+      sendPush(env,"محاولة دخول خاطئة",`محاولة ${MAX_ATT-(after.remaining||0)} من ${MAX_ATT}`);
+      if(after.blocked)return R({ok:false,stall:true});
       return R({ok:false,remaining:after.remaining},401);
     }
 
-    if (path==="/api/auth-verify" && method==="POST") return R({ok:await isAdmin(request)});
+    if(path==="/api/auth-verify"&&method==="POST")return R({ok:await isAdmin(request)});
 
-    if (path==="/api/push-subscribe" && method==="POST") {
-      if (!await isAdmin(request)) return R({error:"Unauthorized"},401);
+    if(path==="/api/push-subscribe"&&method==="POST"){
+      if(!await isAdmin(request))return R({error:"Unauthorized"},401);
       await kvSet(env,"push_subscription",await request.json());
       return R({ok:true});
     }
 
-    // R2 UPLOAD
-    if (path==="/api/r2-upload" && method==="POST") {
-      if (!await isAdmin(request)) return R({error:"Unauthorized"},401);
-      if (!env.IMAGES) return R({error:"R2 not bound"},503);
-      const ct  = request.headers.get("Content-Type")||"image/jpeg";
-      const ext = ct.includes("png")?"png":ct.includes("webp")?"webp":ct.includes("gif")?"gif":"jpg";
-      const key = `products/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      await env.IMAGES.put(key, await request.arrayBuffer(), {httpMetadata:{contentType:ct}});
-      const publicUrl = `https://pub-REPLACE_WITH_YOUR_HASH.r2.dev/${key}`;
-      return R({ok:true,url:publicUrl,key});
-    }
-    if (path==="/api/r2-delete" && method==="DELETE") {
-      if (!await isAdmin(request)) return R({error:"Unauthorized"},401);
-      if (!env.IMAGES) return R({error:"R2 not bound"},503);
-      const {key} = await request.json();
-      if (key) await env.IMAGES.delete(key).catch(()=>{});
-      return R({ok:true});
-    }
-
-    // PRODUCTS
-    if (path==="/api/products") {
-      if (method==="GET") return R(await kvGet(env,"products",[]),200,{"Cache-Control":"public,max-age=30"});
-      if (!await isAdmin(request)) return R({error:"Unauthorized"},401);
-      if (method==="POST") {
-        const body=await request.json(), prods=await kvGet(env,"products",[]);
-        const p={id:Date.now(),name:(body.name||"").substring(0,120),price:Math.max(0,+body.price||0),
-          originalPrice:body.originalPrice?+body.originalPrice:null,discount:body.discount?+body.discount:0,
-          cat:body.cat||"other",desc:(body.desc||"").substring(0,600),
-          images:Array.isArray(body.images)?body.images.slice(0,8):[],
-          r2keys:Array.isArray(body.r2keys)?body.r2keys.slice(0,8):[],
-          stock:body.stock!==false,salesCount:0,createdAt:Date.now()};
-        prods.push(p); await kvSet(env,"products",prods); return R(p);
+    // ── PRODUCTS ──
+    if(path==="/api/products"){
+      if(method==="GET")return R(await kvGet(env,"products",[]),200,{"Cache-Control":"public,max-age=30"});
+      if(!await isAdmin(request))return R({error:"Unauthorized"},401);
+      if(method==="POST"){
+        const body=await request.json(),prods=await kvGet(env,"products",[]);
+        const p={
+          id:Date.now(),
+          name:(body.name||"").substring(0,120),
+          price:Math.max(0,+body.price||0),
+          discount:body.discount?+body.discount:0,
+          cat:body.cat||"other",
+          desc:(body.desc||"").substring(0,600),
+          images:Array.isArray(body.images)?body.images.slice(0,6):[],
+          stock:body.stock!==false,
+          salesCount:0,
+          createdAt:Date.now()
+        };
+        prods.push(p);await kvSet(env,"products",prods);return R(p);
       }
-      if (method==="PUT") {
-        const body=await request.json(), prods=await kvGet(env,"products",[]);
+      if(method==="PUT"){
+        const body=await request.json(),prods=await kvGet(env,"products",[]);
         const i=prods.findIndex(p=>p.id===body.id);
-        if (i<0) return R({error:"Not found"},404);
-        prods[i]={...prods[i],...body}; await kvSet(env,"products",prods); return R(prods[i]);
+        if(i<0)return R({error:"Not found"},404);
+        prods[i]={...prods[i],...body};await kvSet(env,"products",prods);return R(prods[i]);
       }
-      if (method==="DELETE") {
-        const id=+url.searchParams.get("id"); let prods=await kvGet(env,"products",[]);
-        if (env.IMAGES) { const p=prods.find(x=>x.id===id); if (p?.r2keys?.length) await Promise.all(p.r2keys.map(k=>env.IMAGES.delete(k).catch(()=>{}))); }
-        prods=prods.filter(p=>p.id!==id); await kvSet(env,"products",prods); return R({ok:true});
+      if(method==="DELETE"){
+        const id=+url.searchParams.get("id");
+        let prods=await kvGet(env,"products",[]);
+        prods=prods.filter(p=>p.id!==id);
+        await kvSet(env,"products",prods);return R({ok:true});
       }
     }
 
-    // ORDERS
-    if (path==="/api/orders") {
-      if (method==="POST") {
+    // ── ORDERS ──
+    if(path==="/api/orders"){
+      if(method==="POST"){
         const body=await request.json();
-        if (!body.name||!body.phone1||!body.phone2||!body.wilaya||!body.commune||!body.items?.length) return R({error:"Missing fields"},400);
-        if (body.phone1===body.phone2) return R({error:"Phones must differ"},400);
+        if(!body.name||!body.phone1||!body.phone2||!body.wilaya||!body.commune||!body.items?.length)
+          return R({error:"Missing fields"},400);
+        if(body.phone1===body.phone2)return R({error:"Phones must differ"},400);
         const orders=await kvGet(env,"orders",[]);
         const o={id:"WOW-"+Date.now().toString().slice(-7),date:new Date().toISOString(),confirmed:false,status:"processing",...body};
-        orders.unshift(o); await kvSet(env,"orders",orders.slice(0,500));
-        sendPush(env,"Nouvelle commande",`De: ${o.name} | ${o.wilaya} | ${(o.total||0).toLocaleString()} DZD`);
+        orders.unshift(o);await kvSet(env,"orders",orders.slice(0,500));
+        sendPush(env,"طلبية جديدة",`من: ${o.name} | ${o.wilaya} | ${(o.total||0).toLocaleString()} دج`);
         return R({ok:true,orderId:o.id});
       }
-      if (!await isAdmin(request)) return R({error:"Unauthorized"},401);
-      if (method==="GET") return R(await kvGet(env,"orders",[]));
-      if (method==="PATCH") {
-        const body=await request.json(), orders=await kvGet(env,"orders",[]);
+      if(!await isAdmin(request))return R({error:"Unauthorized"},401);
+      if(method==="GET")return R(await kvGet(env,"orders",[]));
+      if(method==="PATCH"){
+        const body=await request.json(),orders=await kvGet(env,"orders",[]);
         const i=orders.findIndex(o=>o.id===body.id);
-        if (i<0) return R({error:"Not found"},404);
-        if (body.confirmed!==undefined) orders[i].confirmed=body.confirmed;
-        if (body.status) orders[i].status=body.status;
-        await kvSet(env,"orders",orders); return R(orders[i]);
+        if(i<0)return R({error:"Not found"},404);
+        if(body.confirmed!==undefined)orders[i].confirmed=body.confirmed;
+        if(body.status)orders[i].status=body.status;
+        await kvSet(env,"orders",orders);return R(orders[i]);
       }
-      if (method==="DELETE") { await kvSet(env,"orders",[]); return R({ok:true}); }
+      if(method==="DELETE"){await kvSet(env,"orders",[]);return R({ok:true});}
     }
 
-    // ORDER TRACKING (public)
-    if (path==="/api/track" && method==="POST") {
-      const {orderId,phone}=await request.json().catch(()=>({}));
+    // ── TRACKING ──
+    if(path==="/api/track"&&method==="POST"){
+      const{orderId,phone}=await request.json().catch(()=>({}));
       const orders=await kvGet(env,"orders",[]);
       const o=orders.find(x=>x.id===orderId||(phone&&x.phone1===phone));
-      if (!o) return R({ok:false,msg:"لم يتم العثور على هذه الطلبية"});
+      if(!o)return R({ok:false,msg:"لم يتم العثور على هذه الطلبية"});
       return R({ok:true,id:o.id,status:o.status||"processing",confirmed:o.confirmed,date:o.date,wilaya:o.wilaya,name:o.name});
     }
 
-    // ANALYTICS
-    if (path==="/api/analytics") {
-      if (method==="POST") {
+    // ── ANALYTICS ──
+    if(path==="/api/analytics"){
+      if(method==="POST"){
         const ua=request.headers.get("User-Agent")||"";
         const vid=(await request.json().catch(()=>({}))).vid||"?";
         let dev="Desktop";
-        if (/iPhone|iPad|iPod/.test(ua)) dev="iOS";
-        else if (/Android.*Mobile/.test(ua)) dev="Android";
-        else if (/Android/.test(ua)) dev="Android Tab";
+        if(/iPhone|iPad|iPod/.test(ua))dev="iOS";
+        else if(/Android.*Mobile/.test(ua))dev="Android";
+        else if(/Android/.test(ua))dev="Android Tab";
         const visits=await kvGet(env,"visits",[]);
         visits.push({vid,t:new Date().toISOString(),dev});
         await kvSet(env,"visits",visits.slice(-2000));
         return R({ok:true});
       }
-      if (!await isAdmin(request)) return R({error:"Unauthorized"},401);
-      const [visits,orders,prods]=await Promise.all([kvGet(env,"visits",[]),kvGet(env,"orders",[]),kvGet(env,"products",[])]);
+      if(!await isAdmin(request))return R({error:"Unauthorized"},401);
+      const[visits,orders,prods]=await Promise.all([
+        kvGet(env,"visits",[]),kvGet(env,"orders",[]),kvGet(env,"products",[])
+      ]);
       const uniq=new Set(visits.map(v=>v.vid)).size;
       const conf=orders.filter(o=>o.confirmed).length;
       const rev=orders.reduce((a,o)=>a+(o.total||0),0);
       const devMap={},hourMap={},visMap={};
-      visits.forEach(v=>{ devMap[v.dev]=(devMap[v.dev]||0)+1; });
+      visits.forEach(v=>{devMap[v.dev]=(devMap[v.dev]||0)+1;});
       const since=Date.now()-86400000;
-      visits.filter(v=>new Date(v.t).getTime()>since).forEach(v=>{ const h=new Date(v.t).getHours(); hourMap[h]=(hourMap[h]||0)+1; });
-      visits.forEach(v=>{ if(!visMap[v.vid]) visMap[v.vid]={count:0,dev:v.dev}; visMap[v.vid].count++; });
-      return R({totalVisits:visits.length,uniqueVisitors:uniq,totalOrders:orders.length,confirmedOrders:conf,revenue:rev,productCount:prods.length,devMap,hourMap,
-        visitors:Object.entries(visMap).sort((a,b)=>b[1].count-a[1].count).slice(0,50).map(([vid,d])=>({vid,...d}))});
+      visits.filter(v=>new Date(v.t).getTime()>since).forEach(v=>{
+        const h=new Date(v.t).getHours();hourMap[h]=(hourMap[h]||0)+1;
+      });
+      visits.forEach(v=>{if(!visMap[v.vid])visMap[v.vid]={count:0,dev:v.dev};visMap[v.vid].count++;});
+      return R({
+        totalVisits:visits.length,uniqueVisitors:uniq,
+        totalOrders:orders.length,confirmedOrders:conf,
+        revenue:rev,productCount:prods.length,devMap,hourMap,
+        visitors:Object.entries(visMap).sort((a,b)=>b[1].count-a[1].count).slice(0,50).map(([vid,d])=>({vid,...d}))
+      });
     }
 
-    // SETTINGS
-    if (path==="/api/settings") {
-      if (method==="GET") return R(await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"",email:"",instagram:""}));
-      if (!await isAdmin(request)) return R({error:"Unauthorized"},401);
-      await kvSet(env,"settings",await request.json()); return R({ok:true});
+    // ── SETTINGS ──
+    if(path==="/api/settings"){
+      if(method==="GET")return R(await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"bdalwhabbwznad8@gmail.com",instagram:"wow.7a"}));
+      if(!await isAdmin(request))return R({error:"Unauthorized"},401);
+      await kvSet(env,"settings",await request.json());return R({ok:true});
     }
 
-    // SERVE HTML
+    // ── SERVE HTML ──
     const settings=await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"bdalwhabbwznad8@gmail.com",instagram:"wow.7a"});
-    return R(buildHTML(settings),200,{"Cache-Control":"public,max-age=60","X-Content-Type-Options":"nosniff","X-Frame-Options":"DENY","Referrer-Policy":"strict-origin-when-cross-origin"});
+    return R(buildHTML(settings),200,{
+      "Cache-Control":"public,max-age=60",
+      "X-Content-Type-Options":"nosniff",
+      "X-Frame-Options":"DENY",
+      "Referrer-Policy":"strict-origin-when-cross-origin"
+    });
   }
 };
 
 // ══════════════════════════════════════════
 // HTML BUILDER
 // ══════════════════════════════════════════
-function buildHTML(s) {
-  const sn = s.storeName||"WOW Store";
-  const wa = s.whatsapp||"0667881322";
-  const em = s.email||"bdalwhabbwznad8@gmail.com";
-  const ig = s.instagram||"wow.7a";
+function buildHTML(s){
+  const sn=s.storeName||"WOW Store";
+  const wa=s.whatsapp||"0667881322";
+  const em=s.email||"bdalwhabbwznad8@gmail.com";
+  const ig=s.instagram||"wow.7a";
 
-  // 58 Algerian wilayas
-  const WILAYAS = ["ادرار","الشلف","الاغواط","ام البواقي","باتنة","بجاية","بسكرة","بشار","البليدة","البويرة","تمنراست","تبسة","تلمسان","تيارت","تيزي وزو","الجزائر","الجلفة","جيجل","سطيف","سعيدة","سكيكدة","سيدي بلعباس","عنابة","قالمة","قسنطينة","المدية","مستغانم","المسيلة","معسكر","ورقلة","وهران","البيض","اليزي","برج بوعريريج","بومرداس","الطارف","تندوف","تيسمسيلت","الوادي","خنشلة","سوق اهراس","تيبازة","ميلة","عين الدفلى","النعامة","عين تموشنت","غرداية","غليزان","تيميمون","طولقة","بني عباس","عين صالح","عين قزام","تقرت","جانت","المغير","المنيعة","وادي سوف"];
-
-  const wilayaOpts = WILAYAS.map(w=>`<option value="${w}">${w}</option>`).join("");
+  const WILAYAS=["ادرار","الشلف","الاغواط","ام البواقي","باتنة","بجاية","بسكرة","بشار","البليدة","البويرة","تمنراست","تبسة","تلمسان","تيارت","تيزي وزو","الجزائر","الجلفة","جيجل","سطيف","سعيدة","سكيكدة","سيدي بلعباس","عنابة","قالمة","قسنطينة","المدية","مستغانم","المسيلة","معسكر","ورقلة","وهران","البيض","اليزي","برج بوعريريج","بومرداس","الطارف","تندوف","تيسمسيلت","الوادي","خنشلة","سوق اهراس","تيبازة","ميلة","عين الدفلى","النعامة","عين تموشنت","غرداية","غليزان","تيميمون","طولقة","بني عباس","عين صالح","عين قزام","تقرت","جانت","المغير","المنيعة","وادي سوف"];
+  const wilayaOpts=WILAYAS.map(w=>`<option value="${w}">${w}</option>`).join("");
 
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -257,39 +255,26 @@ function buildHTML(s) {
 :root{--bg:#050505;--p1:rgba(255,255,255,.04);--b1:rgba(255,255,255,.08);--ac:#a855f7;--tx:rgba(255,255,255,.88);--dim:rgba(255,255,255,.4);--mu:rgba(255,255,255,.22);--r:16px;--rs:10px}
 html{scroll-behavior:smooth}
 body{font-family:Inter,sans-serif;background:var(--bg);color:var(--tx);overflow-x:hidden;min-height:100vh}
-
-/* GRAIN */
 body::before{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.042'/%3E%3C/svg%3E") repeat;background-size:200px;pointer-events:none;z-index:9998;mix-blend-mode:overlay;animation:grain 8s steps(10) infinite}
 @keyframes grain{0%,100%{background-position:0 0}10%{background-position:-5% -10%}20%{background-position:-15% 5%}30%{background-position:7% -25%}40%{background-position:-5% 25%}50%{background-position:-15% 10%}60%{background-position:15% 0%}70%{background-position:0 15%}80%{background-position:3% 35%}90%{background-position:-10% 10%}}
 body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 3px);pointer-events:none;z-index:9997}
-
-/* MIST */
 .mist{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
 .mist::before{content:'';position:absolute;width:70vw;height:70vw;border-radius:50%;background:radial-gradient(ellipse,rgba(88,28,135,.13),transparent 70%);top:-20%;left:-20%;filter:blur(60px);animation:m1 30s ease-in-out infinite}
 .mist::after{content:'';position:absolute;width:60vw;height:60vw;border-radius:50%;background:radial-gradient(ellipse,rgba(55,48,163,.09),transparent 70%);bottom:-20%;right:-20%;filter:blur(80px);animation:m2 38s ease-in-out infinite}
 @keyframes m1{0%,100%{transform:translate(0,0)}50%{transform:translate(15vw,10vh)}}
 @keyframes m2{0%,100%{transform:translate(0,0)}50%{transform:translate(-10vw,-8vh)}}
-
-/* SCROLL PROGRESS */
 #scroll-prog{position:fixed;top:0;right:0;left:0;height:2px;background:linear-gradient(90deg,#6d28d9,#a855f7);transform-origin:right;transform:scaleX(0);z-index:9999;transition:transform .1s linear}
-
-/* PAGE FADE */
 #main-content{animation:dreamFadeIn .7s cubic-bezier(.4,0,.2,1) both}
 @keyframes dreamFadeIn{from{opacity:0;filter:blur(8px) brightness(1.3);transform:translateY(6px)}to{opacity:1;filter:blur(0) brightness(1);transform:translateY(0)}}
-
-/* HEADER */
 .hdr{position:sticky;top:0;z-index:200;background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--b1)}
 .hdr-i{max-width:1200px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .logo{font-family:Cinzel,serif;font-size:24px;font-weight:900;color:#fff;letter-spacing:5px;text-shadow:0 0 20px rgba(168,85,247,.7);animation:glow 4s ease-in-out infinite;text-decoration:none;white-space:nowrap;flex-shrink:0}
 @keyframes glow{0%,100%{text-shadow:0 0 20px rgba(168,85,247,.7),0 0 40px rgba(168,85,247,.35)}50%{text-shadow:0 0 30px rgba(192,132,252,1),0 0 60px rgba(168,85,247,.6)}}
-
-/* SEARCH BAR */
 .search-wrap{flex:1;max-width:340px;position:relative}
 .search-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:var(--rs);color:var(--tx);font-family:Inter,sans-serif;font-size:12px;padding:8px 34px 8px 12px;outline:none;transition:.25s}
 .search-inp::placeholder{color:var(--mu)}
 .search-inp:focus{border-color:rgba(168,85,247,.5);background:rgba(168,85,247,.06);box-shadow:0 0 0 3px rgba(168,85,247,.1),0 0 16px rgba(168,85,247,.12)}
 .search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mu);font-size:13px;pointer-events:none}
-
 .hdr-r{display:flex;align-items:center;gap:7px;flex-shrink:0}
 .cart-btn{display:flex;align-items:center;gap:6px;background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.25);border-radius:var(--rs);padding:8px 12px;cursor:pointer;color:rgba(192,132,252,.9);font-size:12px;font-weight:500;white-space:nowrap;transition:.2s}
 .cart-btn:hover{background:rgba(168,85,247,.2)}
@@ -299,8 +284,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .adm-btn svg{width:12px;height:12px;flex-shrink:0}
 .xbtn{background:rgba(255,255,255,.06);border:1px solid var(--b1);border-radius:8px;width:29px;height:29px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dim);font-size:13px;transition:.18s}
 .xbtn:hover{background:rgba(168,85,247,.12);color:#fff}
-
-/* CATS */
 .cats-bar{position:sticky;top:58px;z-index:150;background:rgba(5,5,5,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--b1);padding:9px 20px}
 .cats-i{max-width:1200px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;align-items:center}
 .cats-i::-webkit-scrollbar{display:none}
@@ -308,27 +291,19 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .pill:hover{border-color:rgba(168,85,247,.3);color:rgba(192,132,252,.8)}
 .pill.on{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.4);color:rgba(192,132,252,.95)}
 .pill-sep{width:1px;height:14px;background:var(--b1);flex-shrink:0}
-
-/* TOOLBAR */
 .tb{max-width:1200px;margin:0 auto;padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;position:relative;z-index:5}
 .pc{font-size:11px;color:var(--mu);letter-spacing:2px;text-transform:uppercase}
 .ss{appearance:none;background:var(--p1);border:1px solid var(--b1);border-radius:var(--rs);color:var(--dim);font-family:Inter,sans-serif;font-size:11px;padding:6px 24px 6px 10px;outline:none;cursor:pointer}
 .ss option{background:#111}
-
-/* TRUST BADGES - CRT effect */
 .trust-bar{background:rgba(0,0,0,.6);border-top:1px solid rgba(168,85,247,.1);border-bottom:1px solid rgba(168,85,247,.1);overflow:hidden;position:relative;z-index:5}
 .trust-bar::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(168,85,247,.018) 3px,rgba(168,85,247,.018) 4px);pointer-events:none}
-.trust-scroll{display:flex;gap:0;animation:tscroll 28s linear infinite;width:max-content}
+.trust-scroll{display:flex;animation:tscroll 28s linear infinite;width:max-content}
 .trust-item{padding:10px 40px;font-size:10px;color:rgba(168,85,247,.55);letter-spacing:3px;text-transform:uppercase;white-space:nowrap;border-right:1px solid rgba(168,85,247,.08)}
 @keyframes tscroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-
-/* GRID */
 .grid{max-width:1200px;margin:0 auto;padding:0 20px 100px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;position:relative;z-index:5}
 .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform .28s ease,box-shadow .28s,border-color .28s;will-change:transform}
 .card:hover{transform:translateY(-5px);border-color:rgba(168,85,247,.22);box-shadow:0 14px 44px rgba(0,0,0,.5)}
 .card.hidden{display:none}
-
-/* IMAGE SLIDER */
 .img-slider{position:relative;overflow:hidden;aspect-ratio:3/4;background:#111}
 .img-slider img{width:100%;height:100%;object-fit:cover;filter:brightness(.83) saturate(.75);transition:filter .4s,opacity .3s;position:absolute;top:0;left:0;opacity:0}
 .img-slider img.active{opacity:1;position:relative}
@@ -352,15 +327,11 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .addbtn{background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.22);border-radius:9px;color:rgba(192,132,252,.85);font-size:11px;font-weight:500;padding:8px;cursor:pointer;transition:.2s;width:100%;font-family:Inter,sans-serif}
 .addbtn:hover{background:rgba(168,85,247,.22);border-color:rgba(168,85,247,.45);color:#fff}
 .empty{grid-column:1/-1;text-align:center;padding:80px 20px;color:var(--mu);font-size:12px;letter-spacing:2px;text-transform:uppercase}
-
-/* SKELETON */
 .skel{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:skelShimmer 1.6s ease-in-out infinite;border-radius:8px}
 @keyframes skelShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .skel-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);overflow:hidden}
 .skel-img{aspect-ratio:3/4;width:100%}.skel-body{padding:13px;display:flex;flex-direction:column;gap:8px}
 .skel-line{height:9px;border-radius:5px}.skel-price{height:13px;width:55%;border-radius:5px}.skel-btn{height:32px;border-radius:9px;margin-top:3px}
-
-/* CART */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:500;display:none}
 .ov.on{display:block}
 .cart-sb{position:fixed;top:0;right:-440px;width:420px;height:100vh;background:rgba(6,4,12,.97);border-left:1px solid var(--b1);z-index:501;transition:right .38s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
@@ -382,15 +353,9 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .cart-tot{display:flex;justify-content:space-between;align-items:center}
 .cart-tot-l{font-size:11px;color:var(--mu);letter-spacing:1px;text-transform:uppercase}
 .cart-tot-v{font-family:Cinzel,serif;font-size:18px;color:rgba(192,132,252,.9)}
-
-/* BUTTONS */
 .btn-main{background:linear-gradient(135deg,#6d28d9,#9333ea);border:none;border-radius:11px;color:#fff;font-family:Inter,sans-serif;font-size:12px;font-weight:600;padding:12px;cursor:pointer;transition:.22s;width:100%}
 .btn-main:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(109,40,217,.38)}
 .btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.btn-ghost{background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:9px;color:var(--dim);font-family:Inter,sans-serif;font-size:12px;padding:10px;cursor:pointer;transition:.18s;width:100%}
-.btn-ghost:hover{border-color:rgba(168,85,247,.3);color:rgba(192,132,252,.8)}
-
-/* MODALS */
 .mod-ov{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(16px);z-index:1000;display:none;align-items:center;justify-content:center;padding:14px}
 .mod-ov.on{display:flex}
 .mod{background:rgba(8,6,16,.97);border:1px solid rgba(168,85,247,.14);border-radius:20px;padding:28px;width:100%;max-width:520px;animation:pop .32s cubic-bezier(.34,1.56,.64,1);max-height:92vh;overflow-y:auto;position:relative}
@@ -404,10 +369,8 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .inp::placeholder{color:rgba(255,255,255,.28)}
 .inp:focus{border-color:rgba(168,85,247,.4);background:rgba(255,255,255,.06);box-shadow:0 0 0 3px rgba(168,85,247,.08)}
 .inp option{background:#111}
-
-/* GALLERY */
 .gal{display:flex;flex-direction:column;gap:7px;margin-bottom:13px}
-.gal-main{width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:#111;position:relative}
+.gal-main{width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:#111}
 .gal-main img{width:100%;height:100%;object-fit:cover;transition:filter .55s}
 .gal-main img.lazy-blur{filter:blur(8px);transform:scale(1.03)}
 .gal-main img.lazy-loaded{filter:blur(0);transform:scale(1)}
@@ -415,8 +378,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .gal-thumbs::-webkit-scrollbar{display:none}
 .gal-thumb{width:56px;height:70px;object-fit:cover;border-radius:7px;cursor:pointer;border:2px solid transparent;transition:.18s;filter:brightness(.7);flex-shrink:0}
 .gal-thumb.on{border-color:rgba(168,85,247,.7);filter:brightness(1)}
-
-/* SIZE */
 .sz-row{display:flex;gap:6px;flex-wrap:wrap}
 .sz-btn{padding:6px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:7px;color:var(--dim);font-size:12px;font-weight:600;cursor:pointer;transition:.18s;font-family:Inter,sans-serif}
 .sz-btn:hover{border-color:rgba(168,85,247,.3);color:rgba(192,132,252,.8)}
@@ -425,16 +386,12 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .or-sep{text-align:center;color:var(--mu);font-size:10px;letter-spacing:2px;margin:10px 0;position:relative}
 .or-sep::before,.or-sep::after{content:'';position:absolute;top:50%;width:38%;height:1px;background:rgba(255,255,255,.07)}
 .or-sep::before{right:0}.or-sep::after{left:0}
-
-/* ORDER PREVIEW */
 .op{background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.1);border-radius:11px;padding:12px;margin-bottom:13px}
 .op-row{display:flex;justify-content:space-between;padding:3px 0;font-size:11px}
 .op-l{color:var(--mu)}.op-v{color:rgba(255,255,255,.7)}
 .op-tot{display:flex;justify-content:space-between;align-items:center;padding-top:8px;margin-top:6px;border-top:1px solid rgba(168,85,247,.15)}
 .op-tl{font-family:Cinzel,serif;font-size:11px;color:rgba(255,255,255,.55);letter-spacing:1px}
 .op-tv{font-family:Cinzel,serif;font-size:17px;color:rgba(192,132,252,.95)}
-
-/* INVOICE */
 .inv{background:#fafaf8;color:#111;border-radius:14px;padding:26px;max-width:450px;width:100%;font-family:Inter,sans-serif;animation:pop .32s cubic-bezier(.34,1.56,.64,1);max-height:92vh;overflow-y:auto}
 .inv-brand{font-family:Cinzel,serif;font-size:34px;font-weight:900;color:#111;letter-spacing:4px;text-align:center;margin-bottom:2px}
 .inv-sub{font-size:9px;color:#999;text-transform:uppercase;letter-spacing:3px;text-align:center;margin-bottom:18px}
@@ -451,24 +408,18 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .inv-btns{display:flex;gap:6px}
 .inv-btn{flex:1;border:none;border-radius:9px;padding:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif}
 .inv-btn-p{background:#111;color:#fff}.inv-btn-d{background:#f0f0ee;color:#111;border:1px solid #ddd}
-
-/* ORDER TRACKING */
 .track-status{padding:14px;border-radius:11px;border:1px solid;text-align:center;margin-top:14px}
 .track-status.processing{background:rgba(251,191,36,.06);border-color:rgba(251,191,36,.2);color:rgba(252,211,77,.85)}
 .track-status.shipped{background:rgba(59,130,246,.06);border-color:rgba(59,130,246,.2);color:rgba(96,165,250,.85)}
 .track-status.delivered{background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2);color:rgba(74,222,128,.85)}
 .track-label{font-family:Cinzel,serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
 .track-val{font-size:13px;font-weight:600}
-
-/* MYSTERY OFFER */
 .mystery-mod{background:linear-gradient(145deg,rgba(8,6,16,.99),rgba(30,10,50,.98));border:1px solid rgba(168,85,247,.25);max-width:380px;text-align:center;padding:36px 28px;border-radius:20px;animation:pop .4s cubic-bezier(.34,1.56,.64,1)}
 .mystery-brand{font-family:Cinzel,serif;font-size:28px;font-weight:900;color:rgba(192,132,252,.6);letter-spacing:6px;margin-bottom:6px;text-shadow:0 0 20px rgba(168,85,247,.3)}
 .mystery-title{font-size:10px;color:var(--mu);letter-spacing:3px;text-transform:uppercase;margin-bottom:20px}
 .mystery-disc{font-family:Cinzel,serif;font-size:52px;font-weight:900;color:rgba(192,132,252,.9);line-height:1;margin-bottom:6px;text-shadow:0 0 30px rgba(168,85,247,.4)}
 .mystery-sub{font-size:11px;color:var(--dim);letter-spacing:1px;margin-bottom:22px}
 .mystery-code{background:rgba(168,85,247,.1);border:1px dashed rgba(168,85,247,.3);border-radius:8px;padding:9px 14px;font-family:Cinzel,serif;font-size:14px;color:rgba(192,132,252,.9);letter-spacing:3px;margin-bottom:18px}
-
-/* ADMIN */
 #adm{display:none;position:fixed;inset:0;background:#050505;z-index:2000;flex-direction:column}
 #adm.on{display:flex}
 .adm-hdr{background:rgba(5,5,5,.95);border-bottom:1px solid rgba(168,85,247,.15);padding:13px 26px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -516,7 +467,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .oc-pn{flex:1;font-size:11px;color:rgba(255,255,255,.5)}.oc-pp{font-size:11px;color:rgba(192,132,252,.8);font-family:Cinzel,serif}
 .oc-ft{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05);flex-wrap:wrap;gap:5px}
 .status-sel{appearance:none;background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:6px;color:var(--dim);font-family:Inter,sans-serif;font-size:11px;padding:4px 9px;outline:none;cursor:pointer}
-.img-upload-area{border:2px dashed rgba(168,85,247,.28);border-radius:11px;padding:16px;text-align:center;cursor:pointer;transition:.2s;background:rgba(168,85,247,.03)}
+.img-upload-area{border:2px dashed rgba(168,85,247,.28);border-radius:11px;padding:18px;text-align:center;cursor:pointer;transition:.2s;background:rgba(168,85,247,.03)}
 .img-upload-area:hover,.img-upload-area.drag{border-color:rgba(168,85,247,.55);background:rgba(168,85,247,.08)}
 .img-previews{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
 .img-prev-wrap{position:relative;width:68px;height:85px}
@@ -525,20 +476,15 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .up-prog{height:3px;background:rgba(255,255,255,.06);border-radius:2px;margin-top:7px;overflow:hidden;display:none}
 .up-prog-bar{height:100%;background:linear-gradient(90deg,#6d28d9,#a855f7);border-radius:2px;transition:width .3s}
 .up-status{font-size:10px;color:var(--mu);margin-top:3px;text-align:center}
-.r2-badge{margin-right:5px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.18);color:rgba(74,222,128,.75);padding:1px 6px;border-radius:10px;font-size:9px;letter-spacing:1px}
 .vr{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:9px;margin-bottom:6px;font-size:11px}
 .vr-id{color:var(--mu);font-family:monospace;font-size:10px}
 .push-banner{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:10px 13px;margin-bottom:13px;display:flex;align-items:center;justify-content:space-between;gap:9px;font-size:11px;color:rgba(255,255,255,.55)}
 .push-banner button{background:rgba(168,85,247,.22);border:1px solid rgba(168,85,247,.35);border-radius:7px;color:rgba(192,132,252,.85);font-size:11px;padding:4px 10px;cursor:pointer;font-family:Inter,sans-serif}
-
-/* BOTTOM NAV */
 .bot-nav{position:fixed;bottom:0;right:0;left:0;z-index:300;background:rgba(5,5,5,.95);backdrop-filter:blur(20px);border-top:1px solid var(--b1);display:flex;align-items:center;justify-content:space-around;padding:8px 0 env(safe-area-inset-bottom)}
 .bn-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--mu);font-size:10px;letter-spacing:.5px;padding:4px 12px;border-radius:9px;transition:.18s;user-select:none}
 .bn-item:hover,.bn-item.on{color:rgba(192,132,252,.9)}
 .bn-item svg{width:18px;height:18px}
 .bn-sep{width:1px;height:24px;background:var(--b1)}
-
-/* FOOTER */
 .footer{background:rgba(0,0,0,.7);border-top:1px solid rgba(168,85,247,.08);padding:32px 20px 110px;position:relative;z-index:5}
 .footer-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px}
 .footer-brand{font-family:Cinzel,serif;font-size:20px;color:rgba(192,132,252,.4);letter-spacing:5px;margin-bottom:8px}
@@ -550,8 +496,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .footer-contact a{color:rgba(168,85,247,.45);text-decoration:none;transition:.18s}
 .footer-contact a:hover{color:rgba(192,132,252,.7)}
 .footer-copy{text-align:center;font-size:10px;color:rgba(255,255,255,.14);letter-spacing:2px;margin-top:22px;padding-top:16px;border-top:1px solid rgba(255,255,255,.05)}
-
-/* SPINNER / TOAST / API / RM */
 .spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(168,85,247,.3);border-top-color:rgba(168,85,247,.8);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle}
 @keyframes sp{to{transform:rotate(360deg)}}
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(168,85,247,.14);backdrop-filter:blur(16px);border:1px solid rgba(168,85,247,.22);border-radius:9px;color:rgba(255,255,255,.85);font-family:Inter,sans-serif;font-size:12px;padding:8px 16px;z-index:9000;opacity:0;transition:.28s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;pointer-events:none;max-width:90vw;text-align:center}
@@ -564,15 +508,13 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 .rm-row{display:flex;align-items:center;gap:7px;margin:9px 0;cursor:pointer;user-select:none;font-size:12px;color:var(--dim)}
 .rm-row input{accent-color:var(--ac);width:13px;height:13px;cursor:pointer}
-
-/* RESPONSIVE */
 @media(max-width:600px){
   .grid{grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;padding:0 11px 110px}
   .cart-sb{width:100%;right:-100%}
   .mod{padding:20px 14px}
   .hdr-i{padding:9px 13px}
   .logo{font-size:19px;letter-spacing:3px}
-  .search-wrap{max-width:none;flex:1}
+  .search-wrap{flex:1}
   .meas-g{grid-template-columns:1fr 1fr}
   .adm-side{width:145px}
   .oc-ig{grid-template-columns:1fr}
@@ -592,7 +534,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 <div class="mist"></div>
 <div id="scroll-prog"></div>
 
-<!-- HEADER -->
 <header class="hdr">
   <div class="hdr-i">
     <a href="#" class="logo" id="store-name-hdr">WOW</a>
@@ -614,7 +555,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </div>
 </header>
 
-<!-- CATS BAR -->
 <div class="cats-bar">
   <div class="cats-i" id="cats-bar">
     <div class="pill on" onclick="flt('all',this)">الكل</div>
@@ -630,7 +570,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </div>
 </div>
 
-<!-- TOOLBAR -->
 <div class="tb">
   <div class="pc"><span id="pc">0</span> قطعة</div>
   <select class="ss" id="ss" onchange="sortP()">
@@ -640,9 +579,8 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </select>
 </div>
 
-<!-- TRUST BAR -->
 <div class="trust-bar">
-  <div class="trust-scroll" id="trust-scroll">
+  <div class="trust-scroll">
     <div class="trust-item">التوصيل متوفر لـ 58 ولاية</div>
     <div class="trust-item">الدفع عند الاستلام بعد فحص المنتج</div>
     <div class="trust-item">ضمان الاستبدال في غضون 3 ايام</div>
@@ -652,12 +590,10 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </div>
 </div>
 
-<!-- MAIN GRID -->
 <div id="main-content"><div class="grid" id="grid"></div></div>
 
-<!-- BOTTOM NAV -->
 <nav class="bot-nav">
-  <div class="bn-item on" onclick="scrollTop()">
+  <div class="bn-item on" onclick="window.scrollTo({top:0,behavior:'smooth'})">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     <span>الرئيسية</span>
   </div>
@@ -678,7 +614,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </div>
 </nav>
 
-<!-- FOOTER -->
 <footer class="footer">
   <div class="footer-inner">
     <div>
@@ -701,7 +636,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <div class="footer-copy">WOW STORE — جميع الحقوق محفوظة</div>
 </footer>
 
-<!-- CART -->
 <div class="ov" id="ov" onclick="closeCart()"></div>
 <div class="cart-sb" id="cart-sb">
   <div class="cart-hdr"><div class="cart-title">CART</div><button class="xbtn" onclick="closeCart()">&#10005;</button></div>
@@ -711,7 +645,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
     <button class="btn-main" onclick="openCheckout()">اتمام الشراء &#8594;</button>
   </div>
 </div>
-
 <div class="toast" id="toast"></div>
 
 <!-- SIZE MODAL -->
@@ -772,13 +705,12 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
     </div>
     <div class="fl"><label>نوع التوصيل</label>
       <select class="inp" id="o-del" onchange="updPreview()">
-        <option value="h">للمنزل (اغلى)</option><option value="o">للمكتب / Stop Desk (اقل)</option>
+        <option value="h">للمنزل</option><option value="o">للمكتب / Stop Desk</option>
       </select>
     </div>
     <div class="op">
       <div class="op-row"><span class="op-l">المنتجات</span><span class="op-v" id="op-sub">0 دج</span></div>
       <div class="op-row"><span class="op-l">التوصيل</span><span class="op-v" id="op-del">-- دج</span></div>
-      <div class="op-row" id="op-disc-row" style="display:none"><span class="op-l">تخفيض</span><span class="op-v" style="color:rgba(74,222,128,.8)" id="op-disc">0 دج</span></div>
       <div class="op-tot"><span class="op-tl">TOTAL</span><span class="op-tv" id="op-tot">0 دج</span></div>
     </div>
     <button class="btn-main" id="chk-btn" onclick="submitOrder()">تاكيد الطلبية &#8594;</button>
@@ -786,9 +718,14 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 </div>
 
 <!-- INVOICE MODAL -->
-<div class="mod-ov" id="inv-mod"><div class="inv" id="inv-box"></div></div>
+<div class="mod-ov" id="inv-mod">
+  <div style="position:relative;width:100%;max-width:450px">
+    <button onclick="closeMod('inv-mod')" style="position:absolute;top:-12px;left:-12px;z-index:10;background:rgba(8,6,16,.97);border:1px solid rgba(168,85,247,.2);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.5);font-size:13px;font-family:Inter,sans-serif">&#10005;</button>
+    <div class="inv" id="inv-box"></div>
+  </div>
+</div>
 
-<!-- ORDER TRACKING MODAL -->
+<!-- TRACKING MODAL -->
 <div class="mod-ov" id="track-mod">
   <div class="mod" style="max-width:400px">
     <div class="mod-title">تتبع الطلبية<button class="xbtn" onclick="closeMod('track-mod')">&#10005;</button></div>
@@ -805,25 +742,19 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <div class="mod" style="max-width:500px">
     <div class="mod-title">الاسئلة الشائعة<button class="xbtn" onclick="closeMod('faq-mod')">&#10005;</button></div>
     <div style="display:flex;flex-direction:column;gap:14px">
-      ${[
-        ["كم تستغرق مدة التوصيل؟","تتراوح مدة التوصيل بين 2 الى 5 ايام عمل حسب الولاية. الولايات القريبة من العاصمة تستقبل الطلبيات بشكل اسرع."],
-        ["هل يمكنني الاستبدال؟","نعم، نضمن الاستبدال في غضون 3 ايام من استلام المنتج شرط ان يكون بحالته الاصلية دون لبس."],
-        ["ما هي طريقة الدفع؟","الدفع يكون نقداً عند الاستلام فقط. لا نقبل اي دفع مسبق."],
-        ["كيف احدد مقاسي الصحيح؟","يمكنك استخدام حاسبة المقاس داخل صفحة كل منتج عن طريق ادخال وزنك وطولك وجنسك."],
-        ["هل التوصيل متوفر في ولايتي؟","نوصل لجميع الولايات الـ 58 في الجزائر عبر شركات توصيل معتمدة."]
-      ].map(([q,a])=>`<div style="border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:13px"><div style="font-size:12px;font-weight:600;color:rgba(192,132,252,.75);margin-bottom:5px;letter-spacing:.5px">${q}</div><div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.7">${a}</div></div>`).join("")}
+      ${[["كم تستغرق مدة التوصيل؟","تتراوح مدة التوصيل بين 2 الى 5 ايام عمل حسب الولاية."],["هل يمكنني الاستبدال؟","نعم، نضمن الاستبدال في غضون 3 ايام من استلام المنتج شرط ان يكون بحالته الاصلية."],["ما هي طريقة الدفع؟","الدفع نقداً عند الاستلام فقط. لا نقبل اي دفع مسبق."],["كيف احدد مقاسي الصحيح؟","استخدم حاسبة المقاس داخل صفحة المنتج بادخال وزنك وطولك وجنسك."],["هل التوصيل متوفر في ولايتي؟","نوصل لجميع الولايات الـ 58 في الجزائر."]].map(([q,a])=>`<div style="border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:13px"><div style="font-size:12px;font-weight:600;color:rgba(192,132,252,.75);margin-bottom:5px">${q}</div><div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.7">${a}</div></div>`).join("")}
     </div>
   </div>
 </div>
 
-<!-- RETURN POLICY MODAL -->
+<!-- POLICY MODAL -->
 <div class="mod-ov" id="policy-mod">
   <div class="mod" style="max-width:500px">
     <div class="mod-title">سياسة الاستبدال<button class="xbtn" onclick="closeMod('policy-mod')">&#10005;</button></div>
     <div style="display:flex;flex-direction:column;gap:12px;font-size:12px;color:rgba(255,255,255,.45);line-height:1.8">
-      <p>نحن في WOW Store نضمن رضاكم التام. في حال وصل المنتج تالفاً او مختلفاً عن المطلوب، يحق لكم الاستبدال وفق الشروط التالية:</p>
+      <p>نضمن رضاكم التام. في حال وصل المنتج تالفاً او مختلفاً عن المطلوب يحق لكم الاستبدال وفق الشروط التالية:</p>
       <ul style="list-style:none;display:flex;flex-direction:column;gap:7px">
-        ${["مدة الاستبدال: 3 ايام من تاريخ الاستلام","المنتج يجب ان يكون بحالته الاصلية غير ملبوس","يجب التواصل معنا عبر الواتساب قبل الارسال","رسوم الشحن العكسي تكون على عاتق العميل في حالة تغيير المقاس"].map(t=>`<li style="display:flex;gap:8px;align-items:flex-start"><span style="color:rgba(168,85,247,.5);margin-top:2px">—</span><span>${t}</span></li>`).join("")}
+        ${["مدة الاستبدال: 3 ايام من تاريخ الاستلام","المنتج يجب ان يكون بحالته الاصلية غير ملبوس","يجب التواصل معنا عبر الواتساب قبل الارسال","رسوم الشحن العكسي على عاتق العميل في حالة تغيير المقاس"].map(t=>`<li style="display:flex;gap:8px;align-items:flex-start"><span style="color:rgba(168,85,247,.5);margin-top:2px">—</span><span>${t}</span></li>`).join("")}
       </ul>
     </div>
   </div>
@@ -848,7 +779,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </div>
 </div>
 
-<!-- MYSTERY OFFER MODAL -->
+<!-- MYSTERY MODAL -->
 <div class="mod-ov" id="mystery-mod">
   <div class="mystery-mod">
     <div class="mystery-brand">WOW</div>
@@ -866,7 +797,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <div class="adm-hdr">
     <div class="adm-logo">WOW / ADMIN</div>
     <div style="display:flex;align-items:center;gap:8px">
-      <div class="api-s" id="adm-api-s"><div class="api-d ld" id="adm-api-d"></div><span id="adm-api-l" style="color:var(--mu);font-size:10px">KV + R2</span></div>
+      <div class="api-s" id="adm-api-s"><div class="api-d ld" id="adm-api-d"></div><span id="adm-api-l" style="color:var(--mu);font-size:10px">Cloudflare KV</span></div>
       <span style="font-size:11px;color:var(--mu)" id="adm-clock"></span>
       <button class="xbtn" onclick="closeAdm()" style="width:auto;padding:6px 12px;font-size:11px">&#8592; خروج</button>
     </div>
@@ -882,7 +813,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
     </div>
     <div class="adm-c">
 
-      <!-- ANALYTICS -->
       <div class="asec on" id="as-analytics">
         <div class="adm-title">Analytics</div>
         <div class="push-banner" id="push-banner" style="display:none">
@@ -894,7 +824,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         <div class="cw"><div class="cl">Visit Hours (24h)</div><div id="hr-chart"></div></div>
       </div>
 
-      <!-- PRODUCTS -->
       <div class="asec" id="as-products">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
           <div class="adm-title" style="margin-bottom:0">Products</div>
@@ -904,7 +833,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         <tbody id="adm-tbody"></tbody></table>
       </div>
 
-      <!-- ADD/EDIT PRODUCT -->
       <div class="asec" id="as-addprod">
         <div class="adm-title" id="form-head">Add New Product</div>
         <input type="hidden" id="edit-id">
@@ -924,11 +852,14 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
           <div class="fl"><label>Description</label><input class="inp" id="p-desc" placeholder="وصف مختصر..."></div>
         </div>
         <div class="fl">
-          <label>صور المنتج <span class="r2-badge">R2 Cloud</span></label>
-          <div class="img-upload-area" id="drop-zone" onclick="document.getElementById('p-img-file').click()"
+          <label>صور المنتج (تُحفظ في KV)</label>
+          <div class="img-upload-area" id="drop-zone"
+               onclick="document.getElementById('p-img-file').click()"
                ondragover="event.preventDefault();this.classList.add('drag')"
-               ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
-            <div style="font-size:11px;color:var(--mu)">اضغط او اسحب الصور — رفع مباشر الى R2 — حتى 8 صور</div>
+               ondragleave="this.classList.remove('drag')"
+               ondrop="handleDrop(event)">
+            <div style="font-size:11px;color:var(--mu)">اضغط او اسحب الصور هنا — حتى 4 صور — تُضغط وتُحفظ في KV</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.18);margin-top:4px">PNG / JPG / WEBP</div>
           </div>
           <input type="file" id="p-img-file" accept="image/*" multiple style="display:none" onchange="handleImgs(this)">
           <div class="up-prog" id="up-prog"><div class="up-prog-bar" id="up-bar" style="width:0%"></div></div>
@@ -941,7 +872,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         </div>
       </div>
 
-      <!-- ORDERS -->
       <div class="asec" id="as-orders">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:7px">
           <div class="adm-title" style="margin-bottom:0">Orders <span id="ord-refresh" style="font-size:10px;color:var(--mu)"></span></div>
@@ -953,13 +883,11 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         <div id="orders-c"></div>
       </div>
 
-      <!-- VISITORS -->
       <div class="asec" id="as-visitors">
         <div class="adm-title">Visitor Tracking</div>
         <div id="visitors-c"></div>
       </div>
 
-      <!-- SETTINGS -->
       <div class="asec" id="as-settings">
         <div class="adm-title">Settings</div>
         <div class="fl"><label>Store Name</label><input class="inp" id="s-name" placeholder="WOW Store"></div>
@@ -973,33 +901,74 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </div>
 </div>
 
-<!-- ═══════════════ CLIENT JS ═══════════════ -->
 <script>
+/* ══════════════════════════════════════════════════════
+   GLOBAL STUBS — معرَّفة قبل الـ IIFE لأن أزرار
+   الـ HTML تستدعيها مباشرة عبر onclick
+   ══════════════════════════════════════════════════════ */
+window.openMod=function(id){
+  var el=document.getElementById(id);
+  if(el)el.classList.add("on");
+};
+window.closeMod=function(id){
+  var el=document.getElementById(id);
+  if(el)el.classList.remove("on");
+};
+window.openCart=function(){
+  var s=document.getElementById("cart-sb"),o=document.getElementById("ov");
+  if(s)s.classList.add("on");
+  if(o)o.classList.add("on");
+};
+window.closeCart=function(){
+  var s=document.getElementById("cart-sb"),o=document.getElementById("ov");
+  if(s)s.classList.remove("on");
+  if(o)o.classList.remove("on");
+};
+window.openAdminLogin=function(){
+  /* سيُعاد تعريفها داخل الـ IIFE بالنسخة الكاملة */
+  window.openMod("login-mod");
+};
+window.doLogin=function(){
+  /* stub — سيُستبدل فور تحميل الـ IIFE */
+};
+window.liveSearch=function(q){
+  var sq=(q||"").trim().toLowerCase();
+  var count=0;
+  document.querySelectorAll(".card").forEach(function(c){
+    if(!sq){c.classList.remove("hidden");count++;return;}
+    var n=(c.getAttribute("data-name")||"").toLowerCase();
+    var ct=(c.getAttribute("data-cat")||"").toLowerCase();
+    var hide=!n.includes(sq)&&!ct.includes(sq);
+    c.classList.toggle("hidden",hide);
+    if(!hide)count++;
+  });
+  var pc=document.getElementById("pc");
+  if(pc)pc.textContent=count;
+};
+
 (function(){
 "use strict";
 
-/* STATE */
+/* ── STATE ── */
 var SESSION_KEY="wow_session",REMEMBER_KEY="wow_remember";
-var prods=[],cart=[],curCat="all",curSort="d",pendProd=null,selSz=null;
-var adminToken="",prodImgs=[],isSilentBlocked=false;
-var searchQ="",globalDiscount=0;
+var prods=[],cart=[],curCat="all",curSort="d";
+var pendProd=null,selSz=null,adminToken="";
+var prodImgs=[],isSilentBlocked=false,searchQ="",globalDiscount=0;
 var CAT={shirts:"القمصان",pants:"البناطيل",shorts:"الشورتات",hats:"القبعات",accessories:"الاكسسوارات",other:"اخرى"};
 var STATUS_MAP={processing:"قيد المعالجة",shipped:"تم الشحن",delivered:"تم التوصيل"};
-var STATUS_FEES={h:1100,o:700}; // default fees per delivery type
 
-/* BLOCK FLAG */
-try{if(localStorage.getItem("_wbl")==="1") isSilentBlocked=true;}catch{}
+/* ── BLOCK FLAG ── */
+try{if(localStorage.getItem("_wbl")==="1")isSilentBlocked=true;}catch{}
 
-/* SCROLL PROGRESS */
+/* ── SCROLL PROGRESS ── */
 window.addEventListener("scroll",function(){
-  var el=document.getElementById("scroll-prog");
-  if(!el) return;
+  var el=document.getElementById("scroll-prog");if(!el)return;
   var s=document.documentElement;
-  var prog=(s.scrollTop||document.body.scrollTop)/(s.scrollHeight-s.clientHeight)||0;
-  el.style.transform="scaleX("+prog+")";
-},{ passive:true });
+  var p=(s.scrollTop||document.body.scrollTop)/(s.scrollHeight-s.clientHeight)||0;
+  el.style.transform="scaleX("+p+")";
+},{passive:true});
 
-/* SESSION */
+/* ── SESSION ── */
 function restoreSession(){
   var sess=sessionStorage.getItem(SESSION_KEY);
   if(sess){adminToken=sess;return true;}
@@ -1014,23 +983,23 @@ function saveSession(t,rem){
 function clearSession(){adminToken="";sessionStorage.removeItem(SESSION_KEY);document.cookie=REMEMBER_KEY+"=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/";}
 function getCookie(n){var m=document.cookie.match(new RegExp("(?:^|; )"+n+"=([^;]*)"));return m?m[1]:null;}
 
-/* API */
+/* ── API ── */
 function api(path,opts){
   opts=opts||{};
   var h={"Content-Type":"application/json"};
-  if(adminToken) h["X-Admin-Key"]=adminToken;
+  if(adminToken)h["X-Admin-Key"]=adminToken;
   opts.headers=Object.assign(h,opts.headers||{});
   return fetch(path,opts);
 }
 function setApiSt(ok){
   ["api-d","adm-api-d"].forEach(function(id){var el=document.getElementById(id);if(el)el.className="api-d "+(ok?"ok":"err");});
-  ["api-l","adm-api-l"].forEach(function(id){var el=document.getElementById(id);if(el){el.textContent=ok?"KV + R2  ok":"API Error";el.style.color=ok?"rgba(34,197,94,.8)":"rgba(239,68,68,.7)";}});
+  ["api-l","adm-api-l"].forEach(function(id){var el=document.getElementById(id);if(el){el.textContent=ok?"Cloudflare KV ok":"API Error";el.style.color=ok?"rgba(34,197,94,.8)":"rgba(239,68,68,.7)";}});
 }
 function fmt(n){return(n||0).toLocaleString("fr-DZ")+" دج";}
 function pad(n){return n<10?"0"+n:""+n;}
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
-/* SEO */
+/* ── SEO ── */
 function updateMeta(t,d,img){
   document.title=t||document.title;
   var set=function(id,v){var el=document.getElementById(id);if(el)el.setAttribute("content",v);};
@@ -1038,26 +1007,26 @@ function updateMeta(t,d,img){
   if(img)set("og-img",img);set("tw-title",t||"");set("tw-desc",d||"");
 }
 
-/* VISITOR */
+/* ── VISITOR ── */
 function getVID(){var v=localStorage.getItem("wvid");if(!v){v="V"+Date.now().toString(36).toUpperCase();localStorage.setItem("wvid",v);}return v;}
 function trackVisit(){api("/api/analytics",{method:"POST",body:JSON.stringify({vid:getVID()})}).catch(function(){});}
 
-/* SKELETON */
+/* ── SKELETON ── */
 function showSkeletons(){
   var g=document.getElementById("grid"),h="";
-  for(var i=0;i<8;i++) h+="<div class='skel-card'><div class='skel-img skel'></div><div class='skel-body'><div class='skel-line skel' style='width:38%'></div><div class='skel-line skel' style='width:88%'></div><div class='skel-price skel'></div><div class='skel-btn skel'></div></div></div>";
+  for(var i=0;i<8;i++)h+="<div class='skel-card'><div class='skel-img skel'></div><div class='skel-body'><div class='skel-line skel' style='width:38%'></div><div class='skel-line skel' style='width:88%'></div><div class='skel-price skel'></div><div class='skel-btn skel'></div></div></div>";
   g.innerHTML=h;
 }
 
-/* LAZY LOAD */
+/* ── LAZY LOAD ── */
 var imgObs=null;
 function initLazy(){
-  if(!("IntersectionObserver" in window)) return;
+  if(!("IntersectionObserver" in window))return;
   imgObs=new IntersectionObserver(function(en){
     en.forEach(function(e){
-      if(!e.isIntersecting) return;
+      if(!e.isIntersecting)return;
       var img=e.target,src=img.getAttribute("data-src");
-      if(!src) return;
+      if(!src)return;
       img.classList.add("lazy-blur");
       var t=new Image();
       t.onload=function(){img.src=src;img.removeAttribute("data-src");img.classList.remove("lazy-blur");img.classList.add("lazy-loaded");};
@@ -1065,37 +1034,35 @@ function initLazy(){
     });
   },{rootMargin:"100px"});
 }
-function obsLazy(){if(!imgObs) return;document.querySelectorAll("img[data-src]").forEach(function(img){imgObs.observe(img);});}
+function obsLazy(){if(!imgObs)return;document.querySelectorAll("img[data-src]").forEach(function(img){imgObs.observe(img);});}
 
-/* LOAD PRODUCTS */
+/* ── PRODUCTS ── */
 function loadProds(){
   showSkeletons();
   api("/api/products").then(function(r){return r.json();}).then(function(data){
-    setApiSt(true);
-    prods=Array.isArray(data)&&data.length?data:[];
-    renderGrid();
+    setApiSt(true);prods=Array.isArray(data)&&data.length?data:[];renderGrid();
   }).catch(function(){setApiSt(false);prods=[];renderGrid();});
 }
 
-/* DISCOUNT CALC */
+/* ── DISCOUNT ── */
 function calcDisc(){
   var p=parseFloat(document.getElementById("p-price").value)||0;
   var d=parseFloat(document.getElementById("p-disc").value)||0;
-  var f=d>0?Math.round(p*(1-d/100)):p;
-  document.getElementById("p-final").value=d>0?f:"";
+  document.getElementById("p-final").value=d>0?Math.round(p*(1-d/100)):"";
 }
 function effPrice(p){
-  if(!p) return 0;
-  if(p.discount&&p.discount>0) return Math.round(p.price*(1-p.discount/100));
+  if(!p)return 0;
+  if(p.discount&&p.discount>0)return Math.round(p.price*(1-p.discount/100));
   return p.price;
 }
+window.calcDisc=calcDisc;
 
-/* SLIDER */
+/* ── SLIDER ── */
 function makeSlider(imgs,pid){
-  if(!imgs||!imgs.length) return "<div style='width:100%;aspect-ratio:3/4;background:#111;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.15);font-size:11px;letter-spacing:2px'>NO IMAGE</div>";
+  if(!imgs||!imgs.length)return "<div style='width:100%;aspect-ratio:3/4;background:#111;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.15);font-size:11px;letter-spacing:2px'>NO IMAGE</div>";
   var h="<div class='img-slider' id='sl-"+pid+"'>";
   imgs.forEach(function(src,i){
-    if(i===0) h+="<img src='"+esc(src)+"' class='active' alt=''>";
+    if(i===0)h+="<img src='"+esc(src)+"' class='active' alt=''>";
     else h+="<img data-src='"+esc(src)+"' alt=''>";
   });
   if(imgs.length>1){
@@ -1107,7 +1074,7 @@ function makeSlider(imgs,pid){
 }
 function sCur(pid){var sl=document.getElementById("sl-"+pid),c=0;if(sl)sl.querySelectorAll("img").forEach(function(img,i){if(img.classList.contains("active"))c=i;});return c;}
 function sSwitch(pid,idx){
-  var sl=document.getElementById("sl-"+pid);if(!sl) return;
+  var sl=document.getElementById("sl-"+pid);if(!sl)return;
   var imgs=sl.querySelectorAll("img"),dots=sl.querySelectorAll(".slide-dot");
   imgs.forEach(function(img,i){
     if(i===idx){if(img.getAttribute("data-src")){img.src=img.getAttribute("data-src");img.removeAttribute("data-src");img.classList.add("lazy-loaded");}img.classList.add("active");}
@@ -1115,11 +1082,11 @@ function sSwitch(pid,idx){
   });
   dots.forEach(function(d,i){d.classList.toggle("on",i===idx);});
 }
-window.sPrev=function(id,e){e.stopPropagation();var sl=document.getElementById("sl-"+id);if(!sl) return;var l=sl.querySelectorAll("img").length;sSwitch(id,(sCur(id)-1+l)%l);};
-window.sNext=function(id,e){e.stopPropagation();var sl=document.getElementById("sl-"+id);if(!sl) return;var l=sl.querySelectorAll("img").length;sSwitch(id,(sCur(id)+1)%l);};
+window.sPrev=function(id,e){e.stopPropagation();var sl=document.getElementById("sl-"+id);if(!sl)return;var l=sl.querySelectorAll("img").length;sSwitch(id,(sCur(id)-1+l)%l);};
+window.sNext=function(id,e){e.stopPropagation();var sl=document.getElementById("sl-"+id);if(!sl)return;var l=sl.querySelectorAll("img").length;sSwitch(id,(sCur(id)+1)%l);};
 window.sTo=function(id,i,e){e.stopPropagation();sSwitch(id,i);};
 
-/* LIVE SEARCH */
+/* ── SEARCH ── */
 window.liveSearch=function(q){
   searchQ=q.trim().toLowerCase();
   document.querySelectorAll(".card").forEach(function(c){
@@ -1131,35 +1098,26 @@ window.liveSearch=function(q){
   document.getElementById("pc").textContent=document.querySelectorAll(".card:not(.hidden)").length;
 };
 
-/* FILTER */
+/* ── FILTER ── */
 window.flt=function(cat,el){
   curCat=cat;searchQ="";
   document.getElementById("search-inp").value="";
   document.querySelectorAll(".pill").forEach(function(p){p.classList.remove("on");});
-  if(el) el.classList.add("on");
+  if(el)el.classList.add("on");
   renderGrid();
 };
-window.fltNew=function(el){
-  var sorted=prods.slice().sort(function(a,b){return (b.createdAt||b.id)-(a.createdAt||a.id);});
-  renderGridCustom(sorted,el);
-};
-window.fltTop=function(el){
-  var sorted=prods.slice().sort(function(a,b){return (b.salesCount||0)-(a.salesCount||0);});
-  renderGridCustom(sorted,el);
-};
+window.fltNew=function(el){renderGridCustom(prods.slice().sort(function(a,b){return(b.createdAt||b.id)-(a.createdAt||a.id);}),el);};
+window.fltTop=function(el){renderGridCustom(prods.slice().sort(function(a,b){return(b.salesCount||0)-(a.salesCount||0);}),el);};
 function renderGridCustom(fp,el){
   document.querySelectorAll(".pill").forEach(function(p){p.classList.remove("on");});
-  if(el) el.classList.add("on");
-  curCat="all";
-  renderGridData(fp);
+  if(el)el.classList.add("on");curCat="all";renderGridData(fp);
 }
 window.sortP=function(){curSort=document.getElementById("ss").value;renderGrid();};
-
 function getFiltered(){
   var p=prods.slice();
-  if(curCat!=="all") p=p.filter(function(x){return x.cat===curCat;});
-  if(curSort==="l") p.sort(function(a,b){return effPrice(a)-effPrice(b);});
-  if(curSort==="h") p.sort(function(a,b){return effPrice(b)-effPrice(a);});
+  if(curCat!=="all")p=p.filter(function(x){return x.cat===curCat;});
+  if(curSort==="l")p.sort(function(a,b){return effPrice(a)-effPrice(b);});
+  if(curSort==="h")p.sort(function(a,b){return effPrice(b)-effPrice(a);});
   return p;
 }
 function renderGrid(){renderGridData(getFiltered());}
@@ -1171,18 +1129,15 @@ function renderGridData(fp){
   fp.forEach(function(p){
     var imgs=p.images&&p.images.length?p.images:(p.img?[p.img]:[]);
     var ep=effPrice(p);
-    var priceHtml="<div class='price-wrap'><span class='card-price'>"+fmt(ep)+"</span>";
-    if(p.discount&&p.discount>0) priceHtml+="<span class='card-price-old'>"+fmt(p.price)+"</span><span class='disc-badge'>-"+p.discount+"%</span>";
-    priceHtml+="</div>";
+    var ph="<div class='price-wrap'><span class='card-price'>"+fmt(ep)+"</span>";
+    if(p.discount&&p.discount>0)ph+="<span class='card-price-old'>"+fmt(p.price)+"</span><span class='disc-badge'>-"+p.discount+"%</span>";
+    ph+="</div>";
     html+="<div class='card' data-name='"+esc(p.name)+"' data-cat='"+esc(p.cat)+"' onclick='openProd("+p.id+")'>"
          +makeSlider(imgs,p.id)
-         +"<div class='card-body'>"
-         +"<div class='card-cat'>"+esc(CAT[p.cat]||p.cat)+"</div>"
-         +"<div class='card-name'>"+esc(p.name)+"</div>"
-         +priceHtml
+         +"<div class='card-body'><div class='card-cat'>"+esc(CAT[p.cat]||p.cat)+"</div>"
+         +"<div class='card-name'>"+esc(p.name)+"</div>"+ph
          +"<div class='fomo-txt'>قطع محدودة جداً من هذا التصميم هذا الاسبوع</div>"
-         +"<button class='addbtn' data-pid='"+p.id+"'>+ اضف للسلة</button>"
-         +"</div></div>";
+         +"<button class='addbtn' data-pid='"+p.id+"'>+ اضف للسلة</button></div></div>";
   });
   g.innerHTML=html;
   g.querySelectorAll(".addbtn").forEach(function(b){
@@ -1192,16 +1147,16 @@ function renderGridData(fp){
   updateMeta("WOW Store — "+fp.length+" منتج","تسوق احدث صيحات الموضة في الجزائر");
 }
 
-/* PRODUCT DETAIL */
+/* ── PRODUCT DETAIL ── */
 window.openProd=function(id){
-  var p=prods.find(function(x){return x.id===id;});if(!p) return;
+  var p=prods.find(function(x){return x.id===id;});if(!p)return;
   var imgs=p.images&&p.images.length?p.images:(p.img?[p.img]:[]);
   var ep=effPrice(p);
   document.getElementById("pm-name").textContent=p.name;
   var pw=document.getElementById("pm-price-wrap");
   if(p.discount&&p.discount>0){
     pw.innerHTML="<div class='price-wrap'><span style='font-family:Cinzel,serif;font-size:20px;color:rgba(192,132,252,.9)'>"+fmt(ep)+"</span><span style='font-size:13px;color:var(--mu);text-decoration:line-through'>"+fmt(p.price)+"</span><span class='disc-badge'>-"+p.discount+"%</span></div>";
-  } else {
+  }else{
     pw.innerHTML="<span style='font-family:Cinzel,serif;font-size:20px;color:rgba(192,132,252,.9)'>"+fmt(ep)+"</span>";
   }
   document.getElementById("pm-fomo").textContent="متوفر قطع محدودة جداً من هذا التصميم هذا الاسبوع";
@@ -1213,7 +1168,7 @@ window.openProd=function(id){
   }).join("");
   document.getElementById("pm-add-btn").onclick=function(){closeMod("prod-mod");openSizeMod(id);};
   updateMeta(p.name+" — WOW Store",p.desc||"تسوق احدث الموضة",imgs[0]||"");
-  openMod("prod-mod");
+  window.openMod("prod-mod");
 };
 window.pmImg=function(src,el){
   var mi=document.getElementById("pm-main-img");
@@ -1222,24 +1177,24 @@ window.pmImg=function(src,el){
   document.querySelectorAll(".gal-thumb").forEach(function(x){x.classList.remove("on");});el.classList.add("on");
 };
 
-/* SIZE */
+/* ── SIZE ── */
 function openSizeMod(id){
-  var p=prods.find(function(x){return x.id===id;});if(!p) return;
+  var p=prods.find(function(x){return x.id===id;});if(!p)return;
   pendProd=p;selSz=null;
   document.querySelectorAll(".sz-btn").forEach(function(b){b.classList.remove("on");});
   document.getElementById("mw").value="";document.getElementById("mh").value="";document.getElementById("mg").value="";
   document.getElementById("size-prod-name").textContent=p.name+" — "+fmt(effPrice(p));
-  openMod("size-mod");
+  window.openMod("size-mod");
 }
 window.pickSz=function(sz,btn){selSz=sz;document.querySelectorAll(".sz-btn").forEach(function(b){b.classList.remove("on");});btn.classList.add("on");document.getElementById("mw").value="";document.getElementById("mh").value="";document.getElementById("mg").value="";};
 window.clearSz=function(){selSz=null;document.querySelectorAll(".sz-btn").forEach(function(b){b.classList.remove("on");});};
 function calcSz(w,h,g){
   var b=w/Math.pow(h/100,2);
-  if(g==="F"){if(b<18.5||h<160) return "XS";if(b<22&&h<168) return "S";if(b<25) return "M";if(b<28) return "L";return "XL";}
-  if(b<18.5) return "S";if(b<22) return "M";if(b<25) return "L";if(b<28) return "XL";return "XXL";
+  if(g==="F"){if(b<18.5||h<160)return "XS";if(b<22&&h<168)return "S";if(b<25)return "M";if(b<28)return "L";return "XL";}
+  if(b<18.5)return "S";if(b<22)return "M";if(b<25)return "L";if(b<28)return "XL";return "XXL";
 }
 window.confirmAdd=function(){
-  if(!pendProd) return;
+  if(!pendProd)return;
   var sz=selSz,info="";
   if(!sz){
     var w=parseFloat(document.getElementById("mw").value||"0");
@@ -1252,12 +1207,12 @@ window.confirmAdd=function(){
   if(ex){ex.qty++;}
   else{
     var imgs=pendProd.images&&pendProd.images.length?pendProd.images:(pendProd.img?[pendProd.img]:[]);
-    cart.push({key:key,id:pendProd.id,name:pendProd.name,price:effPrice(pendProd),origPrice:pendProd.price,img:imgs[0]||"",qty:1,size:sz,info:info});
+    cart.push({key:key,id:pendProd.id,name:pendProd.name,price:effPrice(pendProd),img:imgs[0]||"",qty:1,size:sz,info:info});
   }
-  updCart();closeMod("size-mod");toast("تمت الاضافة — مقاس "+sz);
+  updCart();window.closeMod("size-mod");toast("تمت الاضافة — مقاس "+sz);
 };
 
-/* CART */
+/* ── CART ── */
 function updCart(){
   var count=cart.reduce(function(a,c){return a+c.qty;},0);
   var total=cart.reduce(function(a,c){return a+c.price*c.qty;},0);
@@ -1277,10 +1232,18 @@ function updCart(){
     b.addEventListener("click",function(){var k=decodeURIComponent(this.getAttribute("data-k"));cart=cart.filter(function(c){return c.key!==k;});updCart();});
   });
 }
-window.openCart=function(){document.getElementById("cart-sb").classList.add("on");document.getElementById("ov").classList.add("on");};
-window.closeCart=function(){document.getElementById("cart-sb").classList.remove("on");document.getElementById("ov").classList.remove("on");};
+window.openCart=function(){
+  var s=document.getElementById("cart-sb"),o=document.getElementById("ov");
+  if(s)s.classList.add("on");
+  if(o)o.classList.add("on");
+};
+window.closeCart=function(){
+  var s=document.getElementById("cart-sb"),o=document.getElementById("ov");
+  if(s)s.classList.remove("on");
+  if(o)o.classList.remove("on");
+};
 
-/* CHECKOUT */
+/* ── CHECKOUT ── */
 window.openCheckout=function(){
   if(!cart.length){toast("السلة فارغة");return;}
   closeCart();
@@ -1293,16 +1256,13 @@ window.openCheckout=function(){
   document.getElementById("op-del").textContent="-- دج";
   document.getElementById("o-wilaya").value="";
   document.getElementById("o-commune").value="";
-  openMod("checkout-mod");
+  window.openMod("checkout-mod");
 };
 window.updPreview=function(){
   var sub=cart.reduce(function(a,c){return a+c.price*c.qty;},0);
-  var dt=document.getElementById("o-del").value;
-  var fee=dt==="h"?1100:700;
+  var fee=document.getElementById("o-del").value==="h"?1100:700;
   document.getElementById("op-del").textContent=fmt(fee);
-  var disc=0;
-  if(document.getElementById("op-disc-row").style.display!=="none") disc=Math.round(sub*globalDiscount/100);
-  document.getElementById("op-tot").textContent=fmt(sub+fee-disc);
+  document.getElementById("op-tot").textContent=fmt(sub+fee);
 };
 function vEm(e){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);}
 window.submitOrder=function(){
@@ -1351,22 +1311,21 @@ window.submitOrder=function(){
         +"</div>";
     cart.forEach(function(c){ih+="<div class='inv-item'><span style='color:#333;max-width:60%'>"+esc(c.name)+" ["+esc(c.size)+"] x"+c.qty+"</span><span style='font-weight:600;color:#111'>"+fmt(c.price*c.qty)+"</span></div>";});
     ih+="<div class='inv-tots'><div class='inv-row'><span>المنتجات</span><span>"+fmt(sub)+"</span></div>"
-       +"<div class='inv-row'><span>التوصيل ("+esc(wilaya)+")</span><span style='color:#6d28d9'>"+fmt(fee)+"</span></div>"
+       +"<div class='inv-row'><span>التوصيل</span><span style='color:#6d28d9'>"+fmt(fee)+"</span></div>"
        +"<div class='inv-main'><span>TOTAL</span><span>"+fmt(total)+"</span></div></div>"
        +"<div class='inv-note'>سوف نتصل بك لتاكيد الطلبية</div>"
        +"<div class='inv-btns'><button class='inv-btn inv-btn-p' onclick='window.print()'>Print</button><button class='inv-btn inv-btn-d' id='inv-done'>Done</button></div>";
     document.getElementById("inv-box").innerHTML=ih;
     document.getElementById("inv-done").onclick=function(){closeMod("inv-mod");cart=[];updCart();};
-    closeMod("checkout-mod");openMod("inv-mod");
+    window.closeMod("checkout-mod");window.openMod("inv-mod");
   })
   .catch(function(){btn.disabled=false;btn.innerHTML="تاكيد الطلبية &#8594;";toast("خطا في الاتصال");});
 };
 
-/* ORDER TRACKING */
+/* ── TRACKING ── */
 window.doTrack=function(){
   var inp=document.getElementById("track-inp").value.trim();
-  var btn=document.getElementById("track-btn");
-  var res=document.getElementById("track-result");
+  var btn=document.getElementById("track-btn"),res=document.getElementById("track-result");
   if(!inp){toast("ادخل رقم الطلبية او الهاتف");return;}
   btn.disabled=true;btn.innerHTML="<span class='spin'></span>";
   var body=inp.startsWith("WOW-")?{orderId:inp}:{phone:inp};
@@ -1383,38 +1342,40 @@ window.doTrack=function(){
   .catch(function(){btn.disabled=false;btn.innerHTML="تتبع";toast("خطا في الاتصال");});
 };
 
-/* LOGIN */
+/* ── LOGIN ── */
+/* يحلّ محلّ الـ stub المعرَّف قبل الـ IIFE */
 window.openAdminLogin=function(){
   if(adminToken){showAdm();return;}
-  document.getElementById("login-err").style.display="none";
-  document.getElementById("login-pass").value="";
-  openMod("login-mod");
+  var errEl=document.getElementById("login-err");
+  var passEl=document.getElementById("login-pass");
+  if(errEl)errEl.style.display="none";
+  if(passEl)passEl.value="";
+  window.openMod("login-mod");
 };
 window.doLogin=function(){
   if(isSilentBlocked){var b=document.getElementById("login-btn");b.disabled=true;b.innerHTML="<span class='spin'></span>";return;}
-  var pass=document.getElementById("login-pass").value;if(!pass) return;
+  var pass=document.getElementById("login-pass").value;if(!pass)return;
   var btn=document.getElementById("login-btn");btn.disabled=true;btn.innerHTML="<span class='spin'></span>";
   fetch("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pass})})
   .then(function(r){return r.json();})
   .then(function(data){
-    if(data.stall){isSilentBlocked=true;try{localStorage.setItem("_wbl","1");}catch{} return;}
+    if(data.stall){isSilentBlocked=true;try{localStorage.setItem("_wbl","1");}catch{}return;}
     btn.disabled=false;btn.innerHTML="دخول &#8594;";document.getElementById("login-pass").value="";
-    if(data.ok){saveSession(pass,document.getElementById("rm-check").checked);closeMod("login-mod");showAdm();}
+    if(data.ok){saveSession(pass,document.getElementById("rm-check").checked);window.closeMod("login-mod");showAdm();}
     else{var e=document.getElementById("login-err");e.style.display="block";e.textContent="كلمة السر خاطئة — محاولات متبقية: "+(data.remaining!==undefined?data.remaining:"?");}
   })
   .catch(function(){btn.disabled=false;btn.innerHTML="دخول &#8594;";toast("خطا في الاتصال");});
 };
-
 function showAdm(){
   document.getElementById("adm").classList.add("on");
   aTab("analytics",document.querySelector(".anav"));
   startClock();loadAnalytics();loadAdmProds();checkPushStatus();
 }
 
-/* PUSH */
+/* ── PUSH ── */
 function checkPushStatus(){
-  if(!("Notification" in window)) return;
-  var b=document.getElementById("push-banner");if(!b) return;
+  if(!("Notification" in window))return;
+  var b=document.getElementById("push-banner");if(!b)return;
   b.style.display=Notification.permission==="granted"?"none":"flex";
 }
 window.requestPush=function(){
@@ -1432,28 +1393,27 @@ window.requestPush=function(){
   });
 };
 
-/* ADMIN TABS */
+/* ── ADMIN ── */
 function startClock(){function t(){var el=document.getElementById("adm-clock");if(el)el.textContent=new Date().toLocaleTimeString("ar-DZ");}t();setInterval(t,1000);}
 window.aTab=function(name,el){
   document.querySelectorAll(".asec").forEach(function(s){s.classList.remove("on");});
   document.querySelectorAll(".anav").forEach(function(n){n.classList.remove("on");});
   var sec=document.getElementById("as-"+name);if(sec)sec.classList.add("on");
   if(el)el.classList.add("on");
-  if(name==="analytics") loadAnalytics();
-  if(name==="products")  loadAdmProds();
-  if(name==="orders")    loadOrders();
-  if(name==="visitors")  loadVisitors();
-  if(name==="settings")  loadSettings();
+  if(name==="analytics")loadAnalytics();
+  if(name==="products")loadAdmProds();
+  if(name==="orders")loadOrders();
+  if(name==="visitors")loadVisitors();
+  if(name==="settings")loadSettings();
 };
 window.closeAdm=function(){clearSession();adminToken="";document.getElementById("adm").classList.remove("on");};
 
-/* ANALYTICS */
 function loadAnalytics(){
   var cards=document.getElementById("stat-cards");
   if(cards)cards.innerHTML="<div style='color:var(--mu);font-size:12px'><span class='spin'></span> Loading...</div>";
   api("/api/analytics").then(function(r){return r.json();}).then(function(d){
     setApiSt(true);
-    var c=document.getElementById("stat-cards");if(!c) return;
+    var c=document.getElementById("stat-cards");if(!c)return;
     c.innerHTML=sc("الزيارات",d.totalVisits||0)+sc("فريديون",d.uniqueVisitors||0)+sc("الطلبيات",d.totalOrders||0)+sc("مؤكدة",d.confirmedOrders||0)+sc("المنتجات",d.productCount||0)+sc("الايرادات",(d.revenue||0).toLocaleString()+" دج");
     var dc=document.getElementById("dev-chart");
     if(dc&&d.devMap){var dm=d.devMap,mx=Math.max.apply(null,Object.values(dm).concat([1]));dc.innerHTML=Object.entries(dm).map(function(e){return "<div class='br'><div class='brl'>"+e[0]+"</div><div class='brb'><div class='brf' style='width:"+Math.round(e[1]/mx*100)+"%'></div></div><div class='brv'>"+e[1]+"</div></div>";}).join("");}
@@ -1463,15 +1423,16 @@ function loadAnalytics(){
 }
 function sc(label,val){return "<div class='sc'><div class='sv'>"+val+"</div><div class='sl'>"+label+"</div></div>";}
 
-/* ADMIN PRODUCTS */
 function loadAdmProds(){
   api("/api/products").then(function(r){return r.json();}).then(function(data){
-    var tb=document.getElementById("adm-tbody");if(!tb) return;
+    var tb=document.getElementById("adm-tbody");if(!tb)return;
     if(!data.length){tb.innerHTML="<tr><td colspan='6' style='color:var(--mu);text-align:center;padding:20px'>لا توجد منتجات</td></tr>";return;}
     tb.innerHTML=data.map(function(p){
       var img=(p.images&&p.images[0])||p.img||"";
-      var ep=effPrice(p);
-      return "<tr><td>"+(img?"<img class='ath' src='"+esc(img)+"' loading='lazy'>":"—")+"</td><td>"+esc(p.name)+"</td><td style='font-family:Cinzel,serif;color:rgba(192,132,252,.8)'>"+fmt(ep)+"</td><td style='color:rgba(239,68,68,.7)'>"+(p.discount?p.discount+"%":"—")+"</td><td style='color:var(--mu)'>"+esc(p.cat)+"</td>"
+      return "<tr><td>"+(img?"<img class='ath' src='"+esc(img)+"' loading='lazy'>":"—")+"</td><td>"+esc(p.name)+"</td>"
+           +"<td style='font-family:Cinzel,serif;color:rgba(192,132,252,.8)'>"+fmt(effPrice(p))+"</td>"
+           +"<td style='color:rgba(239,68,68,.7)'>"+(p.discount?p.discount+"%":"—")+"</td>"
+           +"<td style='color:var(--mu)'>"+esc(p.cat)+"</td>"
            +"<td style='display:flex;gap:5px;padding:8px 10px'><button class='aact e' onclick='editProd("+p.id+")'>Edit</button><button class='aact d' onclick='delProd("+p.id+")'>Del</button></td></tr>";
     }).join("");
   }).catch(function(){});
@@ -1489,62 +1450,62 @@ function fillForm(p){
   document.getElementById("p-cat").value=p.cat;
   document.getElementById("p-desc").value=p.desc||"";
   calcDisc();
-  prodImgs=(p.images||[]).map(function(url,i){return{url:url,key:(p.r2keys&&p.r2keys[i])||null};});
+  prodImgs=(p.images||[]).map(function(url){return{url:url};});
   renderPreviews();
   document.getElementById("form-head").textContent="Edit Product";
   aTab("addprod",null);
 }
 window.delProd=function(id){
-  if(!confirm("حذف المنتج؟")) return;
+  if(!confirm("حذف المنتج؟"))return;
   api("/api/products?id="+id,{method:"DELETE"}).then(function(){loadAdmProds();loadProds();toast("تم الحذف");}).catch(function(){toast("خطا");});
 };
 
-/* R2 UPLOAD */
+/* ── IMAGE UPLOAD (KV / Base64) ── */
 window.handleDrop=function(e){e.preventDefault();document.getElementById("drop-zone").classList.remove("drag");handleFiles(e.dataTransfer.files);};
 window.handleImgs=function(inp){handleFiles(inp.files);inp.value="";};
 function handleFiles(files){
-  var rem=8-prodImgs.length;
+  var rem=4-prodImgs.length;
   var arr=Array.from(files).filter(function(f){return f.type.startsWith("image/");}).slice(0,rem);
-  if(!arr.length){toast("الحد الاقصى 8 صور");return;}
-  uploadAll(arr);
+  if(!arr.length){toast("الحد الاقصى 4 صور");return;}
+  processImages(arr);
 }
-function uploadAll(files){
+function processImages(files){
   var prog=document.getElementById("up-prog"),bar=document.getElementById("up-bar"),status=document.getElementById("up-status");
   prog.style.display="block";var total=files.length,done=0;
   files.forEach(function(file){
     var reader=new FileReader();
-    reader.onload=function(e){
-      var preview=e.target.result;
-      fetch("/api/r2-upload",{method:"POST",headers:{"Content-Type":file.type,"X-Admin-Key":adminToken},body:file})
-      .then(function(r){return r.json();})
-      .then(function(d){
-        prodImgs.push(d.ok?{url:d.url,key:d.key}:{url:preview,key:null});
-        if(!d.ok) toast("R2 غير متاح — تخزين مؤقت");
-        done++;bar.style.width=Math.round(done/total*100)+"%";status.textContent=done+"/"+total+" مرفوعة";
+    reader.onload=function(ev){
+      // ضغط الصورة قبل حفظها
+      var img=new Image();
+      img.onload=function(){
+        var canvas=document.createElement("canvas");
+        var MAX=800;
+        var w=img.width,h=img.height;
+        if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+        if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}
+        canvas.width=w;canvas.height=h;
+        canvas.getContext("2d").drawImage(img,0,0,w,h);
+        var compressed=canvas.toDataURL("image/jpeg",0.75);
+        prodImgs.push({url:compressed});
+        done++;
+        bar.style.width=Math.round(done/total*100)+"%";
+        status.textContent=done+"/"+total+" جاهزة للحفظ";
         renderPreviews();
-        if(done===total)setTimeout(function(){prog.style.display="none";status.textContent="";},1400);
-      })
-      .catch(function(){
-        prodImgs.push({url:preview,key:null});done++;bar.style.width=Math.round(done/total*100)+"%";
-        renderPreviews();if(done===total)setTimeout(function(){prog.style.display="none";status.textContent="";},1400);
-      });
+        if(done===total)setTimeout(function(){prog.style.display="none";status.textContent="";},1200);
+      };
+      img.src=ev.target.result;
     };
     reader.readAsDataURL(file);
   });
 }
 function renderPreviews(){
-  var prev=document.getElementById("img-previews");if(!prev) return;
+  var prev=document.getElementById("img-previews");if(!prev)return;
   prev.innerHTML=prodImgs.map(function(img,i){
-    return "<div class='img-prev-wrap'><img src='"+esc(img.url)+"' alt=''><button class='img-prev-del' onclick='delImg("+i+")'>x</button>"
-          +(img.key?"<span style='position:absolute;bottom:2px;left:2px;background:rgba(34,197,94,.8);color:#fff;font-size:7px;padding:1px 3px;border-radius:2px'>R2</span>":"")+"</div>";
+    return "<div class='img-prev-wrap'><img src='"+img.url+"' alt=''><button class='img-prev-del' onclick='delImg("+i+")'>x</button></div>";
   }).join("");
 }
-window.delImg=function(i){
-  if(prodImgs[i]&&prodImgs[i].key) api("/api/r2-delete",{method:"DELETE",body:JSON.stringify({key:prodImgs[i].key})}).catch(function(){});
-  prodImgs.splice(i,1);renderPreviews();
-};
+window.delImg=function(i){prodImgs.splice(i,1);renderPreviews();};
 
-/* SAVE PRODUCT */
 window.saveProd=function(){
   var name=document.getElementById("p-name").value.trim();
   var price=document.getElementById("p-price").value;
@@ -1555,29 +1516,31 @@ window.saveProd=function(){
   if(!name){toast("ادخل اسم المنتج");return;}
   if(!price){toast("ادخل السعر");return;}
   var btn=document.getElementById("save-btn");btn.disabled=true;btn.innerHTML="<span class='spin'></span>";
-  var body={name:name,price:+price,discount:disc,cat:cat,desc:desc,images:prodImgs.map(function(x){return x.url;}),r2keys:prodImgs.map(function(x){return x.key||"";})};
-  var method=editId?"PUT":"POST";if(editId) body.id=+editId;
+  var body={name:name,price:+price,discount:disc,cat:cat,desc:desc,images:prodImgs.map(function(x){return x.url;})};
+  var method=editId?"PUT":"POST";if(editId)body.id=+editId;
   api("/api/products",{method:method,body:JSON.stringify(body)})
   .then(function(r){return r.json();})
   .then(function(){
     btn.disabled=false;btn.innerHTML="Save Product";toast(editId?"تم التعديل":"تمت الاضافة");
-    document.getElementById("edit-id").value="";document.getElementById("p-name").value="";document.getElementById("p-price").value="";document.getElementById("p-disc").value="";document.getElementById("p-desc").value="";
+    document.getElementById("edit-id").value="";document.getElementById("p-name").value="";
+    document.getElementById("p-price").value="";document.getElementById("p-disc").value="";document.getElementById("p-desc").value="";
     prodImgs=[];renderPreviews();document.getElementById("form-head").textContent="Add New Product";
     loadProds();loadAdmProds();
   })
   .catch(function(){btn.disabled=false;btn.innerHTML="Save Product";toast("خطا في الحفظ");});
 };
 window.cancelEdit=function(){
-  document.getElementById("edit-id").value="";document.getElementById("p-name").value="";document.getElementById("p-price").value="";document.getElementById("p-disc").value="";document.getElementById("p-desc").value="";
+  document.getElementById("edit-id").value="";document.getElementById("p-name").value="";
+  document.getElementById("p-price").value="";document.getElementById("p-disc").value="";document.getElementById("p-desc").value="";
   prodImgs=[];renderPreviews();document.getElementById("form-head").textContent="Add New Product";
   aTab("products",document.querySelectorAll(".anav")[1]);
 };
 
-/* ORDERS */
+/* ── ORDERS ── */
 window.loadOrders=function(){
   var oc=document.getElementById("orders-c");if(oc)oc.innerHTML="<div style='color:var(--mu);font-size:12px;padding:13px'><span class='spin'></span> Loading...</div>";
   api("/api/orders").then(function(r){return r.json();}).then(function(orders){
-    var c=document.getElementById("orders-c");if(!c) return;
+    var c=document.getElementById("orders-c");if(!c)return;
     var rf=document.getElementById("ord-refresh");if(rf)rf.textContent="("+orders.length+" — "+new Date().toLocaleTimeString("ar-DZ")+")";
     if(!orders.length){c.innerHTML="<div style='color:var(--mu);font-size:12px;padding:13px'>لا توجد طلبيات</div>";return;}
     c.innerHTML=orders.map(function(o){
@@ -1599,20 +1562,20 @@ window.loadOrders=function(){
 };
 window.confOrd=function(id,confirmed){api("/api/orders",{method:"PATCH",body:JSON.stringify({id:id,confirmed:confirmed})}).then(function(){loadOrders();toast(confirmed?"تم التاكيد":"تم الالغاء");}).catch(function(){toast("خطا");});};
 window.updOrderStatus=function(id,status){api("/api/orders",{method:"PATCH",body:JSON.stringify({id:id,status:status})}).then(function(){toast("تم تحديث الحالة");}).catch(function(){toast("خطا");});};
-window.clearOrders=function(){if(!confirm("حذف كل الطلبيات؟")) return;api("/api/orders",{method:"DELETE"}).then(function(){loadOrders();toast("تم الحذف");}).catch(function(){toast("خطا");});};
+window.clearOrders=function(){if(!confirm("حذف كل الطلبيات؟"))return;api("/api/orders",{method:"DELETE"}).then(function(){loadOrders();toast("تم الحذف");}).catch(function(){toast("خطا");});};
 
-/* VISITORS */
+/* ── VISITORS ── */
 function loadVisitors(){
   var vc=document.getElementById("visitors-c");if(vc)vc.innerHTML="<div style='color:var(--mu);font-size:12px'><span class='spin'></span></div>";
   api("/api/analytics").then(function(r){return r.json();}).then(function(d){
-    var c=document.getElementById("visitors-c");if(!c) return;
+    var c=document.getElementById("visitors-c");if(!c)return;
     var vs=d.visitors||[];
     if(!vs.length){c.innerHTML="<div style='color:var(--mu);font-size:12px'>لا توجد بيانات</div>";return;}
     c.innerHTML=vs.map(function(v){return "<div class='vr'><span class='vr-id'>"+esc(v.vid)+"</span><span style='color:var(--dim)'>"+v.dev+"</span><span style='color:rgba(192,132,252,.8);font-family:Cinzel,serif'>"+v.count+" زيارة</span></div>";}).join("");
   }).catch(function(){});
 }
 
-/* SETTINGS */
+/* ── SETTINGS ── */
 function loadSettings(){
   api("/api/settings").then(function(r){return r.json();}).then(function(s){
     var sn=document.getElementById("s-name"),sw=document.getElementById("s-wa"),se=document.getElementById("s-em"),si=document.getElementById("s-ig"),hdr=document.getElementById("store-name-hdr");
@@ -1631,30 +1594,34 @@ window.saveSettings=function(){
   }).catch(function(){btn.disabled=false;btn.innerHTML="Save Settings";toast("خطا");});
 };
 
-/* MODALS */
-function openMod(id){var el=document.getElementById(id);if(el)el.classList.add("on");}
-window.openMod=openMod;
-window.closeMod=function(id){var el=document.getElementById(id);if(el)el.classList.remove("on");updateMeta("WOW Store","تسوق احدث صيحات الموضة في الجزائر");};
+/* ── MODALS ── */
+/* يحلّ محلّ الـ stubs المعرَّفة قبل الـ IIFE */
+window.openMod=function(id){
+  var el=document.getElementById(id);
+  if(el)el.classList.add("on");
+};
+window.closeMod=function(id){
+  var el=document.getElementById(id);
+  if(el){el.classList.remove("on");}
+  updateMeta("WOW Store","تسوق احدث صيحات الموضة في الجزائر");
+};
 
-/* TOAST */
+/* ── TOAST ── */
 var toastT;
-function toast(msg){var el=document.getElementById("toast");if(!el) return;el.textContent=msg;el.classList.add("on");clearTimeout(toastT);toastT=setTimeout(function(){el.classList.remove("on");},2800);}
+function toast(msg){var el=document.getElementById("toast");if(!el)return;el.textContent=msg;el.classList.add("on");clearTimeout(toastT);toastT=setTimeout(function(){el.classList.remove("on");},2800);}
 
-/* MISC */
-window.scrollTop=function(){window.scrollTo({top:0,behavior:"smooth"});};
-
-/* MYSTERY OFFER */
+/* ── MYSTERY ── */
 function showMystery(){
-  try{if(localStorage.getItem("wow_myst")==="1") return;}catch{}
+  try{if(localStorage.getItem("wow_myst")==="1")return;}catch{}
   var discs=[5,10,15,20];var d=discs[Math.floor(Math.random()*discs.length)];
   var codes=["WOW"+d+"NOW","FIRST"+d,"STYLE"+d,"GOTH"+d];var code=codes[Math.floor(Math.random()*codes.length)];
   document.getElementById("mystery-disc").textContent=d+"%";
   document.getElementById("mystery-code").textContent=code;
   globalDiscount=d;
-  setTimeout(function(){openMod("mystery-mod");},2200);
+  setTimeout(function(){window.openMod("mystery-mod");},2200);
 }
 
-/* INIT */
+/* ── INIT ── */
 initLazy();trackVisit();showSkeletons();loadProds();loadSettings();updCart();showMystery();
 
 if(restoreSession()&&adminToken){
