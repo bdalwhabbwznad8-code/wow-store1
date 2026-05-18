@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// WOW STORE — Cloudflare Worker — v6.0
+// WOW STORE — Cloudflare Worker — v7.0
 // KV Binding : env.DATABASE
 // ═══════════════════════════════════════════════════════════════
 
@@ -102,7 +102,8 @@ export default {
         const p={id:Date.now(),name:(body.name||"").substring(0,120),price:Math.max(0,+body.price||0),
           discount:body.discount?+body.discount:0,cat:body.cat||"other",desc:(body.desc||"").substring(0,600),
           images:Array.isArray(body.images)?body.images.slice(0,4):[],
-          stock:body.stock!==false,salesCount:0,createdAt:Date.now()};
+          stock:body.stock!==false,quantity:body.quantity!==undefined?+body.quantity:null,
+          salesCount:0,createdAt:Date.now()};
         prods.push(p);await kvSet(env,"products",prods);return R(p);
       }
       if(method==="PUT"){
@@ -128,6 +129,17 @@ export default {
         const orders=await kvGet(env,"orders",[]);
         const o={id:"WOW-"+Date.now().toString().slice(-7),date:new Date().toISOString(),confirmed:false,status:"processing",...body};
         orders.unshift(o);await kvSet(env,"orders",orders.slice(0,500));
+        // Decrease product quantities if set
+        const prods=await kvGet(env,"products",[]);
+        let changed=false;
+        body.items.forEach(item=>{
+          const pi=prods.findIndex(p=>p.id===item.id);
+          if(pi>=0&&prods[pi].quantity!==null&&prods[pi].quantity!==undefined){
+            prods[pi].quantity=Math.max(0,prods[pi].quantity-(item.qty||1));
+            changed=true;
+          }
+        });
+        if(changed)await kvSet(env,"products",prods);
         sendPush(env,"طلبية جديدة","من: "+o.name+" | "+o.wilaya+" | "+(o.total||0).toLocaleString()+" دج");
         return R({ok:true,orderId:o.id});
       }
@@ -180,12 +192,12 @@ export default {
     }
 
     if(path==="/api/settings"){
-      if(method==="GET")return R(await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"bdalwhabbwznad8@gmail.com",instagram:"wow.7a"}));
+      if(method==="GET")return R(await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"wowastore15@gmail.com",instagram:"wow.7a"}));
       if(!await isAdmin(request))return R({error:"Unauthorized"},401);
       await kvSet(env,"settings",await request.json());return R({ok:true});
     }
 
-    const settings=await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"bdalwhabbwznad8@gmail.com",instagram:"wow.7a"});
+    const settings=await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"wowastore15@gmail.com",instagram:"wow.7a"});
     return R(buildHTML(settings),200,{"Cache-Control":"public,max-age=60","X-Content-Type-Options":"nosniff","X-Frame-Options":"DENY"});
   }
 };
@@ -193,7 +205,7 @@ export default {
 function buildHTML(s){
   const sn=s.storeName||"WOW Store";
   const wa=s.whatsapp||"0667881322";
-  const em=s.email||"bdalwhabbwznad8@gmail.com";
+  const em=s.email||"wowastore15@gmail.com";
   const ig=s.instagram||"wow.7a";
   const WILAYAS=["ادرار","الشلف","الاغواط","ام البواقي","باتنة","بجاية","بسكرة","بشار","البليدة","البويرة","تمنراست","تبسة","تلمسان","تيارت","تيزي وزو","الجزائر","الجلفة","جيجل","سطيف","سعيدة","سكيكدة","سيدي بلعباس","عنابة","قالمة","قسنطينة","المدية","مستغانم","المسيلة","معسكر","ورقلة","وهران","البيض","اليزي","برج بوعريريج","بومرداس","الطارف","تندوف","تيسمسيلت","الوادي","خنشلة","سوق اهراس","تيبازة","ميلة","عين الدفلى","النعامة","عين تموشنت","غرداية","غليزان","تيميمون","طولقة","بني عباس","عين صالح","عين قزام","تقرت","جانت","المغير","المنيعة","وادي سوف"];
   const wilayaOpts=WILAYAS.map(w=>`<option value="${w}">${w}</option>`).join("");
@@ -218,16 +230,16 @@ body::before{content:'';position:fixed;inset:0;background:url("data:image/svg+xm
 @keyframes grain{0%,100%{background-position:0 0}10%{background-position:-5% -10%}20%{background-position:-15% 5%}30%{background-position:7% -25%}40%{background-position:-5% 25%}50%{background-position:-15% 10%}60%{background-position:15% 0%}70%{background-position:0 15%}80%{background-position:3% 35%}90%{background-position:-10% 10%}}
 body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 3px);pointer-events:none;z-index:9997}
 
-/* ══════════════════════════════════════════════════
-   VOID WORLD — زوايا وحواف وأطراف عالم الفراغ
-   ══════════════════════════════════════════════════ */
-/* زوايا الشاشة */
+/* ══ AMBIENT BREATHING ══ */
+@keyframes ambientBreathe{0%,100%{opacity:.018}50%{opacity:.038}}
+.ambient-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 80% 60% at 50% 50%,rgba(88,28,135,.06),transparent);animation:ambientBreathe 8s ease-in-out infinite}
+
+/* ══ VOID WORLD ══ */
 .void-corner{position:fixed;width:160px;height:160px;pointer-events:none;z-index:9996;opacity:.7}
 .void-corner.tl{top:0;right:0}
 .void-corner.tr{top:0;left:0;transform:scaleX(-1)}
 .void-corner.bl{bottom:0;right:0;transform:scaleY(-1)}
 .void-corner.br{bottom:0;left:0;transform:scale(-1)}
-/* حواف نيون */
 .void-edge-h{position:fixed;right:0;left:0;height:1px;pointer-events:none;z-index:9995}
 .void-edge-h.top{top:0;background:linear-gradient(90deg,transparent,rgba(168,85,247,.35),rgba(88,28,135,.7),rgba(168,85,247,.35),transparent);animation:edgePulse 6s ease-in-out infinite}
 .void-edge-h.bot{bottom:0;background:linear-gradient(90deg,transparent,rgba(88,28,135,.4),rgba(168,85,247,.25),rgba(88,28,135,.4),transparent);animation:edgePulse 8s ease-in-out infinite reverse}
@@ -236,48 +248,23 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .void-edge-v.l{left:0;background:linear-gradient(180deg,transparent,rgba(88,28,135,.25),rgba(168,85,247,.4),rgba(88,28,135,.25),transparent);animation:edgePulseV 9s ease-in-out infinite reverse}
 @keyframes edgePulse{0%,100%{opacity:.35}50%{opacity:1}}
 @keyframes edgePulseV{0%,100%{opacity:.25}50%{opacity:.85}}
-/* رموز الخلفية الخفية */
 .void-runes{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden}
 .rune{position:absolute;font-family:'Cinzel',serif;color:rgba(168,85,247,.038);font-size:10px;letter-spacing:3px;white-space:nowrap;animation:runeDrift linear infinite;user-select:none;will-change:transform}
 @keyframes runeDrift{0%{transform:translateY(110vh) rotate(0deg);opacity:0}8%{opacity:1}92%{opacity:.5}100%{transform:translateY(-10vh) rotate(6deg);opacity:0}}
-/* شبكة الخرائط المفقودة */
 .void-map{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden;opacity:.022}
-/* غليتش شريط عشوائي */
 .glitch-bar{position:fixed;right:0;left:0;height:1px;background:linear-gradient(90deg,transparent,rgba(168,85,247,.9),rgba(192,132,252,1),rgba(88,28,135,.8),transparent);pointer-events:none;z-index:9993;opacity:0}
 .glitch-bar.run{animation:glitchPass .22s ease-out forwards}
 @keyframes glitchPass{0%{opacity:.9}100%{opacity:0;transform:translateY(-40px)}}
-/* ─── STATIC GRAY GLITCH SYSTEM ─── */
+
+/* ══ STATIC GRAY GLITCH ══ */
 #sg-canvas{position:fixed;inset:0;pointer-events:none;z-index:9;opacity:0;transition:opacity 2.4s cubic-bezier(.4,0,.2,1)}
-#sg-canvas.vis{opacity:1}
-.sg-edge-c{position:fixed;pointer-events:none;z-index:8;opacity:0;mix-blend-mode:screen;transition:opacity 1.6s ease}
-.sg-edge-c.vis{opacity:1}
-.sg-surf{position:fixed;pointer-events:none;z-index:7;opacity:0;mix-blend-mode:screen;transition:opacity 1.2s ease}
-.sg-surf.vis{opacity:1}
-/* غليتش على الصور عند hover */
-@keyframes imgGlitch{
-  0%,92%,100%{clip-path:none;transform:translate(0,0);filter:none}
-  93%{clip-path:polygon(0 18%,100% 18%,100% 24%,0 24%);transform:translate(-2px,0);filter:hue-rotate(80deg) saturate(1.4)}
-  94%{clip-path:none;transform:translate(0,0);filter:none}
-  96%{clip-path:polygon(0 62%,100% 62%,100% 66%,0 66%);transform:translate(3px,0);filter:hue-rotate(-50deg)}
-  97%{clip-path:none;transform:translate(0,0);filter:none}
-  98%{clip-path:polygon(0 40%,100% 40%,100% 42%,0 42%);transform:translate(-1px,0)}
-  99%{clip-path:none}
-}
-.card:hover .img-slider{animation:imgGlitch 7s ease-in-out infinite}
-/* زوايا الكروت — إطار الفراغ */
-.card{position:relative}
-.card::before{content:'';position:absolute;inset:0;border-radius:var(--r);pointer-events:none;z-index:3;background:linear-gradient(135deg,rgba(168,85,247,.12) 0 8px,transparent 8px) top right/30px 30px no-repeat,linear-gradient(225deg,rgba(168,85,247,.12) 0 8px,transparent 8px) top left/30px 30px no-repeat,linear-gradient(-45deg,rgba(88,28,135,.1) 0 8px,transparent 8px) bottom right/30px 30px no-repeat,linear-gradient(45deg,rgba(88,28,135,.1) 0 8px,transparent 8px) bottom left/30px 30px no-repeat;opacity:0;transition:opacity .3s}
-.card:hover::before{opacity:1}
-/* أطراف الصور — توهج الفراغ */
-.img-slider::after{content:'';position:absolute;inset:0;z-index:4;pointer-events:none;box-shadow:inset 0 0 20px rgba(88,28,135,.25),inset 0 0 1px rgba(168,85,247,.3);border-radius:inherit}
-.mist{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-.mist::before{content:'';position:absolute;width:70vw;height:70vw;border-radius:50%;background:radial-gradient(ellipse,rgba(88,28,135,.13),transparent 70%);top:-20%;left:-20%;filter:blur(60px);animation:m1 30s ease-in-out infinite}
-.mist::after{content:'';position:absolute;width:60vw;height:60vw;border-radius:50%;background:radial-gradient(ellipse,rgba(55,48,163,.09),transparent 70%);bottom:-20%;right:-20%;filter:blur(80px);animation:m2 38s ease-in-out infinite}
-@keyframes m1{0%,100%{transform:translate(0,0)}50%{transform:translate(15vw,10vh)}}
-@keyframes m2{0%,100%{transform:translate(0,0)}50%{transform:translate(-10vw,-8vh)}}
+
+/* ══ SCROLL PROGRESS ══ */
 #scroll-prog{position:fixed;top:0;right:0;left:0;height:2px;background:linear-gradient(90deg,#6d28d9,#a855f7);transform-origin:right;transform:scaleX(0);z-index:9999;transition:transform .1s linear}
 #main-content{animation:dreamFadeIn .7s cubic-bezier(.4,0,.2,1) both}
 @keyframes dreamFadeIn{from{opacity:0;filter:blur(8px) brightness(1.3);transform:translateY(6px)}to{opacity:1;filter:blur(0) brightness(1);transform:translateY(0)}}
+
+/* ══ HEADER ══ */
 .hdr{position:sticky;top:0;z-index:200;background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--b1)}
 .hdr-i{max-width:1200px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .logo{font-family:Cinzel,serif;font-size:24px;font-weight:900;color:#fff;letter-spacing:5px;text-shadow:0 0 20px rgba(168,85,247,.7);animation:glow 4s ease-in-out infinite;text-decoration:none;white-space:nowrap;flex-shrink:0}
@@ -296,6 +283,8 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .adm-btn svg{width:12px;height:12px;flex-shrink:0}
 .xbtn{background:rgba(255,255,255,.06);border:1px solid var(--b1);border-radius:8px;width:29px;height:29px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dim);font-size:13px;transition:.18s}
 .xbtn:hover{background:rgba(168,85,247,.12);color:#fff}
+
+/* ══ CATEGORIES ══ */
 .cats-bar{position:sticky;top:58px;z-index:150;background:rgba(5,5,5,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--b1);padding:9px 20px}
 .cats-i{max-width:1200px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;align-items:center}
 .cats-i::-webkit-scrollbar{display:none}
@@ -307,49 +296,89 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .pc{font-size:11px;color:var(--mu);letter-spacing:2px;text-transform:uppercase}
 .ss{appearance:none;background:var(--p1);border:1px solid var(--b1);border-radius:var(--rs);color:var(--dim);font-family:Inter,sans-serif;font-size:11px;padding:6px 24px 6px 10px;outline:none;cursor:pointer}
 .ss option{background:#111}
+
+/* ══ TRUST BAR ══ */
 .trust-bar{background:rgba(0,0,0,.6);border-top:1px solid rgba(168,85,247,.1);border-bottom:1px solid rgba(168,85,247,.1);overflow:hidden;position:relative;z-index:5}
 .trust-bar::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(168,85,247,.018) 3px,rgba(168,85,247,.018) 4px);pointer-events:none}
 .trust-scroll{display:flex;animation:tscroll 28s linear infinite;width:max-content}
 .trust-item{padding:10px 40px;font-size:10px;color:rgba(168,85,247,.55);letter-spacing:3px;text-transform:uppercase;white-space:nowrap;border-right:1px solid rgba(168,85,247,.08)}
 @keyframes tscroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ══ GRID & CARDS ══ */
 .grid{max-width:1200px;margin:0 auto;padding:0 20px 100px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;position:relative;z-index:5}
-.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);overflow:visible;display:flex;flex-direction:column;cursor:pointer;transition:transform .28s ease,box-shadow .28s,border-color .28s}
-.card:hover{transform:translateY(-5px);border-color:rgba(168,85,247,.22);box-shadow:0 14px 44px rgba(0,0,0,.5)}
+/* Golden ratio: every 5th card slightly wider */
+.grid .card:nth-child(5n+1){grid-column:span 1}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);overflow:visible;display:flex;flex-direction:column;cursor:pointer;transition:transform .28s ease,box-shadow .28s,border-color .28s;position:relative}
+.card:hover{transform:translateY(-6px);border-color:rgba(168,85,247,.28);box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 20px rgba(168,85,247,.06)}
 .card.hidden{display:none}
-.img-slider{position:relative;overflow:hidden;aspect-ratio:3/4;background:#111}
+/* Pattern interruption: every 5th card gets a highlighted border */
+.card:nth-child(5n+3){border-color:rgba(168,85,247,.12);background:rgba(168,85,247,.035)}
+/* Warm color edge on images */
+.card::after{content:'';position:absolute;inset:0;border-radius:var(--r);pointer-events:none;z-index:4;background:linear-gradient(135deg,rgba(251,146,60,.04) 0%,transparent 40%,transparent 60%,rgba(251,191,36,.03) 100%);opacity:0;transition:opacity .3s}
+.card:hover::after{opacity:1}
+/* 3D depth shadow on hover */
+.card:hover .img-slider{box-shadow:0 8px 30px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.05)}
+.img-slider{position:relative;overflow:hidden;aspect-ratio:3/4;background:#111;transition:box-shadow .28s;border-radius:var(--r) var(--r) 0 0}
 .img-slider img{width:100%;height:100%;object-fit:cover;filter:brightness(.83) saturate(.75);transition:filter .4s,opacity .3s;position:absolute;top:0;left:0;opacity:0}
 .img-slider img.active{opacity:1;position:relative}
 .img-slider img.lazy-blur{filter:brightness(.83) saturate(.75) blur(10px);transform:scale(1.04)}
-.img-slider img.lazy-loaded{filter:brightness(.83) saturate(.75) blur(0);transform:scale(1);transition:filter .55s ease,transform .55s ease}
-.card:hover .img-slider img.active{filter:brightness(.9) saturate(.9)}
-.slide-dots{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:3}
-.slide-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.35);cursor:pointer;transition:.2s}
-.slide-dot.on{background:#fff;transform:scale(1.2)}
-.slide-arr{position:absolute;top:50%;transform:translateY(-50%);z-index:3;background:rgba(0,0,0,.45);border:none;color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:0;transition:.2s}
+.img-slider img.lazy-loaded{transition:filter .55s,transform .55s}
+/* Warm tint on card images hover */
+.card:hover .img-slider img.active{filter:brightness(.9) saturate(.9) sepia(.04)}
+.slide-arr{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.5);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;z-index:5;transition:.18s;opacity:0}
 .img-slider:hover .slide-arr{opacity:1}
-.slide-arr.prev{left:5px}.slide-arr.next{right:5px}
-.card-body{padding:12px 13px 14px;display:flex;flex-direction:column;gap:8px;flex:1;border-radius:0 0 var(--r) var(--r);overflow:hidden}
-.card-cat{font-size:9px;color:rgba(168,85,247,.7);letter-spacing:1.5px;text-transform:uppercase;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.15);padding:2px 6px;border-radius:4px;width:fit-content}
-.card-name{font-size:12px;font-weight:600;color:var(--tx);line-height:1.4}
-.price-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.card-price{font-family:Cinzel,serif;font-size:14px;font-weight:700;color:rgba(192,132,252,.9)}
+.slide-arr.prev{right:6px}.slide-arr.next{left:6px}
+.slide-arr:hover{background:rgba(168,85,247,.6)}
+.slide-dots{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:5}
+.slide-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.3);cursor:pointer;transition:.18s}
+.slide-dot.on{background:rgba(192,132,252,.9);width:12px;border-radius:3px}
+.card-body{padding:11px;flex:1;display:flex;flex-direction:column;gap:5px;position:relative}
+.card-cat{font-size:9px;color:rgba(168,85,247,.55);letter-spacing:2px;text-transform:uppercase}
+.card-name{font-size:13px;font-weight:500;color:rgba(255,255,255,.78);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* Curiosity Gap — typewriter reveal on scroll */
+.card-name.reveal-type{overflow:hidden;white-space:nowrap;animation:typeReveal .7s steps(30) forwards}
+@keyframes typeReveal{from{max-width:0}to{max-width:100%}}
+.price-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.card-price{font-family:Cinzel,serif;font-size:14px;color:rgba(192,132,252,.9)}
 .card-price-old{font-size:11px;color:var(--mu);text-decoration:line-through}
-.disc-badge{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.25);color:rgba(248,113,113,.9);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px}
-.fomo-txt{font-size:9px;color:rgba(168,85,247,.5);letter-spacing:1px}
-.addbtn{background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.22);border-radius:9px;color:rgba(192,132,252,.85);font-size:11px;font-weight:500;padding:8px;cursor:pointer;transition:.2s;width:100%;font-family:Inter,sans-serif}
-.addbtn:hover{background:rgba(168,85,247,.22);border-color:rgba(168,85,247,.45);color:#fff}
-.empty{grid-column:1/-1;text-align:center;padding:80px 20px;color:var(--mu);font-size:12px;letter-spacing:2px;text-transform:uppercase}
-.skel{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:skelShimmer 1.6s ease-in-out infinite;border-radius:8px}
-@keyframes skelShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.skel-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);overflow:hidden}
-.skel-img{aspect-ratio:3/4;width:100%}.skel-body{padding:13px;display:flex;flex-direction:column;gap:8px}
-.skel-line{height:9px;border-radius:5px}.skel-price{height:13px;width:55%;border-radius:5px}.skel-btn{height:32px;border-radius:9px;margin-top:3px}
-.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:500;display:none}
+.disc-badge{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.25);color:rgba(252,165,165,.85);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px}
+/* Social proof pulse */
+.social-proof{font-size:9px;color:rgba(168,85,247,.45);letter-spacing:.5px;display:flex;align-items:center;gap:4px;animation:socialPulse 3s ease-in-out infinite}
+@keyframes socialPulse{0%,100%{opacity:.4}50%{opacity:.8}}
+/* Scarcity indicator */
+.scarcity-bar{height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-top:3px}
+.scarcity-fill{height:100%;border-radius:2px;transition:width .5s}
+.scarcity-low{background:linear-gradient(90deg,#ef4444,#f97316)}
+.scarcity-med{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.scarcity-txt{font-size:9px;color:rgba(252,165,165,.7);letter-spacing:.5px;margin-top:2px}
+.fomo-txt{font-size:9px;color:rgba(168,85,247,.38);letter-spacing:.5px;font-style:italic;margin-top:auto}
+.addbtn{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2);border-radius:8px;color:rgba(192,132,252,.8);font-size:11px;font-family:Inter,sans-serif;padding:8px;cursor:pointer;transition:.22s;margin-top:6px;position:relative;overflow:hidden}
+.addbtn:hover{background:rgba(168,85,247,.22);border-color:rgba(168,85,247,.45);transform:translateY(-1px)}
+.addbtn:active{transform:scale(.97)}
+/* Micro-reward particles */
+.particle{position:fixed;pointer-events:none;z-index:9500;width:6px;height:6px;border-radius:50%;animation:particleFly .6s ease-out forwards}
+@keyframes particleFly{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:var(--tx,translate(30px,-80px)) scale(0)}}
+
+/* ══ SKELETON ══ */
+.skel-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:var(--r);overflow:hidden}
+.skel{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(168,85,247,.06) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:skel-sh 1.6s ease-in-out infinite}
+@keyframes skel-sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-img{aspect-ratio:3/4;border-radius:var(--r) var(--r) 0 0}
+.skel-body{padding:11px;display:flex;flex-direction:column;gap:7px}
+.skel-line{height:11px;border-radius:4px}
+.skel-price{height:16px;width:55%;border-radius:4px}
+.skel-btn{height:32px;border-radius:8px;margin-top:4px}
+.empty{text-align:center;padding:50px 20px;color:var(--mu);font-size:12px;letter-spacing:2px;grid-column:1/-1}
+.lazy-blur{transition:filter .5s,transform .5s}
+.lazy-loaded{filter:none!important;transform:none!important}
+
+/* ══ CART SIDEBAR ══ */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:399;display:none}
 .ov.on{display:block}
-.cart-sb{position:fixed;top:0;right:-440px;width:420px;height:100vh;background:rgba(6,4,12,.97);border-left:1px solid var(--b1);z-index:501;transition:right .38s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+.cart-sb{position:fixed;top:0;right:-105%;width:360px;max-width:100vw;height:100%;background:rgba(8,6,16,.98);border-right:1px solid var(--b1);z-index:400;display:flex;flex-direction:column;transition:right .32s cubic-bezier(.4,0,.2,1)}
 .cart-sb.on{right:0}
-.cart-hdr{padding:16px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
-.cart-title{font-family:Cinzel,serif;font-size:14px;color:rgba(192,132,252,.9);letter-spacing:2px}
+.cart-hdr{padding:16px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.cart-title{font-family:Cinzel,serif;font-size:15px;color:rgba(192,132,252,.9);letter-spacing:3px}
 .cart-items{flex:1;overflow-y:auto;padding:13px;display:flex;flex-direction:column;gap:8px}
 .cart-items::-webkit-scrollbar{width:3px}
 .cart-items::-webkit-scrollbar-thumb{background:rgba(168,85,247,.3);border-radius:2px}
@@ -368,6 +397,8 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .btn-main{background:linear-gradient(135deg,#6d28d9,#9333ea);border:none;border-radius:11px;color:#fff;font-family:Inter,sans-serif;font-size:12px;font-weight:600;padding:12px;cursor:pointer;transition:.22s;width:100%}
 .btn-main:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(109,40,217,.38)}
 .btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* ══ MODALS ══ */
 .mod-ov{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(16px);z-index:1000;display:none;align-items:center;justify-content:center;padding:14px}
 .mod-ov.on{display:flex}
 .mod{background:rgba(8,6,16,.97);border:1px solid rgba(168,85,247,.14);border-radius:20px;padding:28px;width:100%;max-width:520px;animation:pop .32s cubic-bezier(.34,1.56,.64,1);max-height:92vh;overflow-y:auto;position:relative}
@@ -432,6 +463,8 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .mystery-disc{font-family:Cinzel,serif;font-size:52px;font-weight:900;color:rgba(192,132,252,.9);line-height:1;margin-bottom:6px}
 .mystery-sub{font-size:11px;color:var(--dim);letter-spacing:1px;margin-bottom:22px}
 .mystery-code{background:rgba(168,85,247,.1);border:1px dashed rgba(168,85,247,.3);border-radius:8px;padding:9px 14px;font-family:Cinzel,serif;font-size:14px;color:rgba(192,132,252,.9);letter-spacing:3px;margin-bottom:18px}
+
+/* ══ ADMIN PANEL ══ */
 #adm{display:none;position:fixed;inset:0;background:#050505;z-index:2000;flex-direction:column}
 #adm.on{display:flex}
 .adm-hdr{background:rgba(5,5,5,.95);border-bottom:1px solid rgba(168,85,247,.15);padding:13px 26px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -491,11 +524,20 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .vr-id{color:var(--mu);font-family:monospace;font-size:10px}
 .push-banner{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:10px 13px;margin-bottom:13px;display:flex;align-items:center;justify-content:space-between;gap:9px;font-size:11px;color:rgba(255,255,255,.55)}
 .push-banner button{background:rgba(168,85,247,.22);border:1px solid rgba(168,85,247,.35);border-radius:7px;color:rgba(192,132,252,.85);font-size:11px;padding:4px 10px;cursor:pointer;font-family:Inter,sans-serif}
+/* Quantity editor in admin */
+.qty-inp{width:70px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:rgba(255,255,255,.8);font-size:11px;padding:4px 7px;text-align:center;font-family:Inter,sans-serif;outline:none}
+.qty-inp:focus{border-color:rgba(168,85,247,.4)}
+.qty-wrap{display:flex;align-items:center;gap:4px}
+.qty-lbl{font-size:9px;color:var(--mu);letter-spacing:.5px}
+
+/* ══ BOTTOM NAV ══ */
 .bot-nav{position:fixed;bottom:0;right:0;left:0;z-index:300;background:rgba(5,5,5,.95);backdrop-filter:blur(20px);border-top:1px solid var(--b1);display:flex;align-items:center;justify-content:space-around;padding:8px 0}
 .bn-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--mu);font-size:10px;letter-spacing:.5px;padding:4px 12px;border-radius:9px;transition:.18s;user-select:none}
 .bn-item:hover{color:rgba(192,132,252,.9)}
 .bn-item svg{width:18px;height:18px}
 .bn-sep{width:1px;height:24px;background:var(--b1)}
+
+/* ══ FOOTER ══ */
 .footer{background:rgba(0,0,0,.7);border-top:1px solid rgba(168,85,247,.08);padding:32px 20px 110px;position:relative;z-index:5}
 .footer-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px}
 .footer-brand{font-family:Cinzel,serif;font-size:20px;color:rgba(192,132,252,.4);letter-spacing:5px;margin-bottom:8px}
@@ -519,6 +561,33 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 .rm-row{display:flex;align-items:center;gap:7px;margin:9px 0;cursor:pointer;user-select:none;font-size:12px;color:var(--dim)}
 .rm-row input{accent-color:var(--ac);width:13px;height:13px;cursor:pointer}
+/* card void corners */
+.card::before{content:'';position:absolute;inset:0;border-radius:var(--r);pointer-events:none;z-index:3;background:linear-gradient(135deg,rgba(168,85,247,.12) 0 8px,transparent 8px) top right/30px 30px no-repeat,linear-gradient(225deg,rgba(168,85,247,.12) 0 8px,transparent 8px) top left/30px 30px no-repeat,linear-gradient(-45deg,rgba(88,28,135,.1) 0 8px,transparent 8px) bottom right/30px 30px no-repeat,linear-gradient(45deg,rgba(88,28,135,.1) 0 8px,transparent 8px) bottom left/30px 30px no-repeat;opacity:0;transition:opacity .3s}
+.card:hover::before{opacity:1}
+.img-slider::after{content:'';position:absolute;inset:0;z-index:4;pointer-events:none;box-shadow:inset 0 0 20px rgba(88,28,135,.25),inset 0 0 1px rgba(168,85,247,.3);border-radius:inherit}
+.mist{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.mist::before{content:'';position:absolute;width:70vw;height:70vw;border-radius:50%;background:radial-gradient(ellipse,rgba(88,28,135,.13),transparent 70%);top:-20%;left:-20%;filter:blur(60px);animation:m1 30s ease-in-out infinite}
+.mist::after{content:'';position:absolute;width:60vw;height:60vw;border-radius:50%;background:radial-gradient(ellipse,rgba(55,48,163,.09),transparent 70%);bottom:-20%;right:-20%;filter:blur(80px);animation:m2 38s ease-in-out infinite}
+@keyframes m1{0%,100%{transform:translate(0,0)}50%{transform:translate(15vw,10vh)}}
+@keyframes m2{0%,100%{transform:translate(0,0)}50%{transform:translate(-10vw,-8vh)}}
+/* Glitch on card images hover */
+@keyframes imgGlitch{
+  0%,92%,100%{clip-path:none;transform:translate(0,0);filter:none}
+  93%{clip-path:polygon(0 18%,100% 18%,100% 24%,0 24%);transform:translate(-2px,0);filter:hue-rotate(80deg) saturate(1.4)}
+  94%{clip-path:none;transform:translate(0,0);filter:none}
+  96%{clip-path:polygon(0 62%,100% 62%,100% 66%,0 66%);transform:translate(3px,0);filter:hue-rotate(-50deg)}
+  97%{clip-path:none;transform:translate(0,0);filter:none}
+  98%{clip-path:polygon(0 40%,100% 40%,100% 42%,0 42%);transform:translate(-1px,0)}
+  99%{clip-path:none}
+}
+.card:hover .img-slider{animation:imgGlitch 7s ease-in-out infinite}
+/* Void glitch bar */
+.glitch-bar{position:fixed;right:0;left:0;height:1px;background:linear-gradient(90deg,transparent,rgba(168,85,247,.9),rgba(192,132,252,1),rgba(88,28,135,.8),transparent);pointer-events:none;z-index:9993;opacity:0}
+.glitch-bar.run{animation:glitchPass .22s ease-out forwards}
+/* Flow state smooth scroll */
+html{scroll-behavior:smooth}
+/* Parallax wrapper */
+#main-content{will-change:transform}
 @media(max-width:600px){
   .grid{grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;padding:0 11px 110px}
   .cart-sb{width:100%;right:-100%}
@@ -543,6 +612,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 </head>
 <body>
 <div class="mist"></div>
+<div class="ambient-bg"></div>
 <div id="scroll-prog"></div>
 
 <header class="hdr">
@@ -647,6 +717,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <div class="footer-copy">WOW STORE — جميع الحقوق محفوظة</div>
 </footer>
 
+<!-- OVERLAYS -->
 <div class="ov" id="ov" onclick="WOW.closeCart()"></div>
 <div class="cart-sb" id="cart-sb">
   <div class="cart-hdr"><div class="cart-title">CART</div><button class="xbtn" onclick="WOW.closeCart()">&#10005;</button></div>
@@ -657,6 +728,25 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </div>
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- MODALS — placed before any script for correct DOM order -->
+<div class="mod-ov" id="login-mod">
+  <div class="mod" style="max-width:330px">
+    <div class="mod-title">
+      <span style="display:flex;align-items:center;gap:7px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(168,85,247,.8)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        Admin Access
+      </span>
+      <button class="xbtn" onclick="WOW.closeMod('login-mod')">&#10005;</button>
+    </div>
+    <div class="fl"><label>كلمة المرور</label>
+      <input class="inp" id="login-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" onkeydown="if(event.key==='Enter')WOW.doLogin()">
+    </div>
+    <label class="rm-row"><input type="checkbox" id="rm-check"> تذكرني (30 يوم)</label>
+    <button class="btn-main" id="login-btn" onclick="WOW.doLogin()">دخول &#8594;</button>
+    <div id="login-err" style="margin-top:8px;font-size:11px;color:rgba(239,68,68,.7);text-align:center;display:none"></div>
+  </div>
+</div>
 
 <div class="mod-ov" id="size-mod">
   <div class="mod">
@@ -767,24 +857,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </div>
 </div>
 
-<div class="mod-ov" id="login-mod">
-  <div class="mod" style="max-width:330px">
-    <div class="mod-title">
-      <span style="display:flex;align-items:center;gap:7px">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(168,85,247,.8)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-        Admin Access
-      </span>
-      <button class="xbtn" onclick="WOW.closeMod('login-mod')">&#10005;</button>
-    </div>
-    <div class="fl"><label>كلمة المرور</label>
-      <input class="inp" id="login-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" onkeydown="if(event.key==='Enter')WOW.doLogin()">
-    </div>
-    <label class="rm-row"><input type="checkbox" id="rm-check"> تذكرني (30 يوم)</label>
-    <button class="btn-main" id="login-btn" onclick="WOW.doLogin()">دخول &#8594;</button>
-    <div id="login-err" style="margin-top:8px;font-size:11px;color:rgba(239,68,68,.7);text-align:center;display:none"></div>
-  </div>
-</div>
-
 <div class="mod-ov" id="mystery-mod">
   <div class="mystery-mod">
     <div class="mystery-brand">WOW</div>
@@ -797,6 +869,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </div>
 </div>
 
+<!-- ADMIN PANEL -->
 <div id="adm">
   <div class="adm-hdr">
     <div class="adm-logo">WOW / ADMIN</div>
@@ -831,7 +904,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
           <div class="adm-title" style="margin-bottom:0">Products</div>
           <button class="btn-main" style="width:auto;padding:7px 14px;font-size:11px;border-radius:8px" onclick="WOW.aTab('addprod',null)">+ Add</button>
         </div>
-        <table class="at"><thead><tr><th>Img</th><th>Name</th><th>Price</th><th>Disc%</th><th>Cat</th><th>Act</th></tr></thead>
+        <table class="at"><thead><tr><th>Img</th><th>Name</th><th>Price</th><th>Disc%</th><th>Cat</th><th>Qty</th><th>Act</th></tr></thead>
         <tbody id="adm-tbody"></tbody></table>
       </div>
       <div class="asec" id="as-addprod">
@@ -843,13 +916,14 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
           <div class="fl"><label>Discount %</label><input class="inp" id="p-disc" type="number" placeholder="0" min="0" max="90" oninput="WOW.calcDisc()"></div>
           <div class="fl"><label>Final Price</label><input class="inp" id="p-final" type="number" placeholder="--" readonly style="opacity:.6"></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px">
           <div class="fl"><label>Category</label>
             <select class="inp" id="p-cat">
               <option value="shirts">Shirts</option><option value="pants">Pants</option><option value="shorts">Shorts</option>
               <option value="hats">Hats</option><option value="accessories">Accessories</option><option value="other">Other</option>
             </select>
           </div>
+          <div class="fl"><label>Quantity (optional)</label><input class="inp" id="p-qty" type="number" placeholder="فارغ = غير محدود" min="0"></div>
           <div class="fl"><label>Description</label><input class="inp" id="p-desc" placeholder="وصف مختصر..."></div>
         </div>
         <div class="fl">
@@ -887,7 +961,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         <div class="adm-title">Settings</div>
         <div class="fl"><label>Store Name</label><input class="inp" id="s-name" placeholder="WOW Store"></div>
         <div class="fl"><label>WhatsApp</label><input class="inp" id="s-wa" placeholder="0667881322"></div>
-        <div class="fl"><label>Email</label><input class="inp" id="s-em" placeholder="email@domain.com"></div>
+        <div class="fl"><label>Email</label><input class="inp" id="s-em" placeholder="wowastore15@gmail.com"></div>
         <div class="fl"><label>Instagram (username only)</label><input class="inp" id="s-ig" placeholder="wow.7a"></div>
         <button class="btn-main" id="save-settings-btn" onclick="WOW.saveSettings()">Save Settings</button>
       </div>
@@ -895,12 +969,33 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </div>
 </div>
 
+<!-- VOID WORLD ELEMENTS -->
+<div class="void-corner tl"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg1)" stroke-width="1.5" stroke-dasharray="4 8"/><path d="M140 0 L0 0 L0 140" stroke="rgba(168,85,247,.15)" stroke-width=".5"/><path d="M120 0 L0 0 L0 120" stroke="rgba(88,28,135,.12)" stroke-width=".3"/><circle cx="0" cy="0" r="80" stroke="url(#cg1)" stroke-width=".8" stroke-dasharray="2 12" fill="none"/><circle cx="0" cy="0" r="40" stroke="rgba(168,85,247,.1)" stroke-width=".5" fill="none"/><defs><linearGradient id="cg1" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#a855f7" stop-opacity=".6"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs></svg></div>
+<div class="void-corner tr"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg2)" stroke-width="1.5" stroke-dasharray="4 8"/><path d="M140 0 L0 0 L0 140" stroke="rgba(168,85,247,.15)" stroke-width=".5"/><circle cx="0" cy="0" r="80" stroke="url(#cg2)" stroke-width=".8" stroke-dasharray="2 12" fill="none"/><defs><linearGradient id="cg2" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#c084fc" stop-opacity=".5"/><stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/></linearGradient></defs></svg></div>
+<div class="void-corner bl"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg3)" stroke-width="1.5" stroke-dasharray="4 8"/><circle cx="0" cy="0" r="80" stroke="url(#cg3)" stroke-width=".8" stroke-dasharray="2 12" fill="none"/><defs><linearGradient id="cg3" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#7c3aed" stop-opacity=".5"/><stop offset="100%" stop-color="#4c1d95" stop-opacity="0"/></linearGradient></defs></svg></div>
+<div class="void-corner br"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg4)" stroke-width="1.5" stroke-dasharray="4 8"/><circle cx="0" cy="0" r="80" stroke="url(#cg4)" stroke-width=".8" stroke-dasharray="2 12" fill="none"/><defs><linearGradient id="cg4" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#a855f7" stop-opacity=".4"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs></svg></div>
+<div class="void-edge-h top"></div>
+<div class="void-edge-h bot"></div>
+<div class="void-edge-v r"></div>
+<div class="void-edge-v l"></div>
+<div class="void-runes" id="void-runes"></div>
+<svg class="void-map" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+  <defs><pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(168,85,247,1)" stroke-width=".6"/></pattern>
+  <pattern id="grid2" width="240" height="240" patternUnits="userSpaceOnUse"><path d="M 240 0 L 0 0 0 240" fill="none" stroke="rgba(168,85,247,1)" stroke-width="1.2"/></pattern></defs>
+  <rect width="1400" height="900" fill="url(#grid)"/>
+  <rect width="1400" height="900" fill="url(#grid2)"/>
+  <circle cx="700" cy="450" r="200" fill="none" stroke="rgba(168,85,247,.8)" stroke-width="1" stroke-dasharray="8 16"/>
+  <circle cx="700" cy="450" r="350" fill="none" stroke="rgba(88,28,135,.7)" stroke-width=".8" stroke-dasharray="4 20"/>
+  <line x1="0" y1="450" x2="1400" y2="450" stroke="rgba(168,85,247,.5)" stroke-width=".5" stroke-dasharray="12 24"/>
+  <line x1="700" y1="0" x2="700" y2="900" stroke="rgba(168,85,247,.5)" stroke-width=".5" stroke-dasharray="12 24"/>
+</svg>
+<!-- STATIC GRAY GLITCH SYSTEM -->
+<canvas id="sg-canvas"></canvas>
+<div class="glitch-bar" id="glitch-bar"></div>
+
 <script>
 /* ══════════════════════════════════════════════════════════════
-   WOW STORE — Client JS v6.0
-   الحل الجذري: namespace واحد WOW بدلاً من window.* أو IIFE
-   كل دالة معرَّفة مباشرة في WOW = {} والـ HTML يستدعيها بـ WOW.xxx()
-   لا IIFE، لا stub، لا تعارض في التعريف
+   WOW STORE — Client JS v7.0
    ══════════════════════════════════════════════════════════════ */
 var WOW = {};
 
@@ -916,12 +1011,15 @@ var STATUS_MAP={processing:"قيد المعالجة",shipped:"تم الشحن",d
 /* ── INIT BLOCK FLAG ── */
 try{if(localStorage.getItem("_wbl")==="1")_isSilentBlocked=true;}catch(e){}
 
-/* ── SCROLL PROGRESS ── */
+/* ── FLOW STATE SCROLL — smooth parallax ── */
 window.addEventListener("scroll",function(){
   var el=document.getElementById("scroll-prog");if(!el)return;
   var s=document.documentElement;
   var p=(s.scrollTop||document.body.scrollTop)/(s.scrollHeight-s.clientHeight)||0;
   el.style.transform="scaleX("+p+")";
+  // Subtle parallax on background elements
+  var mc=document.getElementById("main-content");
+  if(mc){var sc=s.scrollTop||document.body.scrollTop;mc.style.transform="translateY("+sc*0.012+"px)";}
 },{passive:true});
 
 /* ── HELPERS ── */
@@ -941,7 +1039,7 @@ function _updateMeta(t,d,img){
   document.title=t||document.title;
   var set=function(id,v){var el=document.getElementById(id);if(el)el.setAttribute("content",v);};
   set("meta-desc",d||"");set("og-title",t||"");set("og-desc",d||"");
-  if(img)set("og-img",img);set("tw-title",t||"");set("tw-desc",d||"");
+  if(img)set("og-img",img);
 }
 
 /* ── SESSION ── */
@@ -999,18 +1097,42 @@ function _initLazy(){
 }
 function _obsLazy(){if(!_imgObs)return;document.querySelectorAll("img[data-src]").forEach(function(img){_imgObs.observe(img);});}
 
+/* ── CURIOSITY GAP — typewriter on scroll ── */
+function _initTypewriterObs(){
+  if(!("IntersectionObserver" in window))return;
+  var obs=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        var el=e.target;
+        el.classList.add("reveal-type");
+        obs.unobserve(el);
+      }
+    });
+  },{threshold:0.3});
+  document.querySelectorAll(".card-name").forEach(function(n){obs.observe(n);});
+}
+
 /* ── MODALS ── */
-WOW.openMod=function(id){var el=document.getElementById(id);if(el)el.classList.add("on");};
-WOW.closeMod=function(id){var el=document.getElementById(id);if(el)el.classList.remove("on");_updateMeta("WOW Store","تسوق احدث صيحات الموضة في الجزائر");};
+WOW.openMod=function(id){
+  var el=document.getElementById(id);
+  if(el){el.classList.add("on");}
+};
+WOW.closeMod=function(id){
+  var el=document.getElementById(id);
+  if(el)el.classList.remove("on");
+  _updateMeta("WOW Store","تسوق احدث صيحات الموضة في الجزائر");
+};
 
 /* ── CART ── */
 WOW.openCart=function(){
   var s=document.getElementById("cart-sb"),o=document.getElementById("ov");
-  if(s)s.classList.add("on");if(o)o.classList.add("on");
+  if(s)s.classList.add("on");
+  if(o)o.classList.add("on");
 };
 WOW.closeCart=function(){
   var s=document.getElementById("cart-sb"),o=document.getElementById("ov");
-  if(s)s.classList.remove("on");if(o)o.classList.remove("on");
+  if(s)s.classList.remove("on");
+  if(o)o.classList.remove("on");
 };
 
 /* ── SEARCH ── */
@@ -1099,29 +1221,58 @@ function _getFiltered(){
   return p;
 }
 function _renderGrid(){_renderGridData(_getFiltered());}
+
+/* Social proof — random views count per product */
+function _socialViews(pid){
+  var base=pid%1000;
+  return 12+base%87;
+}
+
 function _renderGridData(fp){
   document.getElementById("pc").textContent=fp.length;
   var g=document.getElementById("grid");
   if(!fp.length){g.innerHTML="<div class='empty'>لا توجد منتجات في هذا القسم</div>";return;}
   var html="";
-  fp.forEach(function(p){
+  fp.forEach(function(p,idx){
     var imgs=p.images&&p.images.length?p.images:(p.img?[p.img]:[]);
     var ep=_effPrice(p);
     var ph="<div class='price-wrap'><span class='card-price'>"+_fmt(ep)+"</span>";
     if(p.discount&&p.discount>0)ph+="<span class='card-price-old'>"+_fmt(p.price)+"</span><span class='disc-badge'>-"+p.discount+"%</span>";
     ph+="</div>";
-    html+="<div class='card' data-name='"+_esc(p.name)+"' data-cat='"+_esc(p.cat)+"' onclick='WOW.openProd("+p.id+")'>"
+
+    // Social proof
+    var views=_socialViews(p.id);
+    var spHtml="<div class='social-proof'><svg width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 00-3-3.87'/><path d='M16 3.13a4 4 0 010 7.75'/></svg>"+views+" شخص يتصفح الآن</div>";
+
+    // Scarcity indicator (only if quantity set and low)
+    var scarHtml="";
+    if(p.quantity!==null&&p.quantity!==undefined&&p.quantity<=20){
+      var pct=Math.max(5,Math.round(p.quantity/20*100));
+      var cls=p.quantity<=5?"scarcity-low":"scarcity-med";
+      scarHtml="<div class='scarcity-bar'><div class='scarcity-fill "+cls+"' style='width:"+pct+"%'></div></div>"
+              +"<div class='scarcity-txt'>تبقى "+p.quantity+" قطعة فقط</div>";
+    }
+
+    // Pattern interruption: every 5th card adds a subtle highlight
+    var extraClass=(idx%5===2)?" card-highlight":"";
+
+    html+="<div class='card"+extraClass+"' data-name='"+_esc(p.name)+"' data-cat='"+_esc(p.cat)+"' onclick='WOW.openProd("+p.id+")'>"
          +_makeSlider(imgs,p.id)
          +"<div class='card-body'><div class='card-cat'>"+_esc(CAT[p.cat]||p.cat)+"</div>"
          +"<div class='card-name'>"+_esc(p.name)+"</div>"+ph
+         +spHtml+scarHtml
          +"<div class='fomo-txt'>قطع محدودة جداً من هذا التصميم هذا الاسبوع</div>"
          +"<button class='addbtn' data-pid='"+p.id+"'>+ اضف للسلة</button></div></div>";
   });
   g.innerHTML=html;
   g.querySelectorAll(".addbtn").forEach(function(b){
-    b.addEventListener("click",function(e){e.stopPropagation();WOW.openSizeMod(parseInt(this.getAttribute("data-pid")));});
+    b.addEventListener("click",function(e){
+      e.stopPropagation();
+      WOW.openSizeMod(parseInt(this.getAttribute("data-pid")));
+    });
   });
   _obsLazy();
+  _initTypewriterObs();
   _updateMeta("WOW Store — "+fp.length+" منتج","تسوق احدث صيحات الموضة في الجزائر");
 }
 
@@ -1202,8 +1353,38 @@ WOW.confirmAdd=function(){
     var imgs=_pendProd.images&&_pendProd.images.length?_pendProd.images:(_pendProd.img?[_pendProd.img]:[]);
     _cart.push({key:key,id:_pendProd.id,name:_pendProd.name,price:_effPrice(_pendProd),img:imgs[0]||"",qty:1,size:sz,info:info});
   }
-  _updCart();WOW.closeMod("size-mod");_toast("تمت الاضافة — مقاس "+sz);
+  _updCart();
+  WOW.closeMod("size-mod");
+  _toast("تمت الاضافة — مقاس "+sz);
+  // Micro-reward particles
+  _spawnParticles();
+  // Haptic feedback
+  if(navigator.vibrate)navigator.vibrate([12,8,8]);
 };
+
+/* ── MICRO-REWARD PARTICLES ── */
+function _spawnParticles(){
+  var btn=document.getElementById("cbdg");
+  if(!btn)return;
+  var rect=btn.getBoundingClientRect();
+  var cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+  var colors=["#a855f7","#c084fc","#7c3aed","#f0abfc","#e879f9"];
+  for(var i=0;i<10;i++){
+    (function(idx){
+      var p=document.createElement("div");
+      p.className="particle";
+      var angle=Math.random()*Math.PI*2;
+      var dist=30+Math.random()*60;
+      var tx="translate("+(Math.cos(angle)*dist)+"px,"+(Math.sin(angle)*dist-60)+"px)";
+      p.style.cssText="left:"+cx+"px;top:"+cy+"px;background:"+colors[idx%colors.length]+";--tx:"+tx+";animation-delay:"+(idx*0.04)+"s";
+      document.body.appendChild(p);
+      setTimeout(function(){if(p.parentNode)p.parentNode.removeChild(p);},800+idx*40);
+    })(i);
+  }
+  // Badge bounce
+  var bdg=document.getElementById("cbdg");
+  if(bdg){bdg.style.transform="scale(1.5)";setTimeout(function(){bdg.style.transform="scale(1)";bdg.style.transition="transform .3s";},180);}
+}
 
 /* ── CART UPDATE ── */
 function _updCart(){
@@ -1417,24 +1598,41 @@ function _loadAnalytics(){
 }
 function _sc(label,val){return "<div class='sc'><div class='sv'>"+val+"</div><div class='sl'>"+label+"</div></div>";}
 
-/* ── ADMIN PRODUCTS ── */
+/* ── ADMIN PRODUCTS (with quantity column) ── */
 function _loadAdmProds(){
   _api("/api/products").then(function(r){return r.json();}).then(function(data){
     var tb=document.getElementById("adm-tbody");if(!tb)return;
-    if(!data.length){tb.innerHTML="<tr><td colspan='6' style='color:var(--mu);text-align:center;padding:20px'>لا توجد منتجات</td></tr>";return;}
+    if(!data.length){tb.innerHTML="<tr><td colspan='7' style='color:var(--mu);text-align:center;padding:20px'>لا توجد منتجات</td></tr>";return;}
     tb.innerHTML=data.map(function(p){
       var img=(p.images&&p.images[0])||p.img||"";
+      var qtyVal=(p.quantity!==null&&p.quantity!==undefined)?p.quantity:"∞";
       return "<tr><td>"+(img?"<img class='ath' src='"+_esc(img)+"' loading='lazy'>":"—")+"</td>"
            +"<td>"+_esc(p.name)+"</td>"
            +"<td style='font-family:Cinzel,serif;color:rgba(192,132,252,.8)'>"+_fmt(_effPrice(p))+"</td>"
            +"<td style='color:rgba(239,68,68,.7)'>"+(p.discount?p.discount+"%":"—")+"</td>"
            +"<td style='color:var(--mu)'>"+_esc(p.cat)+"</td>"
+           +"<td><div class='qty-wrap'><input class='qty-inp' type='number' value='"+(p.quantity!==null&&p.quantity!==undefined?p.quantity:"")+"' placeholder='∞' min='0' onchange='WOW.updateQty("+p.id+",this.value)' onclick='event.stopPropagation()'></div></td>"
            +"<td style='display:flex;gap:5px;padding:8px 10px'>"
            +"<button class='aact e' onclick='WOW.editProd("+p.id+")'>Edit</button>"
            +"<button class='aact d' onclick='WOW.delProd("+p.id+")'>Del</button></td></tr>";
     }).join("");
   }).catch(function(){});
 }
+
+/* ── UPDATE QUANTITY ── */
+WOW.updateQty=function(id,val){
+  var qty=val===""||val===null?null:Math.max(0,parseInt(val)||0);
+  _api("/api/products",{method:"PUT",body:JSON.stringify({id:id,quantity:qty})})
+  .then(function(r){return r.json();})
+  .then(function(){
+    _toast("تم تحديث الكمية");
+    // Update local _prods
+    var pi=_prods.findIndex(function(p){return p.id===id;});
+    if(pi>=0)_prods[pi].quantity=qty;
+    _renderGrid();
+  }).catch(function(){_toast("خطا في التحديث");});
+};
+
 WOW.editProd=function(id){
   var p=_prods.find(function(x){return x.id===id;});
   if(!p){_api("/api/products").then(function(r){return r.json();}).then(function(d){var pp=d.find(function(x){return x.id===id;});if(pp)_fillForm(pp);});return;}
@@ -1447,6 +1645,8 @@ function _fillForm(p){
   document.getElementById("p-disc").value=p.discount||0;
   document.getElementById("p-cat").value=p.cat;
   document.getElementById("p-desc").value=p.desc||"";
+  var qtyEl=document.getElementById("p-qty");
+  if(qtyEl)qtyEl.value=(p.quantity!==null&&p.quantity!==undefined)?p.quantity:"";
   WOW.calcDisc();
   _prodImgs=(p.images||[]).map(function(url){return{url:url};});
   _renderPreviews();
@@ -1458,7 +1658,7 @@ WOW.delProd=function(id){
   _api("/api/products?id="+id,{method:"DELETE"}).then(function(){_loadAdmProds();_loadProds();_toast("تم الحذف");}).catch(function(){_toast("خطا");});
 };
 
-/* ── IMAGE UPLOAD (KV / Base64) ── */
+/* ── IMAGE UPLOAD ── */
 WOW.handleDrop=function(e){e.preventDefault();document.getElementById("drop-zone").classList.remove("drag");_handleFiles(e.dataTransfer.files);};
 WOW.handleImgs=function(inp){_handleFiles(inp.files);inp.value="";};
 function _handleFiles(files){
@@ -1507,10 +1707,12 @@ WOW.saveProd=function(){
   var cat=document.getElementById("p-cat").value;
   var desc=document.getElementById("p-desc").value.trim();
   var editId=document.getElementById("edit-id").value;
+  var qtyEl=document.getElementById("p-qty");
+  var qty=qtyEl&&qtyEl.value!==""?Math.max(0,parseInt(qtyEl.value)||0):null;
   if(!name){_toast("ادخل اسم المنتج");return;}
   if(!price){_toast("ادخل السعر");return;}
   var btn=document.getElementById("save-btn");btn.disabled=true;btn.innerHTML="<span class='spin'></span>";
-  var body={name:name,price:+price,discount:disc,cat:cat,desc:desc,images:_prodImgs.map(function(x){return x.url;})};
+  var body={name:name,price:+price,discount:disc,cat:cat,desc:desc,quantity:qty,images:_prodImgs.map(function(x){return x.url;})};
   var method=editId?"PUT":"POST";if(editId)body.id=+editId;
   _api("/api/products",{method:method,body:JSON.stringify(body)})
   .then(function(r){return r.json();})
@@ -1518,6 +1720,7 @@ WOW.saveProd=function(){
     btn.disabled=false;btn.innerHTML="Save Product";_toast(editId?"تم التعديل":"تمت الاضافة");
     document.getElementById("edit-id").value="";document.getElementById("p-name").value="";
     document.getElementById("p-price").value="";document.getElementById("p-disc").value="";document.getElementById("p-desc").value="";
+    if(qtyEl)qtyEl.value="";
     _prodImgs=[];_renderPreviews();document.getElementById("form-head").textContent="Add New Product";
     _loadProds();_loadAdmProds();
   })
@@ -1526,6 +1729,7 @@ WOW.saveProd=function(){
 WOW.cancelEdit=function(){
   document.getElementById("edit-id").value="";document.getElementById("p-name").value="";
   document.getElementById("p-price").value="";document.getElementById("p-disc").value="";document.getElementById("p-desc").value="";
+  var qtyEl=document.getElementById("p-qty");if(qtyEl)qtyEl.value="";
   _prodImgs=[];_renderPreviews();document.getElementById("form-head").textContent="Add New Product";
   WOW.aTab("products",document.querySelectorAll(".anav")[1]);
 };
@@ -1605,203 +1809,120 @@ function _showMystery(){
   setTimeout(function(){WOW.openMod("mystery-mod");},2200);
 }
 
-/* ══════════════════════════════════
-   INIT — يُشغَّل عند تحميل الصفحة
-   ══════════════════════════════════ */
-
-/* ══════════════════════════════════════════════════
-   VOID WORLD JS — رموز خفية + غليتش عشوائي
-   ══════════════════════════════════════════════════ */
-var RUNES = [
+/* ══ VOID WORLD JS ══ */
+var RUNES=[
   "ᚹᛟᚹ","✦ WOW ✦","◈ ◉ ◈","⬡ ⬢ ⬡",
   "W O W","᛫ᚠᚢᚦ᛫","⊹ ⊹ ⊹","∅ ∞ ∅",
   "◌ ◍ ◎","✧ ✦ ✧","▲ △ ▲","◇ ◈ ◇",
   "— WOW —","⌖ ⌗ ⌖","⟡ ⟢ ⟡","⋱ ⋰ ⋱"
 ];
-
 function _initVoidRunes(){
-  var container = document.getElementById('void-runes');
-  if(!container) return;
-  var count = window.innerWidth > 600 ? 18 : 9;
-  for(var i=0; i<count; i++){
+  var container=document.getElementById("void-runes");if(!container)return;
+  var count=window.innerWidth>600?18:9;
+  for(var i=0;i<count;i++){
     (function(idx){
-      var el = document.createElement('div');
-      el.className = 'rune';
-      el.textContent = RUNES[Math.floor(Math.random()*RUNES.length)];
-      var leftPct = Math.random()*96;
-      var dur = 28 + Math.random()*40;
-      var delay = -(Math.random()*dur);
-      var size = 8 + Math.floor(Math.random()*6);
-      var opacity = 0.025 + Math.random()*0.03;
-      el.style.cssText = 'left:'+leftPct+'%;bottom:0;font-size:'+size+'px;animation-duration:'+dur+'s;animation-delay:'+delay+'s;color:rgba(168,85,247,'+opacity+')';
+      var el=document.createElement("div");
+      el.className="rune";
+      el.textContent=RUNES[Math.floor(Math.random()*RUNES.length)];
+      var leftPct=Math.random()*96;
+      var dur=28+Math.random()*40;
+      var delay=-(Math.random()*dur);
+      var size=8+Math.floor(Math.random()*6);
+      var opacity=0.025+Math.random()*0.03;
+      el.style.cssText="left:"+leftPct+"%;bottom:0;font-size:"+size+"px;animation-duration:"+dur+"s;animation-delay:"+delay+"s;color:rgba(168,85,247,"+opacity+")";
       container.appendChild(el);
-      // Randomize rune text periodically
-      setInterval(function(){
-        el.textContent = RUNES[Math.floor(Math.random()*RUNES.length)];
-      }, (18+Math.random()*30)*1000);
+      setInterval(function(){el.textContent=RUNES[Math.floor(Math.random()*RUNES.length)];},(18+Math.random()*30)*1000);
     })(i);
   }
 }
 
-/* ═══════════════════════════════════════════════════════
-   STATIC GRAY GLITCH ENGINE
-   بكسلات رمادية/بيضاء/سوداء عشوائية — تأثير تلفزيون تالف
-   بطيئة جداً، في الحواف وعلى السطح، شبه شفافة
-   ═══════════════════════════════════════════════════════ */
+/* ══ STATIC GRAY GLITCH ENGINE ══ */
 function _initStaticGray(){
-  var cvs = document.getElementById('sg-canvas');
-  if(!cvs) return;
-  var ctx = cvs.getContext('2d');
-
-  // --- حجم الـ Canvas يساوي حجم الشاشة ---
-  function resize(){
-    cvs.width  = window.innerWidth;
-    cvs.height = window.innerHeight;
-  }
+  var cvs=document.getElementById("sg-canvas");if(!cvs)return;
+  var ctx=cvs.getContext("2d");
+  function resize(){cvs.width=window.innerWidth;cvs.height=window.innerHeight;}
   resize();
-  window.addEventListener('resize', resize, {passive:true});
-
-  // --- توليد بكسلات Static عشوائية ---
+  window.addEventListener("resize",resize,{passive:true});
+  function R(a,b){return a+Math.random()*(b-a);}
   function drawStatic(alpha){
-    ctx.clearRect(0, 0, cvs.width, cvs.height);
-    var W = cvs.width, H = cvs.height;
-
-    // 1. Edge patches — حواف غير متماثلة الأحجام
-    var edgeDefs = [
-      // يمين بالكامل — شريط ضيق متغير الارتفاع
-      {x:W-R(18,55), y:R(0,H*0.15), w:R(18,55), h:R(H*0.05, H*0.22)},
-      {x:W-R(8,30),  y:R(H*0.3,H*0.55), w:R(8,30), h:R(H*0.03,H*0.12)},
-      {x:W-R(4,20),  y:R(H*0.65,H*0.9), w:R(4,20),  h:R(H*0.04,H*0.10)},
-      // يسار — حواف صغيرة
-      {x:0, y:R(H*0.1,H*0.3),  w:R(6,28),  h:R(H*0.04,H*0.14)},
-      {x:0, y:R(H*0.5,H*0.75), w:R(4,18),  h:R(H*0.03,H*0.09)},
-      // أعلى — خطوط أفقية
-      {x:R(0,W*0.2), y:0, w:R(W*0.05,W*0.18), h:R(2,12)},
-      {x:R(W*0.5,W*0.8), y:0, w:R(W*0.04,W*0.14), h:R(1,8)},
-      // أسفل — خطوط أفقية
-      {x:R(0,W*0.3), y:H-R(2,14), w:R(W*0.06,W*0.2), h:R(2,14)},
-      {x:R(W*0.55,W*0.85), y:H-R(1,9), w:R(W*0.05,W*0.15), h:R(1,9)},
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+    var W=cvs.width,H=cvs.height;
+    var edgeDefs=[
+      {x:W-R(18,55),y:R(0,H*0.15),w:R(18,55),h:R(H*0.05,H*0.22)},
+      {x:W-R(8,30),y:R(H*0.3,H*0.55),w:R(8,30),h:R(H*0.03,H*0.12)},
+      {x:W-R(4,20),y:R(H*0.65,H*0.9),w:R(4,20),h:R(H*0.04,H*0.10)},
+      {x:0,y:R(H*0.1,H*0.3),w:R(6,28),h:R(H*0.04,H*0.14)},
+      {x:0,y:R(H*0.5,H*0.75),w:R(4,18),h:R(H*0.03,H*0.09)},
+      {x:R(0,W*0.2),y:0,w:R(W*0.05,W*0.18),h:R(2,12)},
+      {x:R(W*0.5,W*0.8),y:0,w:R(W*0.04,W*0.14),h:R(1,8)},
+      {x:R(0,W*0.3),y:H-R(2,14),w:R(W*0.06,W*0.2),h:R(2,14)},
+      {x:R(W*0.55,W*0.85),y:H-R(1,9),w:R(W*0.05,W*0.15),h:R(1,9)}
     ];
-
-    // 2. Surface micro-patches — وسط عشوائي (أصغر وأخف)
-    var surfDefs = [];
-    var surfCount = 4 + Math.floor(Math.random()*5);
-    for(var s=0;s<surfCount;s++){
-      surfDefs.push({
-        x: R(W*0.08, W*0.88),
-        y: R(H*0.08, H*0.88),
-        w: R(3, 22),
-        h: R(1,  8)
-      });
-    }
-
-    var allPatches = edgeDefs.concat(surfDefs);
-
+    var surfDefs=[];
+    var surfCount=4+Math.floor(Math.random()*5);
+    for(var s=0;s<surfCount;s++){surfDefs.push({x:R(W*0.08,W*0.88),y:R(H*0.08,H*0.88),w:R(3,22),h:R(1,8)});}
+    var allPatches=edgeDefs.concat(surfDefs);
     allPatches.forEach(function(p){
-      // رسم بكسلات فردية داخل كل patch
-      var pw = Math.max(1, Math.round(p.w));
-      var ph = Math.max(1, Math.round(p.h));
-      var px = Math.round(p.x);
-      var py = Math.round(p.y);
-      var pixelData = ctx.createImageData(pw, ph);
-      var d = pixelData.data;
+      var pw=Math.max(1,Math.round(p.w)),ph=Math.max(1,Math.round(p.h));
+      var px=Math.round(p.x),py=Math.round(p.y);
+      var pixelData=ctx.createImageData(pw,ph);
+      var d=pixelData.data;
       for(var i=0;i<d.length;i+=4){
-        // بكسلات أبيض/رمادي/أسود عشوائية
-        var v = Math.random() < 0.5
-          ? Math.floor(Math.random()*60)        // داكن
-          : Math.floor(180 + Math.random()*75); // فاتح/أبيض
-        d[i]   = v;
-        d[i+1] = v;
-        d[i+2] = v;
-        // opacity متغيرة — خفيفة جداً
-        d[i+3] = Math.floor(alpha * (0.55 + Math.random()*0.45) * 255);
+        var v=Math.random()<0.5?Math.floor(Math.random()*60):Math.floor(180+Math.random()*75);
+        d[i]=v;d[i+1]=v;d[i+2]=v;
+        d[i+3]=Math.floor(alpha*(0.55+Math.random()*0.45)*255);
       }
-      ctx.putImageData(pixelData, px, py);
-
-      // خطوط أفقية وميضة داخل الـ patch
-      if(Math.random() < 0.35 && ph > 2){
-        var ly = py + Math.floor(Math.random()*(ph-1));
-        ctx.beginPath();
-        ctx.moveTo(px, ly);
-        ctx.lineTo(px+pw, ly);
-        ctx.strokeStyle = Math.random()<0.5
-          ? 'rgba(255,255,255,'+(alpha*0.25)+')'
-          : 'rgba(0,0,0,'+(alpha*0.18)+')';
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
+      ctx.putImageData(pixelData,px,py);
+      if(Math.random()<0.35&&ph>2){
+        var ly=py+Math.floor(Math.random()*(ph-1));
+        ctx.beginPath();ctx.moveTo(px,ly);ctx.lineTo(px+pw,ly);
+        ctx.strokeStyle=Math.random()<0.5?"rgba(255,255,255,"+(alpha*0.25)+")":"rgba(0,0,0,"+(alpha*0.18)+")";
+        ctx.lineWidth=0.5;ctx.stroke();
       }
     });
-
-    // 3. خط أفقي كامل نادر (1 من 5)
     if(Math.random()<0.2){
-      var hy = R(H*0.05, H*0.95);
-      var grd = ctx.createLinearGradient(0,0,W,0);
-      grd.addColorStop(0,   'rgba(0,0,0,0)');
-      grd.addColorStop(0.2, 'rgba(180,180,180,'+(alpha*0.07)+')');
-      grd.addColorStop(0.5, 'rgba(220,220,220,'+(alpha*0.12)+')');
-      grd.addColorStop(0.8, 'rgba(160,160,160,'+(alpha*0.07)+')');
-      grd.addColorStop(1,   'rgba(0,0,0,0)');
+      var hy=R(H*0.05,H*0.95);
+      var grd=ctx.createLinearGradient(0,0,W,0);
+      grd.addColorStop(0,"rgba(0,0,0,0)");
+      grd.addColorStop(0.2,"rgba(180,180,180,"+(alpha*0.07)+")");
+      grd.addColorStop(0.5,"rgba(220,220,220,"+(alpha*0.12)+")");
+      grd.addColorStop(0.8,"rgba(160,160,160,"+(alpha*0.07)+")");
+      grd.addColorStop(1,"rgba(0,0,0,0)");
       ctx.beginPath();ctx.moveTo(0,hy);ctx.lineTo(W,hy);
       ctx.strokeStyle=grd;ctx.lineWidth=0.7;ctx.stroke();
     }
   }
-
-  function R(a,b){return a+Math.random()*(b-a);}
-
-  // --- دورة الظهور والاختفاء البطيئة ---
-  // كل دورة: تظهر بتلاشٍ، تبقى، ثم تختفي، ثم فترة راحة
   function cycle(){
-    // alpha خفيف جداً (0.04 - 0.11) — شبه شفاف
-    var alpha = 0.04 + Math.random()*0.07;
+    var alpha=0.04+Math.random()*0.07;
     drawStatic(alpha);
-
-    // ظهور بطيء
-    var fadeInTime = 1800 + Math.random()*2200;
-    cvs.style.transition = 'opacity '+fadeInTime+'ms cubic-bezier(.4,0,.2,1)';
-    requestAnimationFrame(function(){
-      cvs.style.opacity = (alpha*1.4).toString();
-    });
-
-    // مدة البقاء الظاهر (12-45 ثانية)
-    var stayTime = (12 + Math.random()*33)*1000;
+    var fadeInTime=1800+Math.random()*2200;
+    cvs.style.transition="opacity "+fadeInTime+"ms cubic-bezier(.4,0,.2,1)";
+    requestAnimationFrame(function(){cvs.style.opacity=(alpha*1.4).toString();});
+    var stayTime=(12+Math.random()*33)*1000;
     setTimeout(function(){
-      // اختفاء بطيء
-      var fadeOutTime = 2000 + Math.random()*3000;
-      cvs.style.transition = 'opacity '+fadeOutTime+'ms cubic-bezier(.4,0,.2,1)';
-      cvs.style.opacity = '0';
-
-      // فترة راحة (20-90 ثانية) ثم دورة جديدة
-      var restTime = (20 + Math.random()*70)*1000;
-      setTimeout(function(){
-        drawStatic(0.04 + Math.random()*0.07); // رسم جديد مختلف
-        cycle();
-      }, restTime);
-    }, stayTime);
+      var fadeOutTime=2000+Math.random()*3000;
+      cvs.style.transition="opacity "+fadeOutTime+"ms cubic-bezier(.4,0,.2,1)";
+      cvs.style.opacity="0";
+      var restTime=(20+Math.random()*70)*1000;
+      setTimeout(function(){drawStatic(0.04+Math.random()*0.07);cycle();},restTime);
+    },stayTime);
   }
-
-  // ابدأ بعد تأخير مريح (8-20 ثانية)
-  setTimeout(cycle, (8 + Math.random()*12)*1000);
+  setTimeout(cycle,(8+Math.random()*12)*1000);
 }
 
+/* ══ GLITCH BAR ══ */
 function _initGlitch(){
-  var bar = document.getElementById('glitch-bar');
-  if(!bar) return;
+  var bar=document.getElementById("glitch-bar");if(!bar)return;
   function fireGlitch(){
-    var y = 60 + Math.random()*(window.innerHeight-120);
-    bar.style.top = y+'px';
-    bar.style.opacity = '0';
-    bar.classList.remove('run');
-    // Force reflow
-    void bar.offsetWidth;
-    bar.classList.add('run');
-    // Schedule next glitch — random interval 8-40 seconds
-    var next = (8 + Math.random()*32)*1000;
-    setTimeout(fireGlitch, next);
+    var y=60+Math.random()*(window.innerHeight-120);
+    bar.style.top=y+"px";bar.style.opacity="0";
+    bar.classList.remove("run");void bar.offsetWidth;bar.classList.add("run");
+    setTimeout(fireGlitch,(8+Math.random()*32)*1000);
   }
-  // First glitch after 5-12 seconds
-  setTimeout(fireGlitch, 5000+Math.random()*7000);
+  setTimeout(fireGlitch,5000+Math.random()*7000);
 }
 
+/* ══ DOMContentLoaded ══ */
 document.addEventListener("DOMContentLoaded",function(){
   _initLazy();
   _initVoidRunes();
@@ -1823,31 +1944,6 @@ document.addEventListener("DOMContentLoaded",function(){
   }
 });
 </script>
-
-<!-- VOID WORLD ELEMENTS -->
-<div class="void-corner tl"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg1)" stroke-width="1.5" stroke-dasharray="4 8"/><path d="M140 0 L0 0 L0 140" stroke="rgba(168,85,247,.15)" stroke-width=".5"/><path d="M120 0 L0 0 L0 120" stroke="rgba(88,28,135,.12)" stroke-width=".3"/><circle cx="0" cy="0" r="80" stroke="url(#cg1)" stroke-width=".8" stroke-dasharray="2 12" fill="none"/><circle cx="0" cy="0" r="40" stroke="rgba(168,85,247,.1)" stroke-width=".5" fill="none"/><defs><linearGradient id="cg1" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#a855f7" stop-opacity=".6"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs></svg></div>
-<div class="void-corner tr"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg2)" stroke-width="1.5" stroke-dasharray="4 8"/><path d="M140 0 L0 0 L0 140" stroke="rgba(168,85,247,.15)" stroke-width=".5"/><circle cx="0" cy="0" r="80" stroke="url(#cg2)" stroke-width=".8" stroke-dasharray="2 12" fill="none"/><defs><linearGradient id="cg2" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#c084fc" stop-opacity=".5"/><stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/></linearGradient></defs></svg></div>
-<div class="void-corner bl"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg3)" stroke-width="1.5" stroke-dasharray="4 8"/><circle cx="0" cy="0" r="80" stroke="url(#cg3)" stroke-width=".8" stroke-dasharray="2 12" fill="none"/><defs><linearGradient id="cg3" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#7c3aed" stop-opacity=".5"/><stop offset="100%" stop-color="#4c1d95" stop-opacity="0"/></linearGradient></defs></svg></div>
-<div class="void-corner br"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg4)" stroke-width="1.5" stroke-dasharray="4 8"/><circle cx="0" cy="0" r="80" stroke="url(#cg4)" stroke-width=".8" stroke-dasharray="2 12" fill="none"/><defs><linearGradient id="cg4" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#a855f7" stop-opacity=".4"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs></svg></div>
-<div class="void-edge-h top"></div>
-<div class="void-edge-h bot"></div>
-<div class="void-edge-v r"></div>
-<div class="void-edge-v l"></div>
-<div class="void-runes" id="void-runes"></div>
-<svg class="void-map" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-  <defs><pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(168,85,247,1)" stroke-width=".6"/></pattern>
-  <pattern id="grid2" width="240" height="240" patternUnits="userSpaceOnUse"><path d="M 240 0 L 0 0 0 240" fill="none" stroke="rgba(168,85,247,1)" stroke-width="1.2"/></pattern></defs>
-  <rect width="1400" height="900" fill="url(#grid)"/>
-  <rect width="1400" height="900" fill="url(#grid2)"/>
-  <circle cx="700" cy="450" r="200" fill="none" stroke="rgba(168,85,247,.8)" stroke-width="1" stroke-dasharray="8 16"/>
-  <circle cx="700" cy="450" r="350" fill="none" stroke="rgba(88,28,135,.7)" stroke-width=".8" stroke-dasharray="4 20"/>
-  <line x1="0" y1="450" x2="1400" y2="450" stroke="rgba(168,85,247,.5)" stroke-width=".5" stroke-dasharray="12 24"/>
-  <line x1="700" y1="0" x2="700" y2="900" stroke="rgba(168,85,247,.5)" stroke-width=".5" stroke-dasharray="12 24"/>
-</svg>
-<!-- STATIC GRAY GLITCH SYSTEM -->
-<canvas id="sg-canvas"></canvas>
-<div class="glitch-bar" id="glitch-bar"></div>
-
 </body>
 </html>`;
 }
