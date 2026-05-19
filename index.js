@@ -189,11 +189,13 @@ export default {
         } else if(/iPad/.test(ua)){
           dev="iPad";
         } else if(/Android/.test(ua)){
-          // استخراج اسم الجهاز من UA
-          const bm=ua.match(/;\s*([^;)]+Build\/[^)]+)\)/);
-          const bm2=ua.match(/;\s*([A-Za-z0-9 \-]+)\s+Build\//);
-          if(bm2&&bm2[1]){dev=bm2[1].trim();}
-          else if(/Android.*Mobile/.test(ua)){dev="Android Phone";}
+          // استخراج اسم الجهاز الدقيق من Build string
+          const bm=ua.match(/;\s*([^;()]+?)\s+Build\//);
+          if(bm&&bm[1]){
+            const model=bm[1].trim();
+            // تأكد أنه اسم موديل وليس "Android" فقط
+            dev=(model&&model!=="Android"&&model.length>2)?model:"Android Phone";
+          } else if(/Android.*Mobile/.test(ua)){dev="Android Phone";}
           else{dev="Android Tablet";}
         }
         const visits=await kvGet(env,"visits",[]);
@@ -305,14 +307,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;o
 #sg-canvas{
   position:fixed;inset:0;width:100%;height:100%;
   pointer-events:none;z-index:8;opacity:0;
-  -webkit-mask-image:
-    linear-gradient(to right,black 0%,black 14%,transparent 24%,transparent 76%,black 86%,black 100%),
-    linear-gradient(to bottom,black 0%,black 12%,transparent 22%,transparent 78%,black 88%,black 100%);
-  -webkit-mask-composite:source-in;
-  mask-image:
-    linear-gradient(to right,black 0%,black 14%,transparent 24%,transparent 76%,black 86%,black 100%),
-    linear-gradient(to bottom,black 0%,black 12%,transparent 22%,transparent 78%,black 88%,black 100%);
-  mask-composite:intersect;
+  transform:translateZ(0);
   will-change:opacity;
 }
 @keyframes sgPulse{0%,100%{opacity:.65}50%{opacity:.22}}
@@ -1076,10 +1071,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;o
 </div>
 
 <!-- VOID WORLD ELEMENTS -->
-<div class="void-corner tl"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg1)" stroke-width="1.5" stroke-dasharray="4 8"/><path d="M140 0 L0 0 L0 140" stroke="rgba(168,85,247,.15)" stroke-width=".5"/><path d="M120 0 L0 0 L0 120" stroke="rgba(88,28,135,.12)" stroke-width=".3"/><circle cx="0" cy="0" r="80" stroke="url(#cg1)" stroke-width=".8" stroke-dasharray="2 12" fill="none"/><circle cx="0" cy="0" r="40" stroke="rgba(168,85,247,.1)" stroke-width=".5" fill="none"/><defs><linearGradient id="cg1" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#a855f7" stop-opacity=".6"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs></svg></div>
-<div class="void-corner tr"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg2)" stroke-width="1.5" stroke-dasharray="4 8"/><path d="M140 0 L0 0 L0 140" stroke="rgba(168,85,247,.15)" stroke-width=".5"/><circle cx="0" cy="0" r="80" stroke="url(#cg2)" stroke-width=".8" stroke-dasharray="2 12" fill="none"/><defs><linearGradient id="cg2" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#c084fc" stop-opacity=".5"/><stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/></linearGradient></defs></svg></div>
-<div class="void-corner bl"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg3)" stroke-width="1.5" stroke-dasharray="4 8"/><circle cx="0" cy="0" r="80" stroke="url(#cg3)" stroke-width=".8" stroke-dasharray="2 12" fill="none"/><defs><linearGradient id="cg3" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#7c3aed" stop-opacity=".5"/><stop offset="100%" stop-color="#4c1d95" stop-opacity="0"/></linearGradient></defs></svg></div>
-<div class="void-corner br"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg4)" stroke-width="1.5" stroke-dasharray="4 8"/><circle cx="0" cy="0" r="80" stroke="url(#cg4)" stroke-width=".8" stroke-dasharray="2 12" fill="none"/><defs><linearGradient id="cg4" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#a855f7" stop-opacity=".4"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs></svg></div>
+<div class="void-corner tl"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg1)" stroke-width="1.5"/><path d="M140 0 L0 0 L0 140" stroke="rgba(168,85,247,.15)" stroke-width=".5"/><path d="M120 0 L0 0 L0 120" stroke="rgba(88,28,135,.12)" stroke-width=".3"/><circle cx="0" cy="0" r="80" stroke="url(#cg1)" stroke-width=".8" fill="none"/><circle cx="0" cy="0" r="40" stroke="rgba(168,85,247,.1)" stroke-width=".5" fill="none"/><defs><linearGradient id="cg1" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#a855f7" stop-opacity=".6"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs></svg></div>
+<div class="void-corner tr"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg2)" stroke-width="1.5"/><path d="M140 0 L0 0 L0 140" stroke="rgba(168,85,247,.15)" stroke-width=".5"/><circle cx="0" cy="0" r="80" stroke="url(#cg2)" stroke-width=".8" fill="none"/><defs><linearGradient id="cg2" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#c084fc" stop-opacity=".5"/><stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/></linearGradient></defs></svg></div>
+<div class="void-corner bl"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg3)" stroke-width="1.5"/><circle cx="0" cy="0" r="80" stroke="url(#cg3)" stroke-width=".8" fill="none"/><defs><linearGradient id="cg3" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#7c3aed" stop-opacity=".5"/><stop offset="100%" stop-color="#4c1d95" stop-opacity="0"/></linearGradient></defs></svg></div>
+<div class="void-corner br"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg4)" stroke-width="1.5"/><circle cx="0" cy="0" r="80" stroke="url(#cg4)" stroke-width=".8" fill="none"/><defs><linearGradient id="cg4" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#a855f7" stop-opacity=".4"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs></svg></div>
 <div class="void-edge-h top"></div>
 <div class="void-edge-h bot"></div>
 <div class="void-edge-v r"></div>
@@ -1090,10 +1085,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;o
   <pattern id="grid2" width="240" height="240" patternUnits="userSpaceOnUse"><path d="M 240 0 L 0 0 0 240" fill="none" stroke="rgba(168,85,247,1)" stroke-width="1.2"/></pattern></defs>
   <rect width="1400" height="900" fill="url(#grid)"/>
   <rect width="1400" height="900" fill="url(#grid2)"/>
-  <circle cx="700" cy="450" r="200" fill="none" stroke="rgba(168,85,247,.8)" stroke-width="1" stroke-dasharray="8 16"/>
-  <circle cx="700" cy="450" r="350" fill="none" stroke="rgba(88,28,135,.7)" stroke-width=".8" stroke-dasharray="4 20"/>
-  <line x1="0" y1="450" x2="1400" y2="450" stroke="rgba(168,85,247,.5)" stroke-width=".5" stroke-dasharray="12 24"/>
-  <line x1="700" y1="0" x2="700" y2="900" stroke="rgba(168,85,247,.5)" stroke-width=".5" stroke-dasharray="12 24"/>
+  <circle cx="700" cy="450" r="200" fill="none" stroke="rgba(168,85,247,.8)" stroke-width="1"/>
+  <circle cx="700" cy="450" r="350" fill="none" stroke="rgba(88,28,135,.7)" stroke-width=".8"/>
+  <line x1="0" y1="450" x2="1400" y2="450" stroke="rgba(168,85,247,.5)" stroke-width=".5"/>
+  <line x1="700" y1="0" x2="700" y2="900" stroke="rgba(168,85,247,.5)" stroke-width=".5"/>
 </svg>
 <canvas id="sg-canvas"></canvas>
 <div class="glitch-bar" id="glitch-bar"></div>
@@ -2070,7 +2065,16 @@ var WOW = (function(){
     // ── رسم الضجيج الداكن العميق ──
     function _drawNoise(N,zones,bigMode){
       ctx.clearRect(0,0,W,H);
-      // batch باستخدام beginPath + rect لتقليل state changes
+      // تدرج شفافية من الحافة للمركز (بدلاً من CSS mask)
+      var gL=ctx.createLinearGradient(0,0,W*0.22,0);
+      gL.addColorStop(0,"rgba(0,0,0,1)");gL.addColorStop(1,"rgba(0,0,0,0)");
+      var gR=ctx.createLinearGradient(W,0,W*0.78,0);
+      gR.addColorStop(0,"rgba(0,0,0,1)");gR.addColorStop(1,"rgba(0,0,0,0)");
+      var gT=ctx.createLinearGradient(0,0,0,H*0.20);
+      gT.addColorStop(0,"rgba(0,0,0,1)");gT.addColorStop(1,"rgba(0,0,0,0)");
+      var gB=ctx.createLinearGradient(0,H,0,H*0.80);
+      gB.addColorStop(0,"rgba(0,0,0,1)");gB.addColorStop(1,"rgba(0,0,0,0)");
+
       for(var i=0;i<N;i++){
         var z=zones[i%zones.length];
         var rx=z.x1+Math.random()*(z.x2-z.x1);
@@ -2081,16 +2085,26 @@ var WOW = (function(){
         var dark=Math.random()<0.72;
         var v=dark?Math.floor(Math.random()*30):Math.floor(40+Math.random()*45);
         var purple=Math.random()<0.14;
-        var a=dark?(0.58+Math.random()*0.38):(0.22+Math.random()*0.28);
+        var a=dark?(0.62+Math.random()*0.35):(0.25+Math.random()*0.28);
         ctx.fillStyle="rgba("+(purple?v+10:v)+","+v+","+(purple?v+22:v)+","+a+")";
         ctx.fillRect(Math.round(rx),Math.round(ry),Math.round(rw),Math.round(rh));
         // وميض خاطف ساطع (1 من كل 4)
         if(bigMode&&Math.random()<0.25){
           var lv=160+Math.floor(Math.random()*95);
-          ctx.fillStyle="rgba("+lv+","+lv+","+lv+",0.11)";
+          ctx.fillStyle="rgba("+lv+","+lv+","+lv+",0.13)";
           ctx.fillRect(Math.round(rx),Math.round(ry),Math.round(rw),1);
         }
       }
+      // طبّق تدرج الشفافية فوق الضجيج لإخفاء المركز
+      ctx.globalCompositeOperation="destination-in";
+      ctx.fillStyle=gL;ctx.fillRect(0,0,W*0.22,H);
+      ctx.fillStyle=gR;ctx.fillRect(W*0.78,0,W*0.22,H);
+      ctx.fillStyle=gT;ctx.fillRect(0,0,W,H*0.20);
+      ctx.fillStyle=gB;ctx.fillRect(0,H*0.80,W,H*0.20);
+      // ظلال الزوايا الأربع (تفاعل مزدوج)
+      ctx.fillStyle=gL;ctx.fillRect(0,0,W*0.22,H*0.20);
+      ctx.fillStyle=gR;ctx.fillRect(W*0.78,H*0.80,W*0.22,H*0.20);
+      ctx.globalCompositeOperation="source-over";
     }
 
     var _FULL_ZONES=[
