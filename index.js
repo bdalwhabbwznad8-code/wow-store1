@@ -207,13 +207,19 @@ export default {
       const[visits,orders,prods]=await Promise.all([kvGet(env,"visits",[]),kvGet(env,"orders",[]),kvGet(env,"products",[])]);
       const uniq=new Set(visits.map(v=>v.vid)).size;
       const conf=orders.filter(o=>o.confirmed).length;
-      const rev=orders.reduce((a,o)=>a+(o.total||0),0);
+      const rev=orders.filter(o=>o.status!=="returned").reduce((a,o)=>a+(o.sub||o.total||0),0);
+      const returnedOrders=orders.filter(o=>o.status==="returned");
+      const totalReturnCost=returnedOrders.reduce((a,o)=>a+(o.returnFee||400),0);
+      const totalReturnedSub=returnedOrders.reduce((a,o)=>a+(o.sub||0),0);
+      const netRevenue=rev-totalReturnCost;
       const devMap={},hourMap={},visMap={};
       visits.forEach(v=>{devMap[v.dev]=(devMap[v.dev]||0)+1;});
       const since=Date.now()-86400000;
       visits.filter(v=>new Date(v.t).getTime()>since).forEach(v=>{const h=new Date(v.t).getHours();hourMap[h]=(hourMap[h]||0)+1;});
       visits.forEach(v=>{if(!visMap[v.vid])visMap[v.vid]={count:0,dev:v.dev};visMap[v.vid].count++;});
-      return R({totalVisits:visits.length,uniqueVisitors:uniq,totalOrders:orders.length,confirmedOrders:conf,revenue:rev,productCount:prods.length,devMap,hourMap,
+      return R({totalVisits:visits.length,uniqueVisitors:uniq,totalOrders:orders.length,confirmedOrders:conf,
+        revenue:rev,netRevenue,totalReturnCost,totalReturnedSub,returnedCount:returnedOrders.length,
+        productCount:prods.length,devMap,hourMap,
         visitors:Object.entries(visMap).sort((a,b)=>b[1].count-a[1].count).slice(0,50).map(([vid,d])=>({vid,...d}))});
     }
 
@@ -882,7 +888,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;o
     </div>
     <div class="fl"><label>نوع التوصيل</label>
       <select class="inp" id="o-del">
-        <option value="h">للمنزل</option><option value="o">للمكتب / Stop Desk</option>
+        <option value="o" selected>للمكتب / Stop Desk</option><option value="h">للمنزل</option>
       </select>
     </div>
     <!-- طريقة الدفع -->
@@ -1071,10 +1077,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;o
 </div>
 
 <!-- VOID WORLD ELEMENTS -->
-<div class="void-corner tl"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg1)" stroke-width="1.5"/><path d="M140 0 L0 0 L0 140" stroke="rgba(168,85,247,.15)" stroke-width=".5"/><path d="M120 0 L0 0 L0 120" stroke="rgba(88,28,135,.12)" stroke-width=".3"/><circle cx="0" cy="0" r="80" stroke="url(#cg1)" stroke-width=".8" fill="none"/><circle cx="0" cy="0" r="40" stroke="rgba(168,85,247,.1)" stroke-width=".5" fill="none"/><defs><linearGradient id="cg1" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#a855f7" stop-opacity=".6"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs></svg></div>
-<div class="void-corner tr"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg2)" stroke-width="1.5"/><path d="M140 0 L0 0 L0 140" stroke="rgba(168,85,247,.15)" stroke-width=".5"/><circle cx="0" cy="0" r="80" stroke="url(#cg2)" stroke-width=".8" fill="none"/><defs><linearGradient id="cg2" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#c084fc" stop-opacity=".5"/><stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/></linearGradient></defs></svg></div>
-<div class="void-corner bl"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg3)" stroke-width="1.5"/><circle cx="0" cy="0" r="80" stroke="url(#cg3)" stroke-width=".8" fill="none"/><defs><linearGradient id="cg3" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#7c3aed" stop-opacity=".5"/><stop offset="100%" stop-color="#4c1d95" stop-opacity="0"/></linearGradient></defs></svg></div>
-<div class="void-corner br"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg4)" stroke-width="1.5"/><circle cx="0" cy="0" r="80" stroke="url(#cg4)" stroke-width=".8" fill="none"/><defs><linearGradient id="cg4" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#a855f7" stop-opacity=".4"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs></svg></div>
+<div class="void-corner tl"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg1)" stroke-width="1.5"/><path d="M140 0 L0 0 L0 140" stroke="rgba(168,85,247,.15)" stroke-width=".5"/><path d="M120 0 L0 0 L0 120" stroke="rgba(88,28,135,.12)" stroke-width=".3"/><defs><linearGradient id="cg1" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#a855f7" stop-opacity=".6"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs></svg></div>
+<div class="void-corner tr"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg2)" stroke-width="1.5"/><path d="M140 0 L0 0 L0 140" stroke="rgba(168,85,247,.15)" stroke-width=".5"/><defs><linearGradient id="cg2" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#c084fc" stop-opacity=".5"/><stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/></linearGradient></defs></svg></div>
+<div class="void-corner bl"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg3)" stroke-width="1.5"/><defs><linearGradient id="cg3" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#7c3aed" stop-opacity=".5"/><stop offset="100%" stop-color="#4c1d95" stop-opacity="0"/></linearGradient></defs></svg></div>
+<div class="void-corner br"><svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M160 0 L0 0 L0 160" stroke="url(#cg4)" stroke-width="1.5"/><defs><linearGradient id="cg4" x1="160" y1="0" x2="0" y2="160"><stop offset="0%" stop-color="#a855f7" stop-opacity=".4"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs></svg></div>
 <div class="void-edge-h top"></div>
 <div class="void-edge-h bot"></div>
 <div class="void-edge-v r"></div>
@@ -1085,10 +1091,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;o
   <pattern id="grid2" width="240" height="240" patternUnits="userSpaceOnUse"><path d="M 240 0 L 0 0 0 240" fill="none" stroke="rgba(168,85,247,1)" stroke-width="1.2"/></pattern></defs>
   <rect width="1400" height="900" fill="url(#grid)"/>
   <rect width="1400" height="900" fill="url(#grid2)"/>
-  <circle cx="700" cy="450" r="200" fill="none" stroke="rgba(168,85,247,.8)" stroke-width="1"/>
-  <circle cx="700" cy="450" r="350" fill="none" stroke="rgba(88,28,135,.7)" stroke-width=".8"/>
-  <line x1="0" y1="450" x2="1400" y2="450" stroke="rgba(168,85,247,.5)" stroke-width=".5"/>
-  <line x1="700" y1="0" x2="700" y2="900" stroke="rgba(168,85,247,.5)" stroke-width=".5"/>
 </svg>
 <canvas id="sg-canvas"></canvas>
 <div class="glitch-bar" id="glitch-bar"></div>
@@ -1109,7 +1111,7 @@ var WOW = (function(){
   var _toastT=null,_imgObs=null;
   var SESSION_KEY="wow_session",REMEMBER_KEY="wow_remember";
   var CAT={shirts:"القمصان",pants:"البناطيل",shorts:"الشورتات",hats:"القبعات",accessories:"الاكسسوارات",other:"اخرى"};
-  var STATUS_MAP={processing:"قيد المعالجة",shipped:"تم الشحن",delivered:"تم التوصيل"};
+  var STATUS_MAP={processing:"قيد المعالجة",shipped:"تم الشحن",delivered:"تم التوصيل",returned:"تمت الإعادة ↩"};
 
   /* ── INIT BLOCK FLAG ── */
   try{if(localStorage.getItem("_wbl")==="1")_isSilentBlocked=true;}catch(e){}
@@ -1574,13 +1576,22 @@ var WOW = (function(){
     _openMod("checkout-mod");
   }
   function _updPreview(){
-    var sub=_cart.reduce(function(a,c){return a+c.price*c.qty;},0);
-    var oDelEl=document.getElementById("o-del");
-    var fee=oDelEl&&oDelEl.value==="h"?1100:700;
+    var dt=(document.getElementById("o-del")||{value:"o"}).value||"o";
+    var wilaya=(document.getElementById("o-wilaya")||{value:""}).value||"";
+    // الخصم العشوائي يُطبَّق على المنتجات فقط
+    var rawSub=_cart.reduce(function(a,c){return a+c.price*c.qty;},0);
+    var discAmt=_globalDiscount>0?Math.round(rawSub*_globalDiscount/100):0;
+    var sub=rawSub-discAmt;
+    // ثم يُضاف سعر التوصيل فوق السعر المخفَّض
+    var fee=_getShipFee(wilaya,dt);
     var isCcp=document.getElementById("pay-ccp")&&document.getElementById("pay-ccp").checked;
     var ccpDisc=isCcp?50:0;
-    var opDel=document.getElementById("op-del");if(opDel)opDel.textContent=_fmt(fee);
-    var opTot=document.getElementById("op-tot");if(opTot)opTot.textContent=_fmt(sub+fee-ccpDisc);
+    var opDel=document.getElementById("op-del");if(opDel)opDel.textContent=_fmt(fee)+" دج";
+    var opDisc=document.getElementById("op-disc");if(opDisc){
+      if(discAmt>0){opDisc.parentElement&&(opDisc.parentElement.style.display="");opDisc.textContent="-"+_fmt(discAmt)+" دج";}
+      else{opDisc.parentElement&&(opDisc.parentElement.style.display="none");}
+    }
+    var opTot=document.getElementById("op-tot");if(opTot)opTot.textContent=_fmt(sub+fee-ccpDisc)+" دج";
   }
   function _submitOrder(){
     var name=(document.getElementById("o-name")||{}).value||"";name=name.trim();
@@ -1589,7 +1600,7 @@ var WOW = (function(){
     var em=(document.getElementById("o-em")||{}).value||"";em=em.trim();
     var wilEl=document.getElementById("o-wilaya");var wilaya=wilEl?wilEl.value:"";
     var commune=(document.getElementById("o-commune")||{}).value||"";commune=commune.trim();
-    var dtEl=document.getElementById("o-del");var dt=dtEl?dtEl.value:"h";
+    var dtEl=document.getElementById("o-del");var dt=dtEl?dtEl.value:"o";
     if(!name){_toast("ادخل الاسم");return;}
     if(!p1){_toast("ادخل رقم الهاتف 1");return;}
     if(!p2){_toast("ادخل رقم الهاتف 2");return;}
@@ -1598,17 +1609,22 @@ var WOW = (function(){
     if(!wilaya){_toast("اختر الولاية");return;}
     if(!commune){_toast("اكتب اسم البلدية");return;}
     if(!_cart.length){_toast("السلة فارغة");return;}
-    var fee=dt==="h"?1100:700;
+    var fee=_getShipFee(wilaya,dt);
+    var returnFee=_getReturnFee(wilaya);
     var dlbl=dt==="h"?"للمنزل":"للمكتب / Stop Desk";
     var isCcp=document.getElementById("pay-ccp")&&document.getElementById("pay-ccp").checked;
     var payMethod=isCcp?"ccp":"cod";
     var ccpRef=isCcp?((document.getElementById("o-ccp-ref")||{}).value||"").trim():"";
     var ccpDisc=isCcp?50:0;
-    var sub=_cart.reduce(function(a,c){return a+c.price*c.qty;},0);
+    // الخصم على المنتجات فقط ثم يُضاف التوصيل
+    var rawSub=_cart.reduce(function(a,c){return a+c.price*c.qty;},0);
+    var discAmt=_globalDiscount>0?Math.round(rawSub*_globalDiscount/100):0;
+    var sub=rawSub-discAmt;
     var total=sub+fee-ccpDisc;
     var btn=document.getElementById("chk-btn");if(btn){btn.disabled=true;btn.innerHTML="<span class='spin'></span>";}
     _api("/api/orders",{method:"POST",body:JSON.stringify({
       name:name,phone1:p1,phone2:p2,email:em,wilaya:wilaya,commune:commune,dlbl:dlbl,fee:fee,sub:sub,total:total,
+      returnFee:returnFee,discAmt:discAmt,globalDiscount:_globalDiscount,
       payMethod:payMethod,ccpRef:ccpRef,
       items:_cart.map(function(c){return{id:c.id,name:c.name,price:c.price,qty:c.qty,size:c.size,img:c.img};})
     })})
@@ -1753,7 +1769,21 @@ var WOW = (function(){
     _api("/api/analytics").then(function(r){return r.json();}).then(function(d){
       _setApiSt(true);
       var c=document.getElementById("stat-cards");if(!c)return;
-      c.innerHTML=_sc("الزيارات",d.totalVisits||0)+_sc("فريديون",d.uniqueVisitors||0)+_sc("الطلبيات",d.totalOrders||0)+_sc("مؤكدة",d.confirmedOrders||0)+_sc("المنتجات",d.productCount||0)+_sc("الايرادات",(d.revenue||0).toLocaleString()+" دج");
+      var grossRev=d.revenue||0;
+      var netRev=d.netRevenue||0;
+      var retCost=d.totalReturnCost||0;
+      var retCount=d.returnedCount||0;
+      // بطاقة الإيرادات المفصّلة
+      var revCard="<div class='sc' style='grid-column:1/-1;background:rgba(16,185,129,.04);border-color:rgba(16,185,129,.15)'>"
+        +"<div style='font-size:10px;color:var(--mu);margin-bottom:8px;letter-spacing:1px'>الإيراد العام</div>"
+        +"<div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px'>"
+        +"<div style='text-align:center'><div style='font-family:Cinzel,serif;font-size:16px;color:rgba(16,185,129,.9)'>"+grossRev.toLocaleString()+" دج</div><div style='font-size:9px;color:var(--mu);margin-top:3px'>إجمالي المنتجات</div></div>"
+        +(retCount>0
+          ?"<div style='text-align:center'><div style='font-family:Cinzel,serif;font-size:16px;color:rgba(239,68,68,.85)'>−"+retCost.toLocaleString()+" دج</div><div style='font-size:9px;color:var(--mu);margin-top:3px'>إرجاع ("+retCount+" طلبية)</div></div>"
+          :"<div style='text-align:center'><div style='font-size:14px;color:var(--mu)'>—</div><div style='font-size:9px;color:var(--mu);margin-top:3px'>لا إرجاعات</div></div>")
+        +"<div style='text-align:center;border-right:1px solid rgba(255,255,255,.06);padding-right:8px'><div style='font-family:Cinzel,serif;font-size:18px;color:rgba(192,132,252,.95)'>"+netRev.toLocaleString()+" دج</div><div style='font-size:9px;color:rgba(192,132,252,.5);margin-top:3px'>صافي الربح</div></div>"
+        +"</div></div>";
+      c.innerHTML=_sc("الزيارات",d.totalVisits||0)+_sc("فريديون",d.uniqueVisitors||0)+_sc("الطلبيات",d.totalOrders||0)+_sc("مؤكدة",d.confirmedOrders||0)+_sc("منتجات",d.productCount||0)+_sc("مُعادة",retCount||0)+revCard;
       var dc=document.getElementById("dev-chart");
       if(dc&&d.devMap){var dm=d.devMap,mx=Math.max.apply(null,Object.values(dm).concat([1]));dc.innerHTML=Object.entries(dm).map(function(e){return "<div class='br'><div class='brl'>"+e[0]+"</div><div class='brb'><div class='brf' style='width:"+Math.round(e[1]/mx*100)+"%'></div></div><div class='brv'>"+e[1]+"</div></div>";}).join("");}
       var hc=document.getElementById("hr-chart");
@@ -1935,14 +1965,23 @@ var WOW = (function(){
                 +"<span class='oc-pn'>"+_esc(it.name)+" ["+_esc(it.size||"")+"] x"+it.qty+"</span>"
                 +"<span class='oc-pp'>"+_fmt(it.price*it.qty)+"</span></div>";
         }).join("");
-        var stOpts=["processing","shipped","delivered"].map(function(s){return "<option value='"+s+"'"+(o.status===s?" selected":"")+">"+(STATUS_MAP[s]||s)+"</option>";}).join("");
+        var stOpts=["processing","shipped","delivered","returned"].map(function(s){return "<option value='"+s+"'"+(o.status===s?" selected":"")+">"+(STATUS_MAP[s]||s)+"</option>";}).join("");
+        // خسارة الإرجاع = سعر الإرجاع فقط (التوصيل يدفعه الزبون)
+        var retFee=o.returnFee||400;
+        var retInfo=o.status==="returned"
+          ?"<div class='oc-if' style='grid-column:1/-1;background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.2)'>"
+           +"<small>خسارة الإرجاع</small>"
+           +"<span style='color:rgba(239,68,68,.85)'>−"+_fmt(retFee)+" دج رسوم إرجاع</span>"
+           +"</div>"
+          :"";
         return "<div class='oc'><div class='oc-h'><span class='oc-id'>"+_esc(o.id)+"</span>"
               +(o.confirmed?"<span class='s-ok'>مؤكدة</span>":"<span class='s-no'>بانتظار</span>")+"</div>"
               +"<div class='oc-ig'>"
               +"<div class='oc-if'><small>الاسم</small><span>"+_esc(o.name)+"</span></div>"
               +"<div class='oc-if'><small>الهاتف</small><span>"+_esc(o.phone1)+"</span></div>"
               +"<div class='oc-if'><small>الولاية / البلدية</small><span>"+_esc(o.wilaya||"")+" / "+_esc(o.commune||"")+"</span></div>"
-              +"<div class='oc-if'><small>التاريخ</small><span>"+new Date(o.date).toLocaleDateString("ar-DZ")+"</span></div></div>"
+              +"<div class='oc-if'><small>التاريخ</small><span>"+new Date(o.date).toLocaleDateString("ar-DZ")+"</span></div>"
+              +retInfo+"</div>"
               +"<div class='oc-pl'>"+ih+"</div>"
               +"<div class='oc-ft'><span style='font-family:Cinzel,serif;color:rgba(192,132,252,.9)'>"+_fmt(o.total)+"</span>"
               +"<select class='status-sel' data-oid='"+_esc(o.id)+"'>"+stOpts+"</select>"
@@ -2002,16 +2041,100 @@ var WOW = (function(){
     }).catch(function(){if(btn){btn.disabled=false;btn.innerHTML="Save Settings";}  _toast("خطا");});
   }
 
-  /* ── MYSTERY OFFER ── */
+  /* ══ جدول أسعار التوصيل الحقيقي — SmartShop EXPRESS ══
+     h = للمنزل | d = للمكتب Stop Desk | r = الإرجاع   */
+  var SHIP_FEES={
+    "ادرار":          {h:1700,d:900, r:400},
+    "الشلف":          {h:1100,d:700, r:400},
+    "الاغواط":        {h:1300,d:800, r:400},
+    "ام البواقي":     {h:1100,d:700, r:400},
+    "باتنة":          {h:1100,d:700, r:400},
+    "بجاية":          {h:1100,d:700, r:400},
+    "بسكرة":          {h:1300,d:800, r:400},
+    "بشار":           {h:1400,d:900, r:400},
+    "البليدة":        {h:1100,d:700, r:400},
+    "البويرة":        {h:1100,d:700, r:400},
+    "تمنراست":        {h:2200,d:1300,r:400},
+    "تبسة":           {h:800, d:500, r:400},
+    "تلمسان":         {h:1200,d:700, r:400},
+    "تيارت":          {h:1200,d:700, r:400},
+    "تيزي وزو":       {h:1100,d:700, r:400},
+    "الجزائر":        {h:1100,d:700, r:400},
+    "الجلفة":         {h:1300,d:800, r:400},
+    "جيجل":           {h:1100,d:700, r:400},
+    "سطيف":           {h:1100,d:700, r:400},
+    "سعيدة":          {h:1200,d:700, r:400},
+    "سكيكدة":         {h:1100,d:700, r:400},
+    "سيدي بلعباس":   {h:1100,d:700, r:400},
+    "عنابة":          {h:1100,d:700, r:400},
+    "قالمة":          {h:1100,d:700, r:400},
+    "قسنطينة":        {h:1100,d:700, r:400},
+    "المدية":         {h:1100,d:700, r:400},
+    "مستغانم":        {h:1100,d:700, r:400},
+    "المسيلة":        {h:1100,d:700, r:400},
+    "معسكر":          {h:1100,d:700, r:400},
+    "ورقلة":          {h:1300,d:800, r:400},
+    "وهران":          {h:1100,d:700, r:400},
+    "البيض":          {h:1400,d:900, r:400},
+    "اليزي":          {h:2200,d:1300,r:400},
+    "برج بوعريريج":   {h:1100,d:700, r:400},
+    "بومرداس":        {h:1100,d:700, r:400},
+    "الطارف":         {h:1100,d:700, r:400},
+    "تندوف":          {h:1900,d:1200,r:400},
+    "تيسمسيلت":       {h:1100,d:700, r:400},
+    "الوادي":         {h:1300,d:800, r:400},
+    "خنشلة":          {h:1100,d:700, r:400},
+    "سوق اهراس":      {h:1100,d:700, r:400},
+    "تيبازة":         {h:1100,d:700, r:400},
+    "ميلة":           {h:1100,d:700, r:400},
+    "عين الدفلى":     {h:1100,d:700, r:400},
+    "النعامة":        {h:1400,d:800, r:400},
+    "عين تموشنت":     {h:1100,d:700, r:400},
+    "غرداية":         {h:1300,d:800, r:400},
+    "غليزان":         {h:1200,d:700, r:400},
+    "تيميمون":        {h:1700,d:1100,r:400},
+    "طولقة":          {h:1300,d:900, r:400},
+    "بني عباس":       {h:1400,d:900, r:400},
+    "عين صالح":       {h:2200,d:1300,r:400},
+    "عين قزام":       {h:2200,d:1300,r:400},
+    "تقرت":           {h:1300,d:800, r:400},
+    "جانت":           {h:2500,d:1400,r:400},
+    "المغير":         {h:1300,d:800, r:400},
+    "المنيعة":        {h:1300,d:800, r:400},
+    "وادي سوف":       {h:1300,d:800, r:400}
+  };
+  function _getShipFee(wilaya,type){
+    var w=wilaya||"";
+    var row=SHIP_FEES[w]||{h:1100,d:700,r:400};
+    if(type==="r")return row.r;
+    return type==="h"?row.h:row.d;
+  }
+  function _getReturnFee(wilaya){return _getShipFee(wilaya,"r");}
   function _showMystery(){
-    try{if(localStorage.getItem("wow_myst")==="1")return;}catch(e){}
-    var discs=[5,7,8,10];var d=discs[Math.floor(Math.random()*discs.length)];
+    try{
+      // إذا تم عرضه في هذه الجلسة (نفس التبويب) → لا تعرضه
+      if(sessionStorage.getItem("wow_s_shown")==="1")return;
+      // تحقق من آخر مرة عُرض (10 أيام)
+      var last=localStorage.getItem("wow_myst_ts");
+      if(last){
+        var daysPassed=(Date.now()-parseInt(last))/(1000*60*60*24);
+        if(daysPassed<10)return; // أقل من 10 أيام → لا تعرض
+      }
+    }catch(e){}
+    // اختر تخفيضاً عشوائياً — حد أقصى 11%
+    var discs=[5,7,8,10,11];
+    var d=discs[Math.floor(Math.random()*discs.length)];
     var codes=["WOW"+d+"NOW","FIRST"+d,"STYLE"+d,"GOTH"+d];
     var code=codes[Math.floor(Math.random()*codes.length)];
     var md=document.getElementById("mystery-disc"),mc=document.getElementById("mystery-code");
     if(md)md.textContent=d+"%";if(mc)mc.textContent=code;
     _globalDiscount=d;
-    setTimeout(function(){_openMod("mystery-mod");},2200);
+    // ظهور فوري بدون أي تأخير
+    _openMod("mystery-mod");
+    // سجّل في الجلسة الحالية (يختفي عند إغلاق التبويب أو الذهاب لتطبيق آخر)
+    try{sessionStorage.setItem("wow_s_shown","1");}catch(e){}
+    // سجّل الطابع الزمني في localStorage للـ 10 أيام
+    try{localStorage.setItem("wow_myst_ts",Date.now().toString());}catch(e){}
   }
 
   /* ══════════════════════════
@@ -2062,49 +2185,27 @@ var WOW = (function(){
     _resize();
     window.addEventListener("resize",_resize,{passive:true});
 
-    // ── رسم الضجيج الداكن العميق ──
+    // ── رسم الضجيج الداكن العميق (بدون compositing معطوب) ──
     function _drawNoise(N,zones,bigMode){
       ctx.clearRect(0,0,W,H);
-      // تدرج شفافية من الحافة للمركز (بدلاً من CSS mask)
-      var gL=ctx.createLinearGradient(0,0,W*0.22,0);
-      gL.addColorStop(0,"rgba(0,0,0,1)");gL.addColorStop(1,"rgba(0,0,0,0)");
-      var gR=ctx.createLinearGradient(W,0,W*0.78,0);
-      gR.addColorStop(0,"rgba(0,0,0,1)");gR.addColorStop(1,"rgba(0,0,0,0)");
-      var gT=ctx.createLinearGradient(0,0,0,H*0.20);
-      gT.addColorStop(0,"rgba(0,0,0,1)");gT.addColorStop(1,"rgba(0,0,0,0)");
-      var gB=ctx.createLinearGradient(0,H,0,H*0.80);
-      gB.addColorStop(0,"rgba(0,0,0,1)");gB.addColorStop(1,"rgba(0,0,0,0)");
-
       for(var i=0;i<N;i++){
         var z=zones[i%zones.length];
         var rx=z.x1+Math.random()*(z.x2-z.x1);
         var ry=z.y1+Math.random()*(z.y2-z.y1);
-        var rw=bigMode?(3+Math.random()*(_mob?20:38)):(1+Math.random()*(_mob?9:15));
-        var rh=bigMode?(1+Math.random()*(_mob?7:12)):(1+Math.random()*(_mob?4:6));
-        // رمادي غامق مخملي — 70% ظلام عميق، 15% بنفسجي كوني محروق
+        var rw=bigMode?(3+Math.random()*(_mob?22:40)):(1+Math.random()*(_mob?10:16));
+        var rh=bigMode?(1+Math.random()*(_mob?8:13)):(1+Math.random()*(_mob?4:6));
         var dark=Math.random()<0.72;
         var v=dark?Math.floor(Math.random()*30):Math.floor(40+Math.random()*45);
         var purple=Math.random()<0.14;
-        var a=dark?(0.62+Math.random()*0.35):(0.25+Math.random()*0.28);
+        var a=dark?(0.65+Math.random()*0.32):(0.28+Math.random()*0.30);
         ctx.fillStyle="rgba("+(purple?v+10:v)+","+v+","+(purple?v+22:v)+","+a+")";
         ctx.fillRect(Math.round(rx),Math.round(ry),Math.round(rw),Math.round(rh));
-        // وميض خاطف ساطع (1 من كل 4)
         if(bigMode&&Math.random()<0.25){
           var lv=160+Math.floor(Math.random()*95);
-          ctx.fillStyle="rgba("+lv+","+lv+","+lv+",0.13)";
+          ctx.fillStyle="rgba("+lv+","+lv+","+lv+",0.14)";
           ctx.fillRect(Math.round(rx),Math.round(ry),Math.round(rw),1);
         }
       }
-      // طبّق تدرج الشفافية فوق الضجيج لإخفاء المركز
-      ctx.globalCompositeOperation="destination-in";
-      ctx.fillStyle=gL;ctx.fillRect(0,0,W*0.22,H);
-      ctx.fillStyle=gR;ctx.fillRect(W*0.78,0,W*0.22,H);
-      ctx.fillStyle=gT;ctx.fillRect(0,0,W,H*0.20);
-      ctx.fillStyle=gB;ctx.fillRect(0,H*0.80,W,H*0.20);
-      // ظلال الزوايا الأربع (تفاعل مزدوج)
-      ctx.fillStyle=gL;ctx.fillRect(0,0,W*0.22,H*0.20);
-      ctx.fillStyle=gR;ctx.fillRect(W*0.78,H*0.80,W*0.22,H*0.20);
-      ctx.globalCompositeOperation="source-over";
     }
 
     var _FULL_ZONES=[
