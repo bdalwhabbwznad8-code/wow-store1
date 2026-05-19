@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// WOW STORE — Cloudflare Worker — v8.0 (Fixed + Dream Core)
+// WOW STORE — Cloudflare Worker — v9.0 (Fixed + Dream Core + CCP)
 // KV Binding : env.DATABASE
 // ═══════════════════════════════════════════════════════════════
 
@@ -9,7 +9,8 @@ async function hashPass(str){
 }
 
 const ADMIN_PASS_RAW  = "12345678A@";
-const ADMIN_PASS_HASH = "b0b6e0c5c55d34f44df22c0dbeef41c49a7b6cb74c0ba9b945cbe65a6c9e1a32";
+// SHA-256("12345678A@") — verified correct
+const ADMIN_PASS_HASH = "881b9563ffff9349eb3ad4efeb71c7355d7878644e385d71d26b846f3ddd06a6";
 const BLOCK_MS = 8000*3600000;
 const MAX_ATT  = 5;
 
@@ -236,20 +237,20 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 /* ══ VIGNETTE + SOFT BLUR EDGES ══ */
 .vignette{position:fixed;inset:0;pointer-events:none;z-index:9996;background:radial-gradient(ellipse 90% 90% at 50% 50%,transparent 55%,rgba(0,0,0,.45) 100%)}
 
-/* ══ AMBIENT COLOR BREATHING ══ */
-@keyframes ambientBreathe{0%,100%{opacity:.016;transform:scale(1)}33%{opacity:.032;transform:scale(1.04)}66%{opacity:.022;transform:scale(.97)}}
-.ambient-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 80% 60% at 30% 40%,rgba(88,28,135,.08),transparent 60%),radial-gradient(ellipse 60% 50% at 70% 60%,rgba(55,48,163,.06),transparent 55%);animation:ambientBreathe 10s ease-in-out infinite}
-@keyframes ambientBreathe2{0%,100%{opacity:.012}50%{opacity:.028}}
-.ambient-bg2{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 50% 40% at 80% 20%,rgba(139,92,246,.05),transparent);animation:ambientBreathe2 14s ease-in-out infinite reverse}
+/* ══ AMBIENT COLOR BREATHING — GPU only ══ */
+@keyframes ambientBreathe{0%,100%{opacity:.014}50%{opacity:.028}}
+.ambient-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 75% 55% at 30% 40%,rgba(88,28,135,.07),transparent 60%),radial-gradient(ellipse 55% 45% at 70% 60%,rgba(55,48,163,.05),transparent 55%);animation:ambientBreathe 12s ease-in-out infinite;will-change:opacity}
+@keyframes ambientBreathe2{0%,100%{opacity:.01}50%{opacity:.022}}
+.ambient-bg2{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 45% 35% at 80% 20%,rgba(139,92,246,.04),transparent);animation:ambientBreathe2 16s ease-in-out infinite reverse;will-change:opacity}
 
-/* ══ SURREAL BACKGROUND LAYERS (Dream Core) ══ */
+/* ══ SURREAL BACKGROUND LAYERS (Dream Core) — GPU only ══ */
 .mist{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-.mist::before{content:'';position:absolute;width:80vw;height:80vw;border-radius:50%;background:radial-gradient(ellipse,rgba(88,28,135,.11),transparent 70%);top:-25%;left:-25%;filter:blur(70px);animation:m1 35s ease-in-out infinite;will-change:transform}
-.mist::after{content:'';position:absolute;width:65vw;height:65vw;border-radius:50%;background:radial-gradient(ellipse,rgba(55,48,163,.08),transparent 70%);bottom:-20%;right:-20%;filter:blur(90px);animation:m2 42s ease-in-out infinite;will-change:transform}
-@keyframes m1{0%,100%{transform:translate(0,0) rotate(0deg)}33%{transform:translate(12vw,8vh) rotate(5deg)}66%{transform:translate(-5vw,15vh) rotate(-3deg)}}
-@keyframes m2{0%,100%{transform:translate(0,0)}50%{transform:translate(-12vw,-10vh)}}
-.mist3{position:fixed;width:45vw;height:45vw;border-radius:50%;background:radial-gradient(ellipse,rgba(168,85,247,.04),transparent 70%);bottom:10%;left:20%;filter:blur(60px);animation:m3 50s ease-in-out infinite;pointer-events:none;z-index:0;will-change:transform}
-@keyframes m3{0%,100%{transform:translate(0,0)}50%{transform:translate(8vw,-5vh)}}
+.mist::before{content:'';position:absolute;width:70vw;height:70vw;border-radius:50%;background:radial-gradient(ellipse,rgba(88,28,135,.09),transparent 70%);top:-20%;left:-20%;filter:blur(55px);animation:m1 38s ease-in-out infinite;will-change:transform}
+.mist::after{content:'';position:absolute;width:55vw;height:55vw;border-radius:50%;background:radial-gradient(ellipse,rgba(55,48,163,.07),transparent 70%);bottom:-15%;right:-15%;filter:blur(70px);animation:m2 46s ease-in-out infinite;will-change:transform}
+@keyframes m1{0%,100%{transform:translate(0,0)}50%{transform:translate(10vw,8vh)}}
+@keyframes m2{0%,100%{transform:translate(0,0)}50%{transform:translate(-8vw,-7vh)}}
+.mist3{position:fixed;width:40vw;height:40vw;border-radius:50%;background:radial-gradient(ellipse,rgba(168,85,247,.035),transparent 70%);bottom:12%;left:22%;filter:blur(50px);animation:m3 55s ease-in-out infinite;pointer-events:none;z-index:0;will-change:transform}
+@keyframes m3{0%,100%{transform:translate(0,0)}50%{transform:translate(6vw,-4vh)}}
 
 /* ══ GENTLE GRADIENT OVERLAY ══ */
 .grad-overlay{position:fixed;inset:0;pointer-events:none;z-index:1;background:linear-gradient(180deg,rgba(5,5,5,.18) 0%,transparent 20%,transparent 80%,rgba(5,5,5,.25) 100%)}
@@ -276,8 +277,16 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .glitch-bar.run{animation:glitchPass .22s ease-out forwards}
 @keyframes glitchPass{0%{opacity:.85}100%{opacity:0;transform:translateY(-40px)}}
 
-/* ══ STATIC GRAY GLITCH ══ */
-#sg-canvas{position:fixed;inset:0;pointer-events:none;z-index:9;opacity:0;transition:opacity 2.4s cubic-bezier(.4,0,.2,1)}
+/* ══ STATIC GRAY GLITCH CANVAS ══ */
+#sg-canvas{position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;will-change:opacity}
+
+/* ══ CCP PAYMENT OPTION ══ */
+.pay-opt{display:flex;align-items:flex-start;gap:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:10px 12px;cursor:pointer;transition:border-color .2s,background .2s}
+.pay-opt:has(input:checked){background:rgba(168,85,247,.08);border-color:rgba(168,85,247,.35)}
+.pay-opt input[type=radio]{margin-top:3px;accent-color:var(--ac);flex-shrink:0;width:14px;height:14px;cursor:pointer}
+.pay-opt-body{flex:1}
+.pay-opt-title{font-size:12px;font-weight:600;color:rgba(255,255,255,.82);margin-bottom:2px}
+.pay-opt-sub{font-size:10px;color:var(--mu);letter-spacing:.3px}
 
 /* ══ SCROLL PROGRESS ══ */
 #scroll-prog{position:fixed;top:0;right:0;left:0;height:2px;background:linear-gradient(90deg,#6d28d9,#a855f7,#c084fc);transform-origin:right;transform:scaleX(0);z-index:9999;transition:transform .1s linear}
@@ -449,13 +458,13 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .btn-main:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(109,40,217,.38)}
 .btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
-/* ══ MODALS ══ */
-.mod-ov{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(18px);z-index:1000;display:none;align-items:center;justify-content:center;padding:14px}
+/* ══ MODALS — full screen cover ══ */
+.mod-ov{position:fixed;inset:0;width:100%;height:100%;background:rgba(0,0,0,.9);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);z-index:1000;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
 .mod-ov.on{display:flex}
-.mod{background:rgba(8,6,16,.97);border:1px solid rgba(168,85,247,.14);border-radius:20px;padding:28px;width:100%;max-width:520px;animation:pop .32s cubic-bezier(.34,1.56,.64,1);max-height:92vh;overflow-y:auto;position:relative}
+.mod{background:rgba(8,6,16,.98);border:1px solid rgba(168,85,247,.18);border-radius:20px;padding:28px;width:100%;max-width:520px;animation:pop .3s cubic-bezier(.34,1.4,.64,1);position:relative;margin:auto;flex-shrink:0}
 .mod::-webkit-scrollbar{width:3px}
 .mod::-webkit-scrollbar-thumb{background:rgba(168,85,247,.3);border-radius:2px}
-@keyframes pop{from{opacity:0;transform:scale(.88) translateY(18px);filter:blur(8px)}to{opacity:1;transform:scale(1) translateY(0);filter:blur(0)}}
+@keyframes pop{from{opacity:0;transform:scale(.9) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .mod-title{font-family:Cinzel,serif;font-size:16px;color:rgba(192,132,252,.9);letter-spacing:2px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
 .fl{margin-bottom:12px}
 .fl label{display:block;font-size:10px;font-weight:500;color:rgba(168,85,247,.75);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px}
@@ -843,9 +852,36 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         <option value="h">للمنزل</option><option value="o">للمكتب / Stop Desk</option>
       </select>
     </div>
+    <!-- طريقة الدفع -->
+    <div class="fl"><label>طريقة الدفع *</label>
+      <div id="pay-opts" style="display:flex;flex-direction:column;gap:7px;margin-top:4px">
+        <label class="pay-opt" id="pay-cod-lbl">
+          <input type="radio" name="pay-method" id="pay-cod" value="cod" checked>
+          <div class="pay-opt-body">
+            <div class="pay-opt-title">💵 الدفع عند الاستلام</div>
+            <div class="pay-opt-sub">ادفع نقداً حين وصول طلبيتك — مجاني</div>
+          </div>
+        </label>
+        <label class="pay-opt" id="pay-ccp-lbl">
+          <input type="radio" name="pay-method" id="pay-ccp" value="ccp">
+          <div class="pay-opt-body">
+            <div class="pay-opt-title">🏦 الدفع المسبق بـ CCP</div>
+            <div class="pay-opt-sub">تحويل بريدي مسبق — خصم 50 دج على التوصيل</div>
+          </div>
+        </label>
+        <div id="ccp-details" style="display:none;background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:11px 13px;font-size:11px;color:rgba(255,255,255,.65);line-height:1.8">
+          <div style="font-size:10px;color:rgba(168,85,247,.7);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">تفاصيل الحساب البريدي</div>
+          <div>رقم الحساب: <span style="color:rgba(192,132,252,.9);font-family:Cinzel,serif">0023456789 01</span></div>
+          <div>الاسم: <span style="color:rgba(255,255,255,.8)">WOW STORE</span></div>
+          <div style="margin-top:7px;font-size:10px;color:rgba(251,191,36,.7)">⚠ ارسل صورة الإيصال عبر الواتساب بعد التحويل</div>
+          <div class="fl" style="margin-top:9px;margin-bottom:0"><label style="font-size:9px">رقم الإيصال (اختياري)</label><input class="inp" id="o-ccp-ref" type="text" placeholder="رقم وصل الدفع..." style="font-size:11px"></div>
+        </div>
+      </div>
+    </div>
     <div class="op">
       <div class="op-row"><span class="op-l">المنتجات</span><span class="op-v" id="op-sub">0 دج</span></div>
       <div class="op-row"><span class="op-l">التوصيل</span><span class="op-v" id="op-del">-- دج</span></div>
+      <div class="op-row" id="op-ccp-disc-row" style="display:none"><span class="op-l" style="color:rgba(74,222,128,.7)">خصم CCP</span><span class="op-v" style="color:rgba(74,222,128,.8)">- 50 دج</span></div>
       <div class="op-tot"><span class="op-tl">TOTAL</span><span class="op-tv" id="op-tot">0 دج</span></div>
     </div>
     <button class="btn-main" id="chk-btn">تاكيد الطلبية &#8594;</button>
@@ -874,7 +910,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <div class="mod" style="max-width:500px">
     <div class="mod-title">الاسئلة الشائعة<button class="xbtn" id="faq-xbtn">&#10005;</button></div>
     <div style="display:flex;flex-direction:column;gap:14px">
-      ${[["كم تستغرق مدة التوصيل؟","تتراوح مدة التوصيل بين 2 الى 5 ايام عمل حسب الولاية."],["هل يمكنني الاستبدال؟","نعم، نضمن الاستبدال في غضون 3 ايام من استلام المنتج شرط ان يكون بحالته الاصلية."],["ما هي طريقة الدفع؟","الدفع نقداً عند الاستلام فقط. لا نقبل اي دفع مسبق."],["كيف احدد مقاسي الصحيح؟","استخدم حاسبة المقاس داخل صفحة المنتج بادخال وزنك وطولك وجنسك."],["هل التوصيل متوفر في ولايتي؟","نوصل لجميع الولايات الـ 58 في الجزائر."]].map(([q,a])=>`<div style="border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:13px"><div style="font-size:12px;font-weight:600;color:rgba(192,132,252,.75);margin-bottom:5px">${q}</div><div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.7">${a}</div></div>`).join("")}
+      ${[["كم تستغرق مدة التوصيل؟","تتراوح مدة التوصيل بين 2 الى 5 ايام عمل حسب الولاية."],["هل يمكنني الاستبدال؟","نعم، نضمن الاستبدال في غضون 3 ايام من استلام المنتج شرط ان يكون بحالته الاصلية."],["ما هي طرق الدفع المتاحة؟","الدفع نقداً عند الاستلام — او الدفع المسبق عبر CCP البريدي للحصول على خصم 50 دج على التوصيل."],["كيف احدد مقاسي الصحيح؟","استخدم حاسبة المقاس داخل صفحة المنتج بادخال وزنك وطولك وجنسك."],["هل التوصيل متوفر في ولايتي؟","نوصل لجميع الولايات الـ 58 في الجزائر."],["كيف يعمل الدفع بـ CCP؟","اختر الدفع المسبق بـ CCP عند الطلب، حوّل المبلغ لحسابنا البريدي، ثم ارسل صورة الإيصال عبر الواتساب لتأكيد الطلبية."]].map(([q,a])=>`<div style="border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:13px"><div style="font-size:12px;font-weight:600;color:rgba(192,132,252,.75);margin-bottom:5px">${q}</div><div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.7">${a}</div></div>`).join("")}
     </div>
   </div>
 </div>
@@ -1139,9 +1175,17 @@ var WOW = (function(){
     }catch(e){}
   }
 
-  /* ── MODALS — FIXED ── */
+  /* ── MODALS — FIXED — full screen cover ── */
   function _openMod(id){
-    try{var el=document.getElementById(id);if(el){el.classList.add("on");el.style.display="flex";}}catch(e){}
+    try{
+      var el=document.getElementById(id);
+      if(el){
+        el.classList.add("on");
+        el.style.display="flex";
+        // Scroll modal to top
+        requestAnimationFrame(function(){el.scrollTop=0;});
+      }
+    }catch(e){}
   }
   function _closeMod(id){
     try{var el=document.getElementById(id);if(el){el.classList.remove("on");el.style.display="";}
@@ -1498,8 +1542,10 @@ var WOW = (function(){
     var sub=_cart.reduce(function(a,c){return a+c.price*c.qty;},0);
     var oDelEl=document.getElementById("o-del");
     var fee=oDelEl&&oDelEl.value==="h"?1100:700;
+    var isCcp=document.getElementById("pay-ccp")&&document.getElementById("pay-ccp").checked;
+    var ccpDisc=isCcp?50:0;
     var opDel=document.getElementById("op-del");if(opDel)opDel.textContent=_fmt(fee);
-    var opTot=document.getElementById("op-tot");if(opTot)opTot.textContent=_fmt(sub+fee);
+    var opTot=document.getElementById("op-tot");if(opTot)opTot.textContent=_fmt(sub+fee-ccpDisc);
   }
   function _submitOrder(){
     var name=(document.getElementById("o-name")||{}).value||"";name=name.trim();
@@ -1519,11 +1565,16 @@ var WOW = (function(){
     if(!_cart.length){_toast("السلة فارغة");return;}
     var fee=dt==="h"?1100:700;
     var dlbl=dt==="h"?"للمنزل":"للمكتب / Stop Desk";
+    var isCcp=document.getElementById("pay-ccp")&&document.getElementById("pay-ccp").checked;
+    var payMethod=isCcp?"ccp":"cod";
+    var ccpRef=isCcp?((document.getElementById("o-ccp-ref")||{}).value||"").trim():"";
+    var ccpDisc=isCcp?50:0;
     var sub=_cart.reduce(function(a,c){return a+c.price*c.qty;},0);
-    var total=sub+fee;
+    var total=sub+fee-ccpDisc;
     var btn=document.getElementById("chk-btn");if(btn){btn.disabled=true;btn.innerHTML="<span class='spin'></span>";}
     _api("/api/orders",{method:"POST",body:JSON.stringify({
       name:name,phone1:p1,phone2:p2,email:em,wilaya:wilaya,commune:commune,dlbl:dlbl,fee:fee,sub:sub,total:total,
+      payMethod:payMethod,ccpRef:ccpRef,
       items:_cart.map(function(c){return{id:c.id,name:c.name,price:c.price,qty:c.qty,size:c.size,img:c.img};})
     })})
     .then(function(r){return r.json();})
@@ -1542,6 +1593,7 @@ var WOW = (function(){
         +"<div class='inv-f'><small>الايميل</small><span>"+(em?_esc(em):"—")+"</span></div>"
         +"<div class='inv-f' style='grid-column:1/-1'><small>الولاية / البلدية</small><span>"+_esc(wilaya)+" — "+_esc(commune)+"</span></div>"
         +"<div class='inv-f' style='grid-column:1/-1'><small>التوصيل</small><span>"+_esc(dlbl)+"</span></div>"
+        +"<div class='inv-f' style='grid-column:1/-1'><small>طريقة الدفع</small><span>"+(payMethod==="ccp"?"دفع مسبق CCP"+(ccpRef?" — "+_esc(ccpRef):""):"الدفع عند الاستلام")+"</span></div>"
         +"</div>";
       _cart.forEach(function(c){ih+="<div class='inv-item'><span style='color:#333;max-width:60%'>"+_esc(c.name)+" ["+_esc(c.size)+"] x"+c.qty+"</span><span style='font-weight:600;color:#111'>"+_fmt(c.price*c.qty)+"</span></div>";});
       ih+="<div class='inv-tots'><div class='inv-row'><span>المنتجات</span><span>"+_fmt(sub)+"</span></div>"
@@ -1953,78 +2005,168 @@ var WOW = (function(){
     }
   }
 
-  /* ── STATIC GRAY GLITCH ENGINE ── */
+  /* ══ STATIC GRAY GLITCH — ACCUMULATING + WOW SCRUB ══
+     يتراكم تدريجياً حتى 40% من الشاشة ثم يظهر WOW يمحو التشويش
+  ══════════════════════════════════════════════════════ */
   function _initStaticGray(){
     var cvs=document.getElementById("sg-canvas");if(!cvs)return;
     var ctx=cvs.getContext("2d");
-    function resize(){cvs.width=window.innerWidth;cvs.height=window.innerHeight;}
+    // Persistent coverage map — patches that stay
+    var _patches=[];
+    var _coverPct=0; // 0..1
+    var _phase="idle"; // idle | growing | scrubbing | clearing
+    var _raf=null;
+
+    function resize(){
+      cvs.width=window.innerWidth;
+      cvs.height=window.innerHeight;
+      // Redraw persistent patches on resize
+      _redrawAll();
+    }
     resize();
-    window.addEventListener("resize",resize,{passive:true});
+    window.addEventListener("resize",function(){resize();},{passive:true});
+
     function RR(a,b){return a+Math.random()*(b-a);}
-    function drawStatic(alpha){
-      ctx.clearRect(0,0,cvs.width,cvs.height);
-      var W=cvs.width,H=cvs.height;
-      var edgeDefs=[
-        {x:W-RR(18,55),y:RR(0,H*0.15),w:RR(18,55),h:RR(H*0.05,H*0.22)},
-        {x:W-RR(8,30),y:RR(H*0.3,H*0.55),w:RR(8,30),h:RR(H*0.03,H*0.12)},
-        {x:W-RR(4,20),y:RR(H*0.65,H*0.9),w:RR(4,20),h:RR(H*0.04,H*0.10)},
-        {x:0,y:RR(H*0.1,H*0.3),w:RR(6,28),h:RR(H*0.04,H*0.14)},
-        {x:0,y:RR(H*0.5,H*0.75),w:RR(4,18),h:RR(H*0.03,H*0.09)},
-        {x:RR(0,W*0.2),y:0,w:RR(W*0.05,W*0.18),h:RR(2,12)},
-        {x:RR(W*0.5,W*0.8),y:0,w:RR(W*0.04,W*0.14),h:RR(1,8)},
-        {x:RR(0,W*0.3),y:H-RR(2,14),w:RR(W*0.06,W*0.2),h:RR(2,14)},
-        {x:RR(W*0.55,W*0.85),y:H-RR(1,9),w:RR(W*0.05,W*0.15),h:RR(1,9)}
-      ];
-      var surfDefs=[];
-      var surfCount=3+Math.floor(Math.random()*4);
-      for(var s=0;s<surfCount;s++){surfDefs.push({x:RR(W*0.08,W*0.88),y:RR(H*0.08,H*0.88),w:RR(3,22),h:RR(1,8)});}
-      var allPatches=edgeDefs.concat(surfDefs);
-      allPatches.forEach(function(p){
-        var pw=Math.max(1,Math.round(p.w)),ph=Math.max(1,Math.round(p.h));
-        var px=Math.round(p.x),py=Math.round(p.y);
-        var pixelData=ctx.createImageData(pw,ph);
-        var d=pixelData.data;
-        for(var i=0;i<d.length;i+=4){
-          var v=Math.random()<0.5?Math.floor(Math.random()*60):Math.floor(180+Math.random()*75);
-          d[i]=v;d[i+1]=v;d[i+2]=v;
-          d[i+3]=Math.floor(alpha*(0.5+Math.random()*0.5)*255);
-        }
-        ctx.putImageData(pixelData,px,py);
-        if(Math.random()<0.3&&ph>2){
-          var ly=py+Math.floor(Math.random()*(ph-1));
-          ctx.beginPath();ctx.moveTo(px,ly);ctx.lineTo(px+pw,ly);
-          ctx.strokeStyle=Math.random()<0.5?"rgba(255,255,255,"+(alpha*0.22)+")":"rgba(0,0,0,"+(alpha*0.16)+")";
-          ctx.lineWidth=0.5;ctx.stroke();
-        }
-      });
-      if(Math.random()<0.18){
-        var hy=RR(H*0.05,H*0.95);
-        var grd=ctx.createLinearGradient(0,0,W,0);
-        grd.addColorStop(0,"rgba(0,0,0,0)");
-        grd.addColorStop(0.2,"rgba(180,180,180,"+(alpha*0.06)+")");
-        grd.addColorStop(0.5,"rgba(220,220,220,"+(alpha*0.11)+")");
-        grd.addColorStop(0.8,"rgba(160,160,160,"+(alpha*0.06)+")");
-        grd.addColorStop(1,"rgba(0,0,0,0)");
-        ctx.beginPath();ctx.moveTo(0,hy);ctx.lineTo(W,hy);
-        ctx.strokeStyle=grd;ctx.lineWidth=0.7;ctx.stroke();
+
+    // Draw a single noise patch
+    function _drawPatch(px,py,pw,ph,alpha){
+      pw=Math.max(1,Math.round(pw));ph=Math.max(1,Math.round(ph));
+      px=Math.round(px);py=Math.round(py);
+      if(px<0||py<0||px>=cvs.width||py>=cvs.height)return;
+      pw=Math.min(pw,cvs.width-px);ph=Math.min(ph,cvs.height-py);
+      if(pw<=0||ph<=0)return;
+      var img=ctx.createImageData(pw,ph);
+      var d=img.data;
+      for(var i=0;i<d.length;i+=4){
+        var v=Math.random()<0.45?Math.floor(Math.random()*55):Math.floor(175+Math.random()*80);
+        d[i]=v;d[i+1]=v;d[i+2]=v;
+        d[i+3]=Math.floor(alpha*(0.45+Math.random()*0.55)*255);
       }
+      ctx.putImageData(img,px,py);
     }
-    function cycle(){
-      var alpha=0.035+Math.random()*0.06;
-      drawStatic(alpha);
-      var fadeInTime=2000+Math.random()*2500;
-      cvs.style.transition="opacity "+fadeInTime+"ms cubic-bezier(.4,0,.2,1)";
-      requestAnimationFrame(function(){cvs.style.opacity=(alpha*1.3).toString();});
-      var stayTime=(15+Math.random()*35)*1000;
-      setTimeout(function(){
-        var fadeOutTime=2200+Math.random()*3500;
-        cvs.style.transition="opacity "+fadeOutTime+"ms cubic-bezier(.4,0,.2,1)";
-        cvs.style.opacity="0";
-        var restTime=(25+Math.random()*80)*1000;
-        setTimeout(function(){drawStatic(0.035+Math.random()*0.06);cycle();},restTime);
-      },stayTime);
+
+    // Redraw all accumulated patches
+    function _redrawAll(){
+      ctx.clearRect(0,0,cvs.width,cvs.height);
+      _patches.forEach(function(p){_drawPatch(p.x,p.y,p.w,p.h,p.a);});
     }
-    setTimeout(cycle,(10+Math.random()*14)*1000);
+
+    // Add a new random patch to coverage
+    function _addPatch(){
+      var W=cvs.width,H=cvs.height;
+      // Bias toward edges first, then spread inward as coverage grows
+      var edgeBias=1-_coverPct; // high edge bias when low coverage
+      var p;
+      if(Math.random()<edgeBias*0.7){
+        // Edge patch
+        var side=Math.floor(Math.random()*4);
+        if(side===0)p={x:RR(0,W*0.25),y:RR(0,H),w:RR(8,60),h:RR(4,40)};
+        else if(side===1)p={x:RR(W*0.75,W-60),y:RR(0,H),w:RR(8,60),h:RR(4,40)};
+        else if(side===2)p={x:RR(0,W),y:RR(0,H*0.2),w:RR(20,120),h:RR(2,18)};
+        else p={x:RR(0,W),y:RR(H*0.8,H-18),w:RR(20,120),h:RR(2,18)};
+      } else {
+        // Interior patch — more spread as coverage grows
+        p={x:RR(0,W*0.9),y:RR(0,H*0.9),w:RR(5,80),h:RR(2,30)};
+      }
+      p.a=0.06+Math.random()*0.1;
+      _patches.push(p);
+      _drawPatch(p.x,p.y,p.w,p.h,p.a);
+      // Estimate coverage (rough: sum of patch areas / screen area)
+      var total=_patches.reduce(function(s,pp){return s+pp.w*pp.h;},0);
+      _coverPct=Math.min(1,total/(cvs.width*cvs.height));
+    }
+
+    // WOW SCRUB — logo sweeps across erasing noise
+    function _doWowScrub(onDone){
+      var W=cvs.width,H=cvs.height;
+      var scrubX=W+10; // start from right
+      var LOGO_W=Math.max(120,W*0.3);
+      var LOGO_H=LOGO_W*0.22;
+      var logoY=H/2-LOGO_H/2;
+      var speed=W/120; // pixels per frame (about 2s at 60fps)
+      var glowRadius=LOGO_W*0.6;
+
+      function frame(){
+        // Erase strip under the logo with radial wipe
+        var cx=scrubX+LOGO_W/2;
+        // Clear the canvas strip ahead of logo
+        var eraseX=Math.max(0,scrubX-glowRadius*0.5);
+        var eraseW=Math.min(cvs.width-eraseX, LOGO_W+glowRadius);
+        if(eraseW>0){
+          ctx.save();
+          // Gradient erase
+          var grd=ctx.createLinearGradient(eraseX,0,eraseX+eraseW,0);
+          grd.addColorStop(0,"rgba(0,0,0,0)");
+          grd.addColorStop(0.3,"rgba(5,5,5,.85)");
+          grd.addColorStop(0.7,"rgba(5,5,5,.95)");
+          grd.addColorStop(1,"rgba(0,0,0,0)");
+          ctx.globalCompositeOperation="destination-out";
+          ctx.fillStyle=grd;
+          ctx.fillRect(eraseX,0,eraseW,cvs.height);
+          ctx.restore();
+        }
+
+        // Draw WOW text
+        var fs=Math.max(28,Math.round(LOGO_H*0.9));
+        ctx.save();
+        ctx.globalAlpha=Math.min(1,(W-scrubX+LOGO_W)/(LOGO_W));
+        // Glow
+        ctx.shadowColor="rgba(168,85,247,.9)";
+        ctx.shadowBlur=fs*0.6;
+        ctx.font="900 "+fs+"px Cinzel, serif";
+        ctx.fillStyle="rgba(255,255,255,.92)";
+        ctx.textAlign="center";
+        ctx.textBaseline="middle";
+        ctx.fillText("WOW",scrubX+LOGO_W/2,H/2);
+        ctx.restore();
+
+        scrubX-=speed;
+        if(scrubX>-LOGO_W*1.5){
+          _raf=requestAnimationFrame(frame);
+        } else {
+          // Clear everything
+          ctx.clearRect(0,0,W,H);
+          _patches=[];_coverPct=0;
+          cvs.style.opacity="0";
+          if(onDone)onDone();
+        }
+      }
+      cvs.style.opacity="1";
+      _raf=requestAnimationFrame(frame);
+    }
+
+    // Main accumulation cycle
+    function _growCycle(){
+      if(_phase!=="growing")return;
+      _addPatch();
+      cvs.style.opacity="1";
+      cvs.style.transition="opacity 1.5s ease";
+
+      // Check if coverage reached 35-45%
+      if(_coverPct>=0.35+Math.random()*0.1){
+        _phase="scrubbing";
+        // Pause 0.8s then scrub
+        setTimeout(function(){
+          _doWowScrub(function(){
+            _phase="idle";
+            // Rest 40-90s then grow again
+            setTimeout(function(){
+              _phase="growing";
+              _growCycle();
+            },(40+Math.random()*60)*1000);
+          });
+        },800);
+        return;
+      }
+      // Add patch every 0.8-2s
+      setTimeout(_growCycle,(800+Math.random()*1200));
+    }
+
+    // Start first cycle after 8-15s
+    setTimeout(function(){
+      _phase="growing";
+      _growCycle();
+    },(8+Math.random()*10)*1000);
   }
 
   /* ── GLITCH BAR ── */
@@ -2098,6 +2240,20 @@ var WOW = (function(){
       if(oWilaya)oWilaya.addEventListener("change",_updPreview);
       var oDel=document.getElementById("o-del");
       if(oDel)oDel.addEventListener("change",_updPreview);
+
+      // ── CCP PAYMENT TOGGLE ──
+      function _toggleCcp(){
+        var isCcp=document.getElementById("pay-ccp")&&document.getElementById("pay-ccp").checked;
+        var det=document.getElementById("ccp-details");
+        var discRow=document.getElementById("op-ccp-disc-row");
+        if(det)det.style.display=isCcp?"block":"none";
+        if(discRow)discRow.style.display=isCcp?"flex":"none";
+        _updPreview();
+      }
+      var payCod=document.getElementById("pay-cod");
+      var payCcp=document.getElementById("pay-ccp");
+      if(payCod)payCod.addEventListener("change",_toggleCcp);
+      if(payCcp)payCcp.addEventListener("change",_toggleCcp);
 
       // ── SEARCH ──
       var searchInp=document.getElementById("search-inp");
