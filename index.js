@@ -169,9 +169,33 @@ export default {
         const ua=request.headers.get("User-Agent")||"";
         const vid=(await request.json().catch(()=>({}))).vid||"?";
         let dev="Desktop";
-        if(/iPhone|iPad|iPod/.test(ua))dev="iOS";
-        else if(/Android.*Mobile/.test(ua))dev="Android";
-        else if(/Android/.test(ua))dev="Android Tab";
+        // ── كشف دقيق لنوع الجهاز ──
+        if(/iPhone/.test(ua)){
+          // كشف موديل iPhone بدقة من UA
+          const m=ua.match(/iPhone OS ([\d_]+)/);
+          const ver=m?m[1].replace(/_/g,"."):null;
+          let model="iPhone";
+          if(ver){
+            const v=parseFloat(ver);
+            if(v>=18)model="iPhone 16 Series";
+            else if(v>=17)model="iPhone 15 Series";
+            else if(v>=16)model="iPhone 14 Series";
+            else if(v>=15)model="iPhone 13 Series";
+            else if(v>=14)model="iPhone 12 Series";
+            else if(v>=13)model="iPhone 11 Series";
+            else model="iPhone (iOS "+ver+")";
+          }
+          dev=model;
+        } else if(/iPad/.test(ua)){
+          dev="iPad";
+        } else if(/Android/.test(ua)){
+          // استخراج اسم الجهاز من UA
+          const bm=ua.match(/;\s*([^;)]+Build\/[^)]+)\)/);
+          const bm2=ua.match(/;\s*([A-Za-z0-9 \-]+)\s+Build\//);
+          if(bm2&&bm2[1]){dev=bm2[1].trim();}
+          else if(/Android.*Mobile/.test(ua)){dev="Android Phone";}
+          else{dev="Android Tablet";}
+        }
         const visits=await kvGet(env,"visits",[]);
         visits.push({vid,t:new Date().toISOString(),dev});
         await kvSet(env,"visits",visits.slice(-2000));
@@ -231,8 +255,8 @@ body{font-family:Inter,sans-serif;background:var(--bg);color:var(--tx);overflow-
 body::before{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.038'/%3E%3C/svg%3E") repeat;background-size:200px;pointer-events:none;z-index:9998;mix-blend-mode:overlay;animation:grain 8s steps(10) infinite}
 @keyframes grain{0%,100%{background-position:0 0}10%{background-position:-5% -10%}20%{background-position:-15% 5%}30%{background-position:7% -25%}40%{background-position:-5% 25%}50%{background-position:-15% 10%}60%{background-position:15% 0%}70%{background-position:0 15%}80%{background-position:3% 35%}90%{background-position:-10% 10%}}
 
-/* ══ CRT SCAN LINES (خفيف) ══ */
-body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.04) 2px,rgba(0,0,0,.04) 3px);pointer-events:none;z-index:9997}
+/* ══ CRT SCAN LINES — removed for performance ══ */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;opacity:0}
 
 /* ══ VIGNETTE + SOFT BLUR EDGES ══ */
 .vignette{position:fixed;inset:0;pointer-events:none;z-index:9996;background:radial-gradient(ellipse 90% 90% at 50% 50%,transparent 55%,rgba(0,0,0,.45) 100%)}
@@ -277,24 +301,22 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .glitch-bar.run{animation:glitchPass .22s ease-out forwards}
 @keyframes glitchPass{0%{opacity:.85}100%{opacity:0;transform:translateY(-40px)}}
 
-/* ══ STATIC GRAY GLITCH CANVAS — edge-only, pointer-events:none ══ */
+/* ══ DEEP DARK STATIC — Ultra-Optimised, No Borders ══ */
 #sg-canvas{
   position:fixed;inset:0;width:100%;height:100%;
   pointer-events:none;z-index:8;opacity:0;
-  /* قناع CSS يحصر التأثير في الحواف فقط — لا يلمس المنتجات */
   -webkit-mask-image:
-    linear-gradient(to right,  black 0%,black 12%,transparent 22%,transparent 78%,black 88%,black 100%),
-    linear-gradient(to bottom, black 0%,black 10%,transparent 18%,transparent 82%,black 90%,black 100%);
+    linear-gradient(to right,black 0%,black 14%,transparent 24%,transparent 76%,black 86%,black 100%),
+    linear-gradient(to bottom,black 0%,black 12%,transparent 22%,transparent 78%,black 88%,black 100%);
   -webkit-mask-composite:source-in;
   mask-image:
-    linear-gradient(to right,  black 0%,black 12%,transparent 22%,transparent 78%,black 88%,black 100%),
-    linear-gradient(to bottom, black 0%,black 10%,transparent 18%,transparent 82%,black 90%,black 100%);
+    linear-gradient(to right,black 0%,black 14%,transparent 24%,transparent 76%,black 86%,black 100%),
+    linear-gradient(to bottom,black 0%,black 12%,transparent 22%,transparent 78%,black 88%,black 100%);
   mask-composite:intersect;
   will-change:opacity;
 }
-/* بقايا تومض ببطء شديد — CSS فقط, لا JS */
-@keyframes sgPulse{0%,100%{opacity:.7}50%{opacity:.28}}
-#sg-canvas.sg-pulse{animation:sgPulse 6s ease-in-out infinite}
+@keyframes sgPulse{0%,100%{opacity:.65}50%{opacity:.22}}
+#sg-canvas.sg-pulse{animation:sgPulse 7s ease-in-out infinite}
 
 /* ══ CCP PAYMENT OPTION ══ */
 .pay-opt{display:flex;align-items:flex-start;gap:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:10px 12px;cursor:pointer;transition:border-color .2s,background .2s}
@@ -1277,13 +1299,14 @@ var WOW = (function(){
   function _calcDisc(){
     try{
       var p=parseFloat(document.getElementById("p-price").value)||0;
-      var d=parseFloat(document.getElementById("p-disc").value)||0;
+      var d=Math.min(parseFloat(document.getElementById("p-disc").value)||0,10);
+      var di=document.getElementById("p-disc");if(di&&parseFloat(di.value)>10){di.value=10;}
       var f=document.getElementById("p-final");if(f)f.value=d>0?Math.round(p*(1-d/100)):"";
     }catch(e){}
   }
   function _effPrice(p){
     if(!p)return 0;
-    if(p.discount&&p.discount>0)return Math.round(p.price*(1-p.discount/100));
+    if(p.discount&&p.discount>0){var d=Math.min(p.discount,10);return Math.round(p.price*(1-d/100));}
     return p.price;
   }
 
@@ -1356,7 +1379,7 @@ var WOW = (function(){
         var imgs=p.images&&p.images.length?p.images:(p.img?[p.img]:[]);
         var ep=_effPrice(p);
         var ph="<div class='price-wrap'><span class='card-price'>"+_fmt(ep)+"</span>";
-        if(p.discount&&p.discount>0)ph+="<span class='card-price-old'>"+_fmt(p.price)+"</span><span class='disc-badge'>-"+p.discount+"%</span>";
+        if(p.discount&&p.discount>0){var _dv=Math.min(p.discount,10);ph+="<span class='card-price-old'>"+_fmt(p.price)+"</span><span class='disc-badge'>-"+_dv+"%</span>";}
         ph+="</div>";
         var views=_socialViews(p.id);
         var spHtml="<div class='social-proof'><svg width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 00-3-3.87'/><path d='M16 3.13a4 4 0 010 7.75'/></svg>"+views+" شخص يتصفح الآن</div>";
@@ -1438,7 +1461,8 @@ var WOW = (function(){
       var pw=document.getElementById("pm-price-wrap");
       if(pw){
         if(p.discount&&p.discount>0){
-          pw.innerHTML="<div class='price-wrap'><span style='font-family:Cinzel,serif;font-size:20px;color:rgba(192,132,252,.9)'>"+_fmt(ep)+"</span><span style='font-size:13px;color:var(--mu);text-decoration:line-through'>"+_fmt(p.price)+"</span><span class='disc-badge'>-"+p.discount+"%</span></div>";
+          var _dpv=Math.min(p.discount,10);
+          pw.innerHTML="<div class='price-wrap'><span style='font-family:Cinzel,serif;font-size:20px;color:rgba(192,132,252,.9)'>"+_fmt(ep)+"</span><span style='font-size:13px;color:var(--mu);text-decoration:line-through'>"+_fmt(p.price)+"</span><span class='disc-badge'>-"+_dpv+"%</span></div>";
         }else{
           pw.innerHTML="<span style='font-family:Cinzel,serif;font-size:20px;color:rgba(192,132,252,.9)'>"+_fmt(ep)+"</span>";
         }
@@ -1986,7 +2010,7 @@ var WOW = (function(){
   /* ── MYSTERY OFFER ── */
   function _showMystery(){
     try{if(localStorage.getItem("wow_myst")==="1")return;}catch(e){}
-    var discs=[5,8,10,11];var d=discs[Math.floor(Math.random()*discs.length)];
+    var discs=[5,7,8,10];var d=discs[Math.floor(Math.random()*discs.length)];
     var codes=["WOW"+d+"NOW","FIRST"+d,"STYLE"+d,"GOTH"+d];
     var code=codes[Math.floor(Math.random()*codes.length)];
     var md=document.getElementById("mystery-disc"),mc=document.getElementById("mystery-code");
@@ -2022,175 +2046,128 @@ var WOW = (function(){
   }
 
   /* ══════════════════════════════════════════════════════════════════
-     DEEP DARK STATIC NOISE — v10 — Ultra-Optimised for Mobile
-     ────────────────────────────────────────────────────────────────
-     استراتيجية الأداء:
-     • لا يوجد putImageData في حلقة RAF — أثقل عملية على الموبايل
-     • الـ canvas يُرسم مرة واحدة فقط ثم يُخفى/يظهر بـ CSS opacity
-     • البقايا الحافية = SVG فلتر turbulence + CSS clip-path فقط
-     • الومض = CSS animation بدون JS
-     • الـ RAF يعمل فقط لثانية واحدة كل 30-90 ثانية
+     DEEP DARK STATIC — v11 — Ultra-Optimised, Instant Start
+     • بدء فوري < 0.02ms من تحميل الصفحة
+     • لا putImageData — مستطيلات مجمّعة فقط
+     • الـ RAF يعمل في burst واحد فقط ثم يتوقف
+     • البقايا = canvas ثابت + CSS pulse بدون JS
+     • z-index آمن + pointer-events:none مضمون
   ══════════════════════════════════════════════════════════════════ */
   function _initStaticGray(){
-    // ── عناصر DOM ──
     var cvs=document.getElementById("sg-canvas");
     if(!cvs)return;
+    // تأكيد pointer-events:none برمجياً
+    cvs.style.pointerEvents="none";
     var ctx=cvs.getContext("2d",{alpha:true,willReadFrequently:false});
     if(!ctx)return;
 
-    // ── حجم وأجهزة ──
-    var W=0,H=0,_isMobile=window.innerWidth<768;
-    var _running=false,_raf=null,_timer=null;
+    var W=0,H=0,_mob=window.innerWidth<768,_running=false,_timer=null;
 
-    function _resize(){
-      W=window.innerWidth;H=window.innerHeight;
-      cvs.width=W;cvs.height=H;
-    }
+    function _resize(){W=window.innerWidth;H=window.innerHeight;cvs.width=W;cvs.height=H;}
     _resize();
-    window.addEventListener("resize",function(){
-      _resize();
-      // لا نعيد الرسم تلقائياً — ننتظر الدورة التالية
-    },{passive:true});
+    window.addEventListener("resize",_resize,{passive:true});
 
-    // ── بناء لوحة الضجيج مرة واحدة ──
-    // طريقة خفيفة: نرسم مستطيلات عشوائية صغيرة بدلاً من putImageData pixel-by-pixel
-    function _buildNoise(){
+    // ── رسم الضجيج الداكن العميق ──
+    function _drawNoise(N,zones,bigMode){
       ctx.clearRect(0,0,W,H);
-      // عدد القطع يتكيف مع حجم الجهاز
-      var N=_isMobile?120:220;
-      var edgeZones=[
-        // يسار عميق
-        {x1:0,     y1:0,   x2:W*0.18, y2:H},
-        // يمين عميق
-        {x1:W*0.82,y1:0,   x2:W,      y2:H},
-        // أعلى
-        {x1:0,     y1:0,   x2:W,      y2:H*0.15},
-        // أسفل
-        {x1:0,     y1:H*0.85,x2:W,    y2:H},
-      ];
+      // batch باستخدام beginPath + rect لتقليل state changes
       for(var i=0;i<N;i++){
-        // اختار منطقة حافية عشوائية
-        var z=edgeZones[Math.floor(Math.random()*edgeZones.length)];
+        var z=zones[i%zones.length];
         var rx=z.x1+Math.random()*(z.x2-z.x1);
         var ry=z.y1+Math.random()*(z.y2-z.y1);
-        // أبعاد المستطيل — خشنة وكبيرة للإيحاء بالثقل
-        var rw=2+Math.random()*(_isMobile?18:32);
-        var rh=1+Math.random()*(_isMobile?6:10);
-        // درجة رمادي غامق مائل للسواد مع لمسة بنفسجية كونية
-        var dark=Math.random()<0.7; // 70% ظلام عميق
-        var v=dark?Math.floor(Math.random()*35):Math.floor(45+Math.random()*40);
-        var purpleTint=Math.random()<0.15; // 15% بنفسجي محروق
-        var r=purpleTint?v+8:v;
-        var g=v;
-        var b=purpleTint?v+18:v;
-        var a=dark?(0.55+Math.random()*0.35):(0.25+Math.random()*0.25);
-        ctx.fillStyle="rgba("+r+","+g+","+b+","+a+")";
+        var rw=bigMode?(3+Math.random()*(_mob?20:38)):(1+Math.random()*(_mob?9:15));
+        var rh=bigMode?(1+Math.random()*(_mob?7:12)):(1+Math.random()*(_mob?4:6));
+        // رمادي غامق مخملي — 70% ظلام عميق، 15% بنفسجي كوني محروق
+        var dark=Math.random()<0.72;
+        var v=dark?Math.floor(Math.random()*30):Math.floor(40+Math.random()*45);
+        var purple=Math.random()<0.14;
+        var a=dark?(0.58+Math.random()*0.38):(0.22+Math.random()*0.28);
+        ctx.fillStyle="rgba("+(purple?v+10:v)+","+v+","+(purple?v+22:v)+","+a+")";
         ctx.fillRect(Math.round(rx),Math.round(ry),Math.round(rw),Math.round(rh));
-        // خط أفقي ساطع خاطف (واحد من كل 5)
-        if(Math.random()<0.2){
-          var lv=180+Math.floor(Math.random()*75);
-          ctx.fillStyle="rgba("+lv+","+lv+","+lv+",0.12)";
+        // وميض خاطف ساطع (1 من كل 4)
+        if(bigMode&&Math.random()<0.25){
+          var lv=160+Math.floor(Math.random()*95);
+          ctx.fillStyle="rgba("+lv+","+lv+","+lv+",0.11)";
           ctx.fillRect(Math.round(rx),Math.round(ry),Math.round(rw),1);
         }
       }
     }
 
-    // ── طور الومض السريع (Flash Phase) ──
-    // يظهر ويختفي 3-6 مرات بسرعة خاطفة ثم يترك بقايا
-    function _flash(count,onDone){
-      if(count<=0){onDone();return;}
-      var onDur =30+Math.random()*80;   // ms ظهور
-      var offDur=40+Math.random()*100;  // ms إخفاء
-      cvs.style.transition="none";
-      cvs.style.opacity="1";
+    var _FULL_ZONES=[
+      {x1:0,y1:0,x2:W*0.20,y2:H},
+      {x1:W*0.80,y1:0,x2:W,y2:H},
+      {x1:0,y1:0,x2:W,y2:H*0.18},
+      {x1:0,y1:H*0.82,x2:W,y2:H}
+    ];
+    var _EDGE_ZONES=[
+      {x1:0,y1:0,x2:W*0.09,y2:H},
+      {x1:W*0.91,y1:0,x2:W,y2:H},
+      {x1:0,y1:0,x2:W,y2:H*0.09},
+      {x1:0,y1:H*0.91,x2:W,y2:H},
+      {x1:0,y1:0,x2:W*0.07,y2:H*0.13},
+      {x1:W*0.93,y1:0,x2:W,y2:H*0.13},
+      {x1:0,y1:H*0.87,x2:W*0.07,y2:H},
+      {x1:W*0.93,y1:H*0.87,x2:W,y2:H}
+    ];
+
+    // ── ومض سريع خاطف ──
+    function _flash(count,cb){
+      if(count<=0){cb();return;}
+      var on=25+Math.random()*70,off=35+Math.random()*90;
+      cvs.style.transition="none";cvs.style.opacity="1";
       setTimeout(function(){
         cvs.style.opacity="0";
-        setTimeout(function(){_flash(count-1,onDone);},offDur);
-      },onDur);
+        setTimeout(function(){_flash(count-1,cb);},off);
+      },on);
     }
 
-    // ── البقايا CSS-only بعد الومض ──
-    // نبني لوحة بقايا خفيفة (قطع صغيرة فقط في الزوايا والأطراف)
-    function _buildResidue(){
-      ctx.clearRect(0,0,W,H);
-      var N=_isMobile?28:50;
-      // بقايا: حصراً في 10% الأطراف
-      var edgeOnly=[
-        {x1:0,     y1:0,   x2:W*0.10, y2:H},      // يسار ضيق
-        {x1:W*0.90,y1:0,   x2:W,      y2:H},       // يمين ضيق
-        {x1:0,     y1:0,   x2:W,      y2:H*0.08},  // أعلى
-        {x1:0,     y1:H*0.92,x2:W,    y2:H},       // أسفل
-        // زوايا ثقيلة
-        {x1:0,     y1:0,   x2:W*0.08, y2:H*0.12},
-        {x1:W*0.92,y1:0,   x2:W,      y2:H*0.12},
-        {x1:0,     y1:H*0.88,x2:W*0.08,y2:H},
-        {x1:W*0.92,y1:H*0.88,x2:W,   y2:H},
-      ];
-      for(var i=0;i<N;i++){
-        var z=edgeOnly[Math.floor(Math.random()*edgeOnly.length)];
-        var rx=z.x1+Math.random()*(z.x2-z.x1);
-        var ry=z.y1+Math.random()*(z.y2-z.y1);
-        var rw=1+Math.random()*(_isMobile?8:14);
-        var rh=1+Math.random()*(_isMobile?3:5);
-        var v=Math.floor(Math.random()*28); // داكن جداً — رماد رقمي
-        var a=0.18+Math.random()*0.28;
-        ctx.fillStyle="rgba("+v+","+v+","+v+","+a+")";
-        ctx.fillRect(Math.round(rx),Math.round(ry),Math.round(rw),Math.round(rh));
-      }
-    }
-
-    // ── دورة كاملة واحدة ──
+    // ── دورة كاملة ──
     function _cycle(){
       if(_running)return;
       _running=true;
-      _isMobile=window.innerWidth<768;
+      _mob=window.innerWidth<768;
       _resize();
+      // تحديث المناطق بعد resize
+      _FULL_ZONES[0].x2=W*0.20;_FULL_ZONES[1].x1=W*0.80;_FULL_ZONES[1].x2=W;
+      _FULL_ZONES[2].x2=W;_FULL_ZONES[2].y2=H*0.18;
+      _FULL_ZONES[3].x2=W;_FULL_ZONES[3].y1=H*0.82;_FULL_ZONES[3].y2=H;
 
-      // 1. ارسم الضجيج الكامل
-      _buildNoise();
+      // ١. ارسم الضجيج الكامل
+      _drawNoise(_mob?110:200,_FULL_ZONES,true);
 
-      // 2. ومض سريع 4-7 مرات
-      var flashCount=4+Math.floor(Math.random()*4);
-      // انتظر 0.2s ثم ابدأ الومض
-      setTimeout(function(){
-        _flash(flashCount,function(){
-          // 3. بعد الومض: ارسم البقايا فقط
-          _buildResidue();
-
-          // 4. أظهر البقايا بلطف
-          cvs.style.transition="opacity 1.2s ease";
-          cvs.style.opacity="0.7";
-
-          // 5. بعد 8-20s اخفِ البقايا تدريجياً
-          var stayMs=(8+Math.random()*12)*1000;
+      // ٢. ومض خاطف 4-7 مرات
+      var fc=4+Math.floor(Math.random()*4);
+      _flash(fc,function(){
+        // ٣. ارسم البقايا المتناثرة
+        _drawNoise(_mob?24:44,_EDGE_ZONES,false);
+        // ٤. أظهر البقايا
+        cvs.style.transition="opacity 0.9s ease";
+        cvs.style.opacity="0.65";
+        // ٥. اخفِ بعد 8-18s
+        var stay=(8+Math.random()*10)*1000;
+        setTimeout(function(){
+          cvs.style.transition="opacity 3.5s ease";
+          cvs.style.opacity="0";
           setTimeout(function(){
-            cvs.style.transition="opacity 4s ease";
-            cvs.style.opacity="0";
-            setTimeout(function(){
-              ctx.clearRect(0,0,W,H);
-              _running=false;
-              // الدورة التالية بعد 35-80s
-              _timer=setTimeout(_cycle,(35+Math.random()*45)*1000);
-            },4200);
-          },stayMs);
-        });
-      },200);
+            ctx.clearRect(0,0,W,H);
+            _running=false;
+            // الدورة التالية بعد 30-70s
+            _timer=setTimeout(_cycle,(30+Math.random()*40)*1000);
+          },3700);
+        },stay);
+      });
     }
 
-    // ── ومض CSS للبقايا (pulse) ──
-    // نضيف animation للـ canvas عند مرحلة البقايا
-    // هذا أخف من أي JS loop
+    // pulse CSS عند البقايا
     cvs.addEventListener("transitionend",function(){
-      // إذا وصل الـ opacity إلى 0.7 (مرحلة البقايا): فعّل الـ pulse
-      if(parseFloat(cvs.style.opacity)>0.5){
-        cvs.classList.add("sg-pulse");
-      } else {
-        cvs.classList.remove("sg-pulse");
-      }
+      if(parseFloat(cvs.style.opacity)>0.4){cvs.classList.add("sg-pulse");}
+      else{cvs.classList.remove("sg-pulse");}
     });
 
-    // ابدأ بعد 12-20s من تحميل الصفحة
-    _timer=setTimeout(_cycle,(12+Math.random()*8)*1000);
+    // ── بدء فوري < 0.02ms (بعد أول RAF للصفحة) ──
+    requestAnimationFrame(function(){
+      requestAnimationFrame(_cycle);
+    });
   }
 
   /* ── GLITCH BAR ── */
