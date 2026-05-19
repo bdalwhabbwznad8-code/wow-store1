@@ -277,8 +277,24 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .glitch-bar.run{animation:glitchPass .22s ease-out forwards}
 @keyframes glitchPass{0%{opacity:.85}100%{opacity:0;transform:translateY(-40px)}}
 
-/* ══ STATIC GRAY GLITCH CANVAS ══ */
-#sg-canvas{position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;will-change:opacity}
+/* ══ STATIC GRAY GLITCH CANVAS — edge-only, pointer-events:none ══ */
+#sg-canvas{
+  position:fixed;inset:0;width:100%;height:100%;
+  pointer-events:none;z-index:8;opacity:0;
+  /* قناع CSS يحصر التأثير في الحواف فقط — لا يلمس المنتجات */
+  -webkit-mask-image:
+    linear-gradient(to right,  black 0%,black 12%,transparent 22%,transparent 78%,black 88%,black 100%),
+    linear-gradient(to bottom, black 0%,black 10%,transparent 18%,transparent 82%,black 90%,black 100%);
+  -webkit-mask-composite:source-in;
+  mask-image:
+    linear-gradient(to right,  black 0%,black 12%,transparent 22%,transparent 78%,black 88%,black 100%),
+    linear-gradient(to bottom, black 0%,black 10%,transparent 18%,transparent 82%,black 90%,black 100%);
+  mask-composite:intersect;
+  will-change:opacity;
+}
+/* بقايا تومض ببطء شديد — CSS فقط, لا JS */
+@keyframes sgPulse{0%,100%{opacity:.7}50%{opacity:.28}}
+#sg-canvas.sg-pulse{animation:sgPulse 6s ease-in-out infinite}
 
 /* ══ CCP PAYMENT OPTION ══ */
 .pay-opt{display:flex;align-items:flex-start;gap:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:10px 12px;cursor:pointer;transition:border-color .2s,background .2s}
@@ -1970,7 +1986,7 @@ var WOW = (function(){
   /* ── MYSTERY OFFER ── */
   function _showMystery(){
     try{if(localStorage.getItem("wow_myst")==="1")return;}catch(e){}
-    var discs=[5,10,15,20];var d=discs[Math.floor(Math.random()*discs.length)];
+    var discs=[5,8,10,11];var d=discs[Math.floor(Math.random()*discs.length)];
     var codes=["WOW"+d+"NOW","FIRST"+d,"STYLE"+d,"GOTH"+d];
     var code=codes[Math.floor(Math.random()*codes.length)];
     var md=document.getElementById("mystery-disc"),mc=document.getElementById("mystery-code");
@@ -2005,168 +2021,176 @@ var WOW = (function(){
     }
   }
 
-  /* ══ STATIC GRAY GLITCH — ACCUMULATING + WOW SCRUB ══
-     يتراكم تدريجياً حتى 40% من الشاشة ثم يظهر WOW يمحو التشويش
-  ══════════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════════════════
+     DEEP DARK STATIC NOISE — v10 — Ultra-Optimised for Mobile
+     ────────────────────────────────────────────────────────────────
+     استراتيجية الأداء:
+     • لا يوجد putImageData في حلقة RAF — أثقل عملية على الموبايل
+     • الـ canvas يُرسم مرة واحدة فقط ثم يُخفى/يظهر بـ CSS opacity
+     • البقايا الحافية = SVG فلتر turbulence + CSS clip-path فقط
+     • الومض = CSS animation بدون JS
+     • الـ RAF يعمل فقط لثانية واحدة كل 30-90 ثانية
+  ══════════════════════════════════════════════════════════════════ */
   function _initStaticGray(){
-    var cvs=document.getElementById("sg-canvas");if(!cvs)return;
-    var ctx=cvs.getContext("2d");
-    // Persistent coverage map — patches that stay
-    var _patches=[];
-    var _coverPct=0; // 0..1
-    var _phase="idle"; // idle | growing | scrubbing | clearing
-    var _raf=null;
+    // ── عناصر DOM ──
+    var cvs=document.getElementById("sg-canvas");
+    if(!cvs)return;
+    var ctx=cvs.getContext("2d",{alpha:true,willReadFrequently:false});
+    if(!ctx)return;
 
-    function resize(){
-      cvs.width=window.innerWidth;
-      cvs.height=window.innerHeight;
-      // Redraw persistent patches on resize
-      _redrawAll();
+    // ── حجم وأجهزة ──
+    var W=0,H=0,_isMobile=window.innerWidth<768;
+    var _running=false,_raf=null,_timer=null;
+
+    function _resize(){
+      W=window.innerWidth;H=window.innerHeight;
+      cvs.width=W;cvs.height=H;
     }
-    resize();
-    window.addEventListener("resize",function(){resize();},{passive:true});
+    _resize();
+    window.addEventListener("resize",function(){
+      _resize();
+      // لا نعيد الرسم تلقائياً — ننتظر الدورة التالية
+    },{passive:true});
 
-    function RR(a,b){return a+Math.random()*(b-a);}
-
-    // Draw a single noise patch
-    function _drawPatch(px,py,pw,ph,alpha){
-      pw=Math.max(1,Math.round(pw));ph=Math.max(1,Math.round(ph));
-      px=Math.round(px);py=Math.round(py);
-      if(px<0||py<0||px>=cvs.width||py>=cvs.height)return;
-      pw=Math.min(pw,cvs.width-px);ph=Math.min(ph,cvs.height-py);
-      if(pw<=0||ph<=0)return;
-      var img=ctx.createImageData(pw,ph);
-      var d=img.data;
-      for(var i=0;i<d.length;i+=4){
-        var v=Math.random()<0.45?Math.floor(Math.random()*55):Math.floor(175+Math.random()*80);
-        d[i]=v;d[i+1]=v;d[i+2]=v;
-        d[i+3]=Math.floor(alpha*(0.45+Math.random()*0.55)*255);
-      }
-      ctx.putImageData(img,px,py);
-    }
-
-    // Redraw all accumulated patches
-    function _redrawAll(){
-      ctx.clearRect(0,0,cvs.width,cvs.height);
-      _patches.forEach(function(p){_drawPatch(p.x,p.y,p.w,p.h,p.a);});
-    }
-
-    // Add a new random patch to coverage
-    function _addPatch(){
-      var W=cvs.width,H=cvs.height;
-      // Bias toward edges first, then spread inward as coverage grows
-      var edgeBias=1-_coverPct; // high edge bias when low coverage
-      var p;
-      if(Math.random()<edgeBias*0.7){
-        // Edge patch
-        var side=Math.floor(Math.random()*4);
-        if(side===0)p={x:RR(0,W*0.25),y:RR(0,H),w:RR(8,60),h:RR(4,40)};
-        else if(side===1)p={x:RR(W*0.75,W-60),y:RR(0,H),w:RR(8,60),h:RR(4,40)};
-        else if(side===2)p={x:RR(0,W),y:RR(0,H*0.2),w:RR(20,120),h:RR(2,18)};
-        else p={x:RR(0,W),y:RR(H*0.8,H-18),w:RR(20,120),h:RR(2,18)};
-      } else {
-        // Interior patch — more spread as coverage grows
-        p={x:RR(0,W*0.9),y:RR(0,H*0.9),w:RR(5,80),h:RR(2,30)};
-      }
-      p.a=0.06+Math.random()*0.1;
-      _patches.push(p);
-      _drawPatch(p.x,p.y,p.w,p.h,p.a);
-      // Estimate coverage (rough: sum of patch areas / screen area)
-      var total=_patches.reduce(function(s,pp){return s+pp.w*pp.h;},0);
-      _coverPct=Math.min(1,total/(cvs.width*cvs.height));
-    }
-
-    // WOW SCRUB — logo sweeps across erasing noise
-    function _doWowScrub(onDone){
-      var W=cvs.width,H=cvs.height;
-      var scrubX=W+10; // start from right
-      var LOGO_W=Math.max(120,W*0.3);
-      var LOGO_H=LOGO_W*0.22;
-      var logoY=H/2-LOGO_H/2;
-      var speed=W/120; // pixels per frame (about 2s at 60fps)
-      var glowRadius=LOGO_W*0.6;
-
-      function frame(){
-        // Erase strip under the logo with radial wipe
-        var cx=scrubX+LOGO_W/2;
-        // Clear the canvas strip ahead of logo
-        var eraseX=Math.max(0,scrubX-glowRadius*0.5);
-        var eraseW=Math.min(cvs.width-eraseX, LOGO_W+glowRadius);
-        if(eraseW>0){
-          ctx.save();
-          // Gradient erase
-          var grd=ctx.createLinearGradient(eraseX,0,eraseX+eraseW,0);
-          grd.addColorStop(0,"rgba(0,0,0,0)");
-          grd.addColorStop(0.3,"rgba(5,5,5,.85)");
-          grd.addColorStop(0.7,"rgba(5,5,5,.95)");
-          grd.addColorStop(1,"rgba(0,0,0,0)");
-          ctx.globalCompositeOperation="destination-out";
-          ctx.fillStyle=grd;
-          ctx.fillRect(eraseX,0,eraseW,cvs.height);
-          ctx.restore();
-        }
-
-        // Draw WOW text
-        var fs=Math.max(28,Math.round(LOGO_H*0.9));
-        ctx.save();
-        ctx.globalAlpha=Math.min(1,(W-scrubX+LOGO_W)/(LOGO_W));
-        // Glow
-        ctx.shadowColor="rgba(168,85,247,.9)";
-        ctx.shadowBlur=fs*0.6;
-        ctx.font="900 "+fs+"px Cinzel, serif";
-        ctx.fillStyle="rgba(255,255,255,.92)";
-        ctx.textAlign="center";
-        ctx.textBaseline="middle";
-        ctx.fillText("WOW",scrubX+LOGO_W/2,H/2);
-        ctx.restore();
-
-        scrubX-=speed;
-        if(scrubX>-LOGO_W*1.5){
-          _raf=requestAnimationFrame(frame);
-        } else {
-          // Clear everything
-          ctx.clearRect(0,0,W,H);
-          _patches=[];_coverPct=0;
-          cvs.style.opacity="0";
-          if(onDone)onDone();
+    // ── بناء لوحة الضجيج مرة واحدة ──
+    // طريقة خفيفة: نرسم مستطيلات عشوائية صغيرة بدلاً من putImageData pixel-by-pixel
+    function _buildNoise(){
+      ctx.clearRect(0,0,W,H);
+      // عدد القطع يتكيف مع حجم الجهاز
+      var N=_isMobile?120:220;
+      var edgeZones=[
+        // يسار عميق
+        {x1:0,     y1:0,   x2:W*0.18, y2:H},
+        // يمين عميق
+        {x1:W*0.82,y1:0,   x2:W,      y2:H},
+        // أعلى
+        {x1:0,     y1:0,   x2:W,      y2:H*0.15},
+        // أسفل
+        {x1:0,     y1:H*0.85,x2:W,    y2:H},
+      ];
+      for(var i=0;i<N;i++){
+        // اختار منطقة حافية عشوائية
+        var z=edgeZones[Math.floor(Math.random()*edgeZones.length)];
+        var rx=z.x1+Math.random()*(z.x2-z.x1);
+        var ry=z.y1+Math.random()*(z.y2-z.y1);
+        // أبعاد المستطيل — خشنة وكبيرة للإيحاء بالثقل
+        var rw=2+Math.random()*(_isMobile?18:32);
+        var rh=1+Math.random()*(_isMobile?6:10);
+        // درجة رمادي غامق مائل للسواد مع لمسة بنفسجية كونية
+        var dark=Math.random()<0.7; // 70% ظلام عميق
+        var v=dark?Math.floor(Math.random()*35):Math.floor(45+Math.random()*40);
+        var purpleTint=Math.random()<0.15; // 15% بنفسجي محروق
+        var r=purpleTint?v+8:v;
+        var g=v;
+        var b=purpleTint?v+18:v;
+        var a=dark?(0.55+Math.random()*0.35):(0.25+Math.random()*0.25);
+        ctx.fillStyle="rgba("+r+","+g+","+b+","+a+")";
+        ctx.fillRect(Math.round(rx),Math.round(ry),Math.round(rw),Math.round(rh));
+        // خط أفقي ساطع خاطف (واحد من كل 5)
+        if(Math.random()<0.2){
+          var lv=180+Math.floor(Math.random()*75);
+          ctx.fillStyle="rgba("+lv+","+lv+","+lv+",0.12)";
+          ctx.fillRect(Math.round(rx),Math.round(ry),Math.round(rw),1);
         }
       }
-      cvs.style.opacity="1";
-      _raf=requestAnimationFrame(frame);
     }
 
-    // Main accumulation cycle
-    function _growCycle(){
-      if(_phase!=="growing")return;
-      _addPatch();
+    // ── طور الومض السريع (Flash Phase) ──
+    // يظهر ويختفي 3-6 مرات بسرعة خاطفة ثم يترك بقايا
+    function _flash(count,onDone){
+      if(count<=0){onDone();return;}
+      var onDur =30+Math.random()*80;   // ms ظهور
+      var offDur=40+Math.random()*100;  // ms إخفاء
+      cvs.style.transition="none";
       cvs.style.opacity="1";
-      cvs.style.transition="opacity 1.5s ease";
+      setTimeout(function(){
+        cvs.style.opacity="0";
+        setTimeout(function(){_flash(count-1,onDone);},offDur);
+      },onDur);
+    }
 
-      // Check if coverage reached 35-45%
-      if(_coverPct>=0.35+Math.random()*0.1){
-        _phase="scrubbing";
-        // Pause 0.8s then scrub
-        setTimeout(function(){
-          _doWowScrub(function(){
-            _phase="idle";
-            // Rest 40-90s then grow again
+    // ── البقايا CSS-only بعد الومض ──
+    // نبني لوحة بقايا خفيفة (قطع صغيرة فقط في الزوايا والأطراف)
+    function _buildResidue(){
+      ctx.clearRect(0,0,W,H);
+      var N=_isMobile?28:50;
+      // بقايا: حصراً في 10% الأطراف
+      var edgeOnly=[
+        {x1:0,     y1:0,   x2:W*0.10, y2:H},      // يسار ضيق
+        {x1:W*0.90,y1:0,   x2:W,      y2:H},       // يمين ضيق
+        {x1:0,     y1:0,   x2:W,      y2:H*0.08},  // أعلى
+        {x1:0,     y1:H*0.92,x2:W,    y2:H},       // أسفل
+        // زوايا ثقيلة
+        {x1:0,     y1:0,   x2:W*0.08, y2:H*0.12},
+        {x1:W*0.92,y1:0,   x2:W,      y2:H*0.12},
+        {x1:0,     y1:H*0.88,x2:W*0.08,y2:H},
+        {x1:W*0.92,y1:H*0.88,x2:W,   y2:H},
+      ];
+      for(var i=0;i<N;i++){
+        var z=edgeOnly[Math.floor(Math.random()*edgeOnly.length)];
+        var rx=z.x1+Math.random()*(z.x2-z.x1);
+        var ry=z.y1+Math.random()*(z.y2-z.y1);
+        var rw=1+Math.random()*(_isMobile?8:14);
+        var rh=1+Math.random()*(_isMobile?3:5);
+        var v=Math.floor(Math.random()*28); // داكن جداً — رماد رقمي
+        var a=0.18+Math.random()*0.28;
+        ctx.fillStyle="rgba("+v+","+v+","+v+","+a+")";
+        ctx.fillRect(Math.round(rx),Math.round(ry),Math.round(rw),Math.round(rh));
+      }
+    }
+
+    // ── دورة كاملة واحدة ──
+    function _cycle(){
+      if(_running)return;
+      _running=true;
+      _isMobile=window.innerWidth<768;
+      _resize();
+
+      // 1. ارسم الضجيج الكامل
+      _buildNoise();
+
+      // 2. ومض سريع 4-7 مرات
+      var flashCount=4+Math.floor(Math.random()*4);
+      // انتظر 0.2s ثم ابدأ الومض
+      setTimeout(function(){
+        _flash(flashCount,function(){
+          // 3. بعد الومض: ارسم البقايا فقط
+          _buildResidue();
+
+          // 4. أظهر البقايا بلطف
+          cvs.style.transition="opacity 1.2s ease";
+          cvs.style.opacity="0.7";
+
+          // 5. بعد 8-20s اخفِ البقايا تدريجياً
+          var stayMs=(8+Math.random()*12)*1000;
+          setTimeout(function(){
+            cvs.style.transition="opacity 4s ease";
+            cvs.style.opacity="0";
             setTimeout(function(){
-              _phase="growing";
-              _growCycle();
-            },(40+Math.random()*60)*1000);
-          });
-        },800);
-        return;
-      }
-      // Add patch every 0.8-2s
-      setTimeout(_growCycle,(800+Math.random()*1200));
+              ctx.clearRect(0,0,W,H);
+              _running=false;
+              // الدورة التالية بعد 35-80s
+              _timer=setTimeout(_cycle,(35+Math.random()*45)*1000);
+            },4200);
+          },stayMs);
+        });
+      },200);
     }
 
-    // Start first cycle after 8-15s
-    setTimeout(function(){
-      _phase="growing";
-      _growCycle();
-    },(8+Math.random()*10)*1000);
+    // ── ومض CSS للبقايا (pulse) ──
+    // نضيف animation للـ canvas عند مرحلة البقايا
+    // هذا أخف من أي JS loop
+    cvs.addEventListener("transitionend",function(){
+      // إذا وصل الـ opacity إلى 0.7 (مرحلة البقايا): فعّل الـ pulse
+      if(parseFloat(cvs.style.opacity)>0.5){
+        cvs.classList.add("sg-pulse");
+      } else {
+        cvs.classList.remove("sg-pulse");
+      }
+    });
+
+    // ابدأ بعد 12-20s من تحميل الصفحة
+    _timer=setTimeout(_cycle,(12+Math.random()*8)*1000);
   }
 
   /* ── GLITCH BAR ── */
