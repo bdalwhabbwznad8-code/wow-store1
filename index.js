@@ -257,6 +257,10 @@ return `<!DOCTYPE html>
 <meta property="og:description" id="og-desc" content="اكتشف احدث صيحات الموضة">
 <meta property="og:image" id="og-img" content="">
 <meta name="twitter:card" content="summary_large_image">
+<!-- GSAP for performant animations -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+<!-- Embla Carousel (lightweight horizontal scroll) -->
+<script src="https://cdn.jsdelivr.net/npm/embla-carousel@8.3.0/embla-carousel.umd.js" defer></script>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -266,6 +270,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* ══ SUBTLE VIGNETTE ══ */
 .vignette{position:fixed;inset:0;pointer-events:none;z-index:9996;background:radial-gradient(ellipse 90% 90% at 50% 50%,transparent 55%,rgba(0,0,0,.45) 100%)}
+
+/* ══ HERO BACKGROUND ══ */
+.hero-bg{position:relative;width:100%;height:38vh;min-height:200px;max-height:340px;overflow:hidden;z-index:3;margin-top:0}
+.hero-bg-media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top}
+.hero-bg-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,5,5,.18) 0%,rgba(5,5,5,.55) 100%);z-index:1}
+.hero-bg-fallback{position:absolute;inset:0;background:linear-gradient(135deg,rgba(88,28,135,.35) 0%,rgba(5,5,5,.98) 100%)}
+.hero-tagline{position:absolute;bottom:22px;right:0;left:0;text-align:center;z-index:2;color:rgba(255,255,255,.75);font-size:12px;letter-spacing:4px;text-transform:uppercase}
 
 /* ══ AMBIENT BACKGROUND — static gradient only ══ */
 .ambient-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 75% 55% at 30% 40%,rgba(88,28,135,.05),transparent 60%),radial-gradient(ellipse 55% 45% at 70% 60%,rgba(55,48,163,.035),transparent 55%)}
@@ -332,6 +343,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* ══ GRID & CARDS ══ */
 .grid{max-width:1200px;margin:0 auto;padding:0 20px 100px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;position:relative;z-index:5}
 
+/* ══ EMBLA CAROUSEL ══ */
+.embla{overflow:hidden;position:relative;z-index:5;padding:0 20px 100px}
+.embla__container{display:flex;gap:14px;touch-action:pan-y;user-select:none}
+.embla__slide{flex:0 0 210px;min-width:0;position:relative}
+.embla__btn{position:absolute;top:50%;transform:translateY(-50%);z-index:10;background:rgba(8,6,16,.85);border:1px solid rgba(168,85,247,.3);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(192,132,252,.9);font-size:18px;transition:.18s;backdrop-filter:blur(8px);margin-top:-50px}
+.embla__btn:hover{background:rgba(168,85,247,.25);border-color:rgba(168,85,247,.6)}
+.embla__btn--prev{right:8px}.embla__btn--next{left:8px}
+.embla__btn:disabled{opacity:.25;cursor:not-allowed}
+.embla-wrap{position:relative;max-width:1200px;margin:0 auto}
+@media(min-width:768px){.embla__slide{flex:0 0 220px}}
+@media(min-width:1024px){.embla__slide{flex:0 0 240px}}
+
+/* ══ CHECKOUT STEPPER ══ */
+.stepper{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:22px}
+.step-item{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;position:relative}
+.step-item:not(:last-child)::after{content:'';position:absolute;top:12px;left:calc(-50% + 14px);right:calc(50% + 14px);height:1px;background:rgba(255,255,255,.1)}
+.step-item.done::after{background:rgba(168,85,247,.5)}
+.step-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;border:1.5px solid rgba(255,255,255,.12);color:var(--mu);transition:.25s}
+.step-item.active .step-dot{border-color:rgba(168,85,247,.8);color:rgba(192,132,252,.95);background:rgba(168,85,247,.15);box-shadow:0 0 10px rgba(168,85,247,.25)}
+.step-item.done .step-dot{border-color:rgba(168,85,247,.6);color:rgba(192,132,252,.8);background:rgba(168,85,247,.1)}
+.step-lbl{font-size:8px;color:var(--mu);letter-spacing:.5px;text-align:center;transition:.2s}
+.step-item.active .step-lbl{color:rgba(192,132,252,.7)}
+.chk-step{display:none}.chk-step.active{display:block}
+.step-nav{display:flex;gap:9px;margin-top:14px}
+.btn-back{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:11px;color:var(--dim);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;font-weight:600;padding:11px;cursor:pointer;flex:1;transition:.2s}
+.btn-back:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18)}
+
+/* ══ HOVER ZOOM ON ACTIVE IMAGE ══ */
+.card:hover .img-slider img.active{transform:scale(1.08);transition:transform .35s cubic-bezier(.2,.9,.4,1.1),filter .4s,opacity .3s}
+
 /* ══ HOVER LIFT + SCALE + DEPTH SHADOW ══ */
 .card{background:rgba(255,255,255,.038);border:1px solid rgba(255,255,255,.065);border-radius:var(--r);overflow:visible;display:flex;flex-direction:column;cursor:pointer;transition:transform .3s cubic-bezier(.34,1.1,.64,1),box-shadow .3s ease,border-color .3s;position:relative}
 .card:hover{transform:translateY(-8px) scale(1.012);border-color:rgba(168,85,247,.3);box-shadow:0 22px 55px rgba(0,0,0,.6),0 0 25px rgba(168,85,247,.07),0 0 1px rgba(168,85,247,.15)}
@@ -369,8 +410,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 .card-body{padding:11px;flex:1;display:flex;flex-direction:column;gap:5px;position:relative}
 .card-cat{font-size:9px;color:rgba(168,85,247,.5);letter-spacing:2px;text-transform:uppercase}
-.card-name{font-size:13px;font-weight:500;color:rgba(255,255,255,.78);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-
 .card-name{font-size:13px;font-weight:500;color:rgba(255,255,255,.78);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 
 .price-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -620,7 +659,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 }
 @media(max-width:400px){.grid{grid-template-columns:1fr 1fr;gap:8px}}
 @media print{
-  body::before,body::after,.ambient-bg,.vignette,.hdr,.cats-bar,.tb,.trust-bar,.grid,.ov,.cart-sb,.toast,.bot-nav,.mod-ov:not(#inv-mod),.footer,#adm,#scroll-prog,#void-glitch,#robot-doll{display:none!important}
+  body::before,body::after,.ambient-bg,.vignette,.hdr,.cats-bar,.tb,.trust-bar,.embla,.embla-wrap,.grid,.ov,.cart-sb,.toast,.bot-nav,.mod-ov:not(#inv-mod),.footer,#adm,#scroll-prog,#void-glitch,#robot-doll,.hero-bg{display:none!important}
   #inv-mod{display:block!important;position:static!important;background:#fff!important;padding:0!important}
   .inv{box-shadow:none!important;max-height:none!important}
 }
@@ -651,6 +690,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     </div>
   </div>
 </header>
+
+<div class="hero-bg" id="hero-bg">
+  <div class="hero-bg-fallback" id="hero-fallback"></div>
+  <div class="hero-bg-overlay"></div>
+  <div class="hero-tagline" id="hero-tagline">الموضة لها روح — اكتشف ما يناسبك</div>
+</div>
 
 <div class="cats-bar">
   <div class="cats-i">
@@ -687,7 +732,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
 </div>
 
-<div id="main-content"><div class="grid" id="grid"></div></div>
+<div id="main-content">
+  <div class="embla-wrap">
+    <div class="embla" id="embla-viewport">
+      <div class="embla__container" id="grid"></div>
+    </div>
+    <button class="embla__btn embla__btn--prev" id="embla-prev" aria-label="السابق">&#8249;</button>
+    <button class="embla__btn embla__btn--next" id="embla-next" aria-label="التالي">&#8250;</button>
+  </div>
+</div>
 
 <nav class="bot-nav">
   <div class="bn-item" id="bn-home">
@@ -807,58 +860,92 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <div class="mod-ov" id="checkout-mod">
   <div class="mod">
     <div class="mod-title">CHECKOUT<button class="xbtn" id="checkout-xbtn">&#10005;</button></div>
-    <div id="chk-summary" style="margin-bottom:12px;background:rgba(255,255,255,.03);border:1px solid var(--b1);border-radius:9px;padding:10px;font-size:11px;max-height:90px;overflow-y:auto"></div>
-    <div class="fl"><label>الاسم الكامل *</label><input class="inp" id="o-name" type="text" placeholder="اكتب اسمك..."></div>
-    <div class="fl"><label>رقم الهاتف 1 *</label><input class="inp" id="o-p1" type="tel" placeholder="05XXXXXXXX"></div>
-    <div class="fl"><label>رقم الهاتف 2 *</label><input class="inp" id="o-p2" type="tel" placeholder="07XXXXXXXX"></div>
-    <div class="fl"><label>البريد الالكتروني</label><input class="inp" id="o-em" type="email" placeholder="example@email.com"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
-      <div class="fl"><label>الولاية *</label>
-        <select class="inp" id="o-wilaya">
-          <option value="">اختر الولاية...</option>${wilayaOpts}
+    <!-- STEPPER HEADER -->
+    <div class="stepper" id="chk-stepper">
+      <div class="step-item active" id="si-1"><div class="step-dot">1</div><div class="step-lbl">المعلومات</div></div>
+      <div class="step-item" id="si-2"><div class="step-dot">2</div><div class="step-lbl">العنوان</div></div>
+      <div class="step-item" id="si-3"><div class="step-dot">3</div><div class="step-lbl">الدفع</div></div>
+      <div class="step-item" id="si-4"><div class="step-dot">4</div><div class="step-lbl">المراجعة</div></div>
+    </div>
+
+    <!-- STEP 1: المعلومات الشخصية -->
+    <div class="chk-step active" id="chk-s1">
+      <div class="fl"><label>الاسم الكامل *</label><input class="inp" id="o-name" type="text" placeholder="اكتب اسمك..."></div>
+      <div class="fl"><label>رقم الهاتف 1 *</label><input class="inp" id="o-p1" type="tel" placeholder="05XXXXXXXX"></div>
+      <div class="fl"><label>رقم الهاتف 2 *</label><input class="inp" id="o-p2" type="tel" placeholder="07XXXXXXXX"></div>
+      <div class="fl"><label>البريد الالكتروني</label><input class="inp" id="o-em" type="email" placeholder="example@email.com"></div>
+      <div class="step-nav"><button class="btn-main" id="chk-next-1">التالي &#8592;</button></div>
+    </div>
+
+    <!-- STEP 2: العنوان والتوصيل -->
+    <div class="chk-step" id="chk-s2">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+        <div class="fl"><label>الولاية *</label>
+          <select class="inp" id="o-wilaya">
+            <option value="">اختر الولاية...</option>${wilayaOpts}
+          </select>
+        </div>
+        <div class="fl"><label>البلدية *</label><input class="inp" id="o-commune" type="text" placeholder="اكتب بلديتك..."></div>
+      </div>
+      <div class="fl"><label>نوع التوصيل</label>
+        <select class="inp" id="o-del">
+          <option value="o" selected>للمكتب / Stop Desk</option><option value="h">للمنزل</option>
         </select>
       </div>
-      <div class="fl"><label>البلدية *</label><input class="inp" id="o-commune" type="text" placeholder="اكتب بلديتك..."></div>
-    </div>
-    <div class="fl"><label>نوع التوصيل</label>
-      <select class="inp" id="o-del">
-        <option value="o" selected>للمكتب / Stop Desk</option><option value="h">للمنزل</option>
-      </select>
-    </div>
-    <!-- طريقة الدفع -->
-    <div class="fl"><label>طريقة الدفع *</label>
-      <div id="pay-opts" style="display:flex;flex-direction:column;gap:7px;margin-top:4px">
-        <label class="pay-opt" id="pay-cod-lbl">
-          <input type="radio" name="pay-method" id="pay-cod" value="cod" checked>
-          <div class="pay-opt-body">
-            <div class="pay-opt-title">💵 الدفع عند الاستلام</div>
-            <div class="pay-opt-sub">ادفع نقداً حين وصول طلبيتك — مجاني</div>
-          </div>
-        </label>
-        <label class="pay-opt" id="pay-ccp-lbl">
-          <input type="radio" name="pay-method" id="pay-ccp" value="ccp">
-          <div class="pay-opt-body">
-            <div class="pay-opt-title">🏦 الدفع المسبق بـ CCP</div>
-            <div class="pay-opt-sub">تحويل بريدي مسبق — خصم 50 دج على التوصيل</div>
-          </div>
-        </label>
-        <div id="ccp-details" style="display:none;background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:11px 13px;font-size:11px;color:rgba(255,255,255,.65);line-height:1.8">
-          <div style="font-size:10px;color:rgba(168,85,247,.7);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">تفاصيل الحساب البريدي</div>
-          <div>رقم الحساب: <span style="color:rgba(192,132,252,.9);font-family:Georgia,serif">0023456789 01</span></div>
-          <div>الاسم: <span style="color:rgba(255,255,255,.8)">WOW STORE</span></div>
-          <div style="margin-top:7px;font-size:10px;color:rgba(251,191,36,.7)">⚠ ارسل صورة الإيصال عبر الواتساب بعد التحويل</div>
-          <div class="fl" style="margin-top:9px;margin-bottom:0"><label style="font-size:9px">رقم الإيصال (اختياري)</label><input class="inp" id="o-ccp-ref" type="text" placeholder="رقم وصل الدفع..." style="font-size:11px"></div>
-        </div>
+      <div class="step-nav">
+        <button class="btn-back" id="chk-prev-2">&#8594; السابق</button>
+        <button class="btn-main" id="chk-next-2">التالي &#8592;</button>
       </div>
     </div>
-    <div class="op">
-      <div class="op-row"><span class="op-l">المنتجات</span><span class="op-v" id="op-sub">0 دج</span></div>
-      <div class="op-row" id="op-disc-row" style="display:none"><span class="op-l" style="color:rgba(74,222,128,.7)">خصم العرض</span><span class="op-v" style="color:rgba(74,222,128,.8)" id="op-disc"></span></div>
-      <div class="op-row"><span class="op-l">التوصيل</span><span class="op-v" id="op-del">-- دج</span></div>
-      <div class="op-row" id="op-ccp-disc-row" style="display:none"><span class="op-l" style="color:rgba(74,222,128,.7)">خصم CCP</span><span class="op-v" style="color:rgba(74,222,128,.8)">- 50 دج</span></div>
-      <div class="op-tot"><span class="op-tl">TOTAL</span><span class="op-tv" id="op-tot">0 دج</span></div>
+
+    <!-- STEP 3: طريقة الدفع -->
+    <div class="chk-step" id="chk-s3">
+      <div class="fl"><label>طريقة الدفع *</label>
+        <div id="pay-opts" style="display:flex;flex-direction:column;gap:7px;margin-top:4px">
+          <label class="pay-opt" id="pay-cod-lbl">
+            <input type="radio" name="pay-method" id="pay-cod" value="cod" checked>
+            <div class="pay-opt-body">
+              <div class="pay-opt-title">💵 الدفع عند الاستلام</div>
+              <div class="pay-opt-sub">ادفع نقداً حين وصول طلبيتك — مجاني</div>
+            </div>
+          </label>
+          <label class="pay-opt" id="pay-ccp-lbl">
+            <input type="radio" name="pay-method" id="pay-ccp" value="ccp">
+            <div class="pay-opt-body">
+              <div class="pay-opt-title">🏦 الدفع المسبق بـ CCP</div>
+              <div class="pay-opt-sub">تحويل بريدي مسبق — خصم 50 دج على التوصيل</div>
+            </div>
+          </label>
+          <div id="ccp-details" style="display:none;background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:11px 13px;font-size:11px;color:rgba(255,255,255,.65);line-height:1.8">
+            <div style="font-size:10px;color:rgba(168,85,247,.7);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">تفاصيل الحساب البريدي</div>
+            <div>رقم الحساب: <span style="color:rgba(192,132,252,.9);font-family:Georgia,serif">0023456789 01</span></div>
+            <div>الاسم: <span style="color:rgba(255,255,255,.8)">WOW STORE</span></div>
+            <div style="margin-top:7px;font-size:10px;color:rgba(251,191,36,.7)">⚠ ارسل صورة الإيصال عبر الواتساب بعد التحويل</div>
+            <div class="fl" style="margin-top:9px;margin-bottom:0"><label style="font-size:9px">رقم الإيصال (اختياري)</label><input class="inp" id="o-ccp-ref" type="text" placeholder="رقم وصل الدفع..." style="font-size:11px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="step-nav">
+        <button class="btn-back" id="chk-prev-3">&#8594; السابق</button>
+        <button class="btn-main" id="chk-next-3">التالي &#8592;</button>
+      </div>
     </div>
-    <button class="btn-main" id="chk-btn">تاكيد الطلبية &#8594;</button>
+
+    <!-- STEP 4: المراجعة والتأكيد -->
+    <div class="chk-step" id="chk-s4">
+      <div id="chk-summary" style="margin-bottom:12px;background:rgba(255,255,255,.03);border:1px solid var(--b1);border-radius:9px;padding:10px;font-size:11px;max-height:110px;overflow-y:auto"></div>
+      <div class="op">
+        <div class="op-row"><span class="op-l">المنتجات</span><span class="op-v" id="op-sub">0 دج</span></div>
+        <div class="op-row" id="op-disc-row" style="display:none"><span class="op-l" style="color:rgba(74,222,128,.7)">خصم العرض</span><span class="op-v" style="color:rgba(74,222,128,.8)" id="op-disc"></span></div>
+        <div class="op-row"><span class="op-l">التوصيل</span><span class="op-v" id="op-del">-- دج</span></div>
+        <div class="op-row" id="op-ccp-disc-row" style="display:none"><span class="op-l" style="color:rgba(74,222,128,.7)">خصم CCP</span><span class="op-v" style="color:rgba(74,222,128,.8)">- 50 دج</span></div>
+        <div class="op-tot"><span class="op-tl">TOTAL</span><span class="op-tv" id="op-tot">0 دج</span></div>
+      </div>
+      <div class="step-nav">
+        <button class="btn-back" id="chk-prev-4">&#8594; السابق</button>
+        <button class="btn-main" id="chk-btn">تاكيد الطلبية &#8594;</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1005,6 +1092,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="fl"><label>WhatsApp</label><input class="inp" id="s-wa" placeholder="0667881322"></div>
         <div class="fl"><label>Email</label><input class="inp" id="s-em" placeholder="wowastore15@gmail.com"></div>
         <div class="fl"><label>Instagram (username only)</label><input class="inp" id="s-ig" placeholder="wow.7a"></div>
+        <div class="fl"><label>Hero Background (رابط صورة JPG/PNG أو فيديو MP4)</label><input class="inp" id="s-hero" placeholder="https://example.com/banner.jpg"></div>
+        <div style="font-size:10px;color:rgba(168,85,247,.5);margin-bottom:10px;line-height:1.6">يمكن إدخال رابط صورة (jpg, png, webp) أو رابط فيديو (mp4, webm) — إذا تركته فارغاً يظهر التدرج البنفسجي الافتراضي.</div>
         <button class="btn-main" id="save-settings-btn">Save Settings</button>
       </div>
     </div>
@@ -1096,8 +1185,13 @@ var WOW = (function(){
   function _showSkeletons(){
     var g=document.getElementById("grid");if(!g)return;
     var h="";
-    for(var i=0;i<8;i++)h+="<div class='skel-card'><div class='skel-img skel'></div><div class='skel-body'><div class='skel-line skel' style='width:38%'></div><div class='skel-line skel' style='width:88%'></div><div class='skel-price skel'></div><div class='skel-btn skel'></div></div></div>";
+    for(var i=0;i<8;i++)h+="<div class='embla__slide'><div class='skel-card'><div class='skel-img skel'></div><div class='skel-body'><div class='skel-line skel' style='width:38%'></div><div class='skel-line skel' style='width:88%'></div><div class='skel-price skel'></div><div class='skel-btn skel'></div></div></div></div>";
     g.innerHTML=h;
+    // تهيئة Embla مؤقتاً للـ skeleton
+    if(typeof EmblaCarousel!=="undefined"){
+      var vp=document.getElementById("embla-viewport");
+      if(vp&&_embla){_embla.reInit();}
+    }
   }
 
   /* ── LAZY LOAD ── */
@@ -1185,17 +1279,19 @@ var WOW = (function(){
     try{
       var sq=(q||"").trim().toLowerCase();
       var count=0;
-      document.querySelectorAll(".card").forEach(function(c){
-        if(!sq){c.classList.remove("hidden");count++;return;}
+      document.querySelectorAll(".embla__slide").forEach(function(slide){
+        var c=slide.querySelector(".card");
+        if(!c){slide.style.display="";count++;return;}
+        if(!sq){slide.style.display="";count++;return;}
         var n=(c.getAttribute("data-name")||"").toLowerCase();
         var ct=(c.getAttribute("data-cat")||"").toLowerCase();
-        // Search in Arabic name directly (dataset)
         var hide=!n.includes(sq)&&!ct.includes(sq);
-        // Also search transliteration loosely
-        c.classList.toggle("hidden",hide);
+        slide.style.display=hide?"none":"";
         if(!hide)count++;
       });
       var pc=document.getElementById("pc");if(pc)pc.textContent=count;
+      // أعد تهيئة Embla بعد التصفية
+      if(_embla)try{_embla.reInit();}catch(e){}
     }catch(e){}
   }
 
@@ -1294,16 +1390,15 @@ var WOW = (function(){
           scarHtml="<div class='scarcity-bar'><div class='scarcity-fill "+cls+"' style='width:"+pct+"%'></div></div>"
                   +"<div class='scarcity-txt'>تبقى "+p.quantity+" قطعة فقط</div>";
         }
-        html+="<div class='card' data-pid='"+p.id+"' data-name='"+_esc(p.name)+"' data-cat='"+_esc(p.cat)+"'>"
+        html+="<div class='embla__slide'><div class='card' data-pid='"+p.id+"' data-name='"+_esc(p.name)+"' data-cat='"+_esc(p.cat)+"'>"
              +_makeSlider(imgs,p.id)
              +"<div class='card-body'><div class='card-cat'>"+_esc(CAT[p.cat]||p.cat)+"</div>"
              +"<div class='card-name'>"+_esc(p.name)+"</div>"+ph
              +spHtml+scarHtml
              +"<div class='fomo-txt'>قطع محدودة جداً من هذا التصميم هذا الاسبوع</div>"
-             +"<button class='addbtn' data-pid='"+p.id+"'>+ اضف للسلة</button></div></div>";
+             +"<button class='addbtn' data-pid='"+p.id+"'>+ اضف للسلة</button></div></div></div>";
       });
       g.innerHTML=html;
-      // Event delegation — all card clicks
       g.querySelectorAll(".card").forEach(function(card){
         card.addEventListener("click",function(e){
           if(e.target.closest(".addbtn")||e.target.closest(".slide-arr")||e.target.closest(".slide-dot"))return;
@@ -1342,6 +1437,7 @@ var WOW = (function(){
         });
       });
       _obsLazy();
+      _initCarousel();
       _updateMeta("WOW Store — "+fp.length+" منتج","تسوق احدث صيحات الموضة في الجزائر");
     }catch(e){}
   }
@@ -1470,23 +1566,23 @@ var WOW = (function(){
   function _openCheckout(){
     if(!_cart.length){_toast("السلة فارغة");return;}
     _closeCart();
+    // ملء ملخص الخطوة 4
     var rawSub=_cart.reduce(function(a,c){return a+c.price*c.qty;},0);
     var discAmt=_globalDiscount>0?Math.round(rawSub*_globalDiscount/100):0;
-    var sub=rawSub-discAmt;
     var sh="";
     _cart.forEach(function(c){sh+="<div style='display:flex;justify-content:space-between;color:rgba(255,255,255,.45);padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)'><span>"+_esc(c.name.substring(0,18))+" ["+_esc(c.size)+"] x"+c.qty+"</span><span style='color:rgba(192,132,252,.7)'>"+_fmt(c.price*c.qty)+"</span></div>";});
     if(discAmt>0)sh+="<div style='display:flex;justify-content:space-between;color:rgba(74,222,128,.7);padding:3px 0;font-size:10px'><span>خصم "+_globalDiscount+"%</span><span>-"+_fmt(discAmt)+"</span></div>";
     var chkSum=document.getElementById("chk-summary");if(chkSum)chkSum.innerHTML=sh;
-    var opSub=document.getElementById("op-sub");if(opSub)opSub.textContent=_fmt(rawSub);
-    var opTot=document.getElementById("op-tot");if(opTot)opTot.textContent=_fmt(sub);
-    var opDel=document.getElementById("op-del");if(opDel)opDel.textContent="-- دج";
+    // إعادة ضبط حقول الخطوة 2
     var oWil=document.getElementById("o-wilaya");if(oWil)oWil.value="";
     var oCom=document.getElementById("o-commune");if(oCom)oCom.value="";
-    // reset CCP toggle
+    var oDel=document.getElementById("o-del");if(oDel)oDel.value="o";
+    // إعادة ضبط CCP
     var payCod=document.getElementById("pay-cod");if(payCod)payCod.checked=true;
     var det=document.getElementById("ccp-details");if(det)det.style.display="none";
     var ccpRow=document.getElementById("op-ccp-disc-row");if(ccpRow)ccpRow.style.display="none";
     _updPreview();
+    _chkGoTo(1);
     _openMod("checkout-mod");
   }
   function _updPreview(){
@@ -1513,6 +1609,7 @@ var WOW = (function(){
     var opTot=document.getElementById("op-tot");if(opTot)opTot.textContent=_fmt(sub+fee-ccpDisc);
   }
   function _submitOrder(){
+    // التحقق النهائي قبل الإرسال
     var name=(document.getElementById("o-name")||{}).value||"";name=name.trim();
     var p1=(document.getElementById("o-p1")||{}).value||"";p1=p1.trim();
     var p2=(document.getElementById("o-p2")||{}).value||"";p2=p2.trim();
@@ -1520,13 +1617,8 @@ var WOW = (function(){
     var wilEl=document.getElementById("o-wilaya");var wilaya=wilEl?wilEl.value:"";
     var commune=(document.getElementById("o-commune")||{}).value||"";commune=commune.trim();
     var dtEl=document.getElementById("o-del");var dt=dtEl?dtEl.value:"o";
-    if(!name){_toast("ادخل الاسم");return;}
-    if(!p1){_toast("ادخل رقم الهاتف 1");return;}
-    if(!p2){_toast("ادخل رقم الهاتف 2");return;}
+    if(!name||!p1||!p2||!wilaya||!commune){_toast("يرجى إكمال جميع الحقول الإلزامية");return;}
     if(p1===p2){_toast("يجب ان يختلف رقما الهاتف");return;}
-    if(em&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){_toast("البريد الالكتروني غير صالح");return;}
-    if(!wilaya){_toast("اختر الولاية");return;}
-    if(!commune){_toast("اكتب اسم البلدية");return;}
     if(!_cart.length){_toast("السلة فارغة");return;}
     var fee=_getShipFee(wilaya,dt);
     var returnFee=_getReturnFee(wilaya);
@@ -1535,12 +1627,12 @@ var WOW = (function(){
     var payMethod=isCcp?"ccp":"cod";
     var ccpRef=isCcp?((document.getElementById("o-ccp-ref")||{}).value||"").trim():"";
     var ccpDisc=isCcp?50:0;
-    // الخصم على المنتجات فقط ثم يُضاف التوصيل
     var rawSub=_cart.reduce(function(a,c){return a+c.price*c.qty;},0);
     var discAmt=_globalDiscount>0?Math.round(rawSub*_globalDiscount/100):0;
     var sub=rawSub-discAmt;
     var total=sub+fee-ccpDisc;
-    var btn=document.getElementById("chk-btn");if(btn){btn.disabled=true;btn.innerHTML="<span class='spin'></span>";}
+    var btn=document.getElementById("chk-btn");
+    if(btn){btn.disabled=true;btn.innerHTML="<span class='spin'></span>";}
     _api("/api/orders",{method:"POST",body:JSON.stringify({
       name:name,phone1:p1,phone2:p2,email:em,wilaya:wilaya,commune:commune,dlbl:dlbl,fee:fee,sub:sub,total:total,
       returnFee:returnFee,discAmt:discAmt,globalDiscount:_globalDiscount,
@@ -1954,10 +2046,12 @@ var WOW = (function(){
   /* ── SETTINGS ── */
   function _loadSettings(){
     _api("/api/settings").then(function(r){return r.json();}).then(function(s){
-      var sn=document.getElementById("s-name"),sw=document.getElementById("s-wa"),se=document.getElementById("s-em"),si=document.getElementById("s-ig"),hdr=document.getElementById("store-name-hdr");
-      if(sn)sn.value=s.storeName||"";if(sw)sw.value=s.whatsapp||"";if(se)se.value=s.email||"";if(si)si.value=s.instagram||"";
+      var sn=document.getElementById("s-name"),sw=document.getElementById("s-wa"),se=document.getElementById("s-em"),si=document.getElementById("s-ig"),sh=document.getElementById("s-hero");
+      var hdr=document.getElementById("store-name-hdr");
+      if(sn)sn.value=s.storeName||"";if(sw)sw.value=s.whatsapp||"";if(se)se.value=s.email||"";if(si)si.value=s.instagram||"";if(sh)sh.value=s.hero_background||"";
       if(hdr&&s.storeName)hdr.textContent=s.storeName;
       _updateMeta(s.storeName||"WOW Store","تسوق احدث صيحات الموضة");
+      if(s.hero_background)_applyHeroBackground(s.hero_background);
     }).catch(function(){});
   }
   function _saveSettings(){
@@ -1966,12 +2060,15 @@ var WOW = (function(){
       storeName:(document.getElementById("s-name")||{}).value||"",
       whatsapp:(document.getElementById("s-wa")||{}).value||"",
       email:(document.getElementById("s-em")||{}).value||"",
-      instagram:(document.getElementById("s-ig")||{}).value||""
+      instagram:(document.getElementById("s-ig")||{}).value||"",
+      hero_background:(document.getElementById("s-hero")||{}).value||""
     };
     _api("/api/settings",{method:"POST",body:JSON.stringify(body)}).then(function(){
       if(btn){btn.disabled=false;btn.innerHTML="Save Settings";}
       var hdr=document.getElementById("store-name-hdr");if(hdr&&body.storeName)hdr.textContent=body.storeName;
-      _updateMeta(body.storeName||"WOW Store","تسوق احدث صيحات الموضة");_toast("تم الحفظ");
+      _updateMeta(body.storeName||"WOW Store","تسوق احدث صيحات الموضة");
+      _applyHeroBackground(body.hero_background);
+      _toast("تم الحفظ");
     }).catch(function(){if(btn){btn.disabled=false;btn.innerHTML="Save Settings";}  _toast("خطا");});
   }
 
@@ -2218,15 +2315,201 @@ var WOW = (function(){
       });
     });
 
-    // دمية الـ Robot تتحرك ببطء عمودياً
+    // دمية الـ Robot تتحرك ببطء عمودياً — GSAP إذا متاح وإلا setInterval
     var doll=document.getElementById("robot-doll");
     if(doll){
-      var _dy=0,_dd=1;
-      setInterval(function(){
-        _dy+=_dd;if(_dy>8||_dy<0)_dd=-_dd;
-        doll.style.transform="translateY("+_dy+"px)";
-      },120);
+      if(typeof gsap!=="undefined"){
+        gsap.to(doll,{y:9,duration:1.5,ease:"sine.inOut",repeat:-1,yoyo:true});
+      } else {
+        var _dy=0,_dd=1;
+        setInterval(function(){
+          _dy+=_dd;if(_dy>8||_dy<0)_dd=-_dd;
+          doll.style.transform="translateY("+_dy+"px)";
+        },120);
+      }
     }
+  }
+
+  /* ═══════════════════════════════════════════════
+     EMBLA CAROUSEL — init after products rendered
+  ═══════════════════════════════════════════════ */
+  var _embla=null;
+  function _initCarousel(){
+    try{
+      // UMD build exports as window.EmblaCarousel
+      var EC=window.EmblaCarousel;
+      if(typeof EC==="undefined"){
+        // defer يعني قد يكون لم يُحمَّل بعد — حاول مجدداً بعد 200ms
+        setTimeout(_initCarousel,200);return;
+      }
+      var vp=document.getElementById("embla-viewport");
+      if(!vp)return;
+      if(_embla){try{_embla.destroy();}catch(e){} _embla=null;}
+      _embla=EC(vp,{
+        direction:"rtl",
+        loop:false,
+        align:"start",
+        dragFree:true,
+        containScroll:"trimSnaps"
+      });
+      var prev=document.getElementById("embla-prev");
+      var next=document.getElementById("embla-next");
+      function _updBtns(){
+        if(!prev||!next||!_embla)return;
+        prev.disabled=!_embla.canScrollPrev();
+        next.disabled=!_embla.canScrollNext();
+      }
+      // أزل المستمعات القديمة بنسخ الأزرار
+      if(prev){
+        var pNew=prev.cloneNode(true);prev.parentNode.replaceChild(pNew,prev);
+        pNew.addEventListener("click",function(){_embla&&_embla.scrollPrev();});
+        prev=pNew;
+      }
+      if(next){
+        var nNew=next.cloneNode(true);next.parentNode.replaceChild(nNew,next);
+        nNew.addEventListener("click",function(){_embla&&_embla.scrollNext();});
+        next=nNew;
+      }
+      _embla.on("select",_updBtns);
+      _embla.on("init",_updBtns);
+      _updBtns();
+      _initCardFadeIn();
+    }catch(e){console.warn("Embla init failed",e);}
+  }
+
+  /* ═══════════════════════════════════════════════
+     CARD FADE-IN — IntersectionObserver خفيف
+  ═══════════════════════════════════════════════ */
+  function _initCardFadeIn(){
+    if(!("IntersectionObserver" in window))return;
+    try{
+      var obs=new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting){
+            var el=e.target;
+            el.style.opacity="0";
+            el.style.transform="translateY(18px)";
+            requestAnimationFrame(function(){
+              el.style.transition="opacity .4s ease,transform .4s ease";
+              el.style.opacity="1";
+              el.style.transform="translateY(0)";
+            });
+            obs.unobserve(el);
+          }
+        });
+      },{threshold:0.08,rootMargin:"0px 80px 0px 80px"});
+      document.querySelectorAll(".embla__slide").forEach(function(s){obs.observe(s);});
+    }catch(e){}
+  }
+
+  /* ═══════════════════════════════════════════════
+     CARD PARALLAX — mousemove خفيف على الصورة
+  ═══════════════════════════════════════════════ */
+  function _initParallax(){
+    try{
+      document.addEventListener("mousemove",function(e){
+        var card=e.target.closest(".card");if(!card)return;
+        var img=card.querySelector(".img-slider img.active");if(!img)return;
+        var rect=card.getBoundingClientRect();
+        var cx=(e.clientX-rect.left)/rect.width-0.5;
+        var cy=(e.clientY-rect.top)/rect.height-0.5;
+        var mx=cx*4,my=cy*4;// أقصى 4%
+        img.style.transform="scale(1.08) translate("+mx+"px,"+my+"px)";
+      },{passive:true});
+      document.addEventListener("mouseleave",function(e){
+        var card=e.target.closest(".card");if(!card)return;
+        var img=card.querySelector(".img-slider img.active");if(img){img.style.transform="";}
+      },{passive:true});
+    }catch(e){}
+  }
+
+  /* ═══════════════════════════════════════════════
+     HERO BACKGROUND — صورة أو فيديو ديناميكي
+  ═══════════════════════════════════════════════ */
+  function _applyHeroBackground(url){
+    try{
+      var hb=document.getElementById("hero-bg");if(!hb)return;
+      // أزل أي ميديا سابقة
+      hb.querySelectorAll("img.hero-bg-media,video.hero-bg-media").forEach(function(el){el.remove();});
+      if(!url){return;}// يبقى الـ fallback
+      var fallback=document.getElementById("hero-fallback");
+      var isVideo=/\.(mp4|webm|ogg)(\?|$)/i.test(url);
+      if(isVideo){
+        var vid=document.createElement("video");
+        vid.className="hero-bg-media";
+        vid.src=url;vid.autoplay=true;vid.loop=true;vid.muted=true;vid.playsInline=true;
+        vid.style.zIndex="1";
+        if(fallback)hb.insertBefore(vid,fallback);else hb.prepend(vid);
+      } else {
+        var img=document.createElement("img");
+        img.className="hero-bg-media";
+        img.src=url;img.alt="";img.loading="eager";
+        img.style.zIndex="1";
+        if(fallback)hb.insertBefore(img,fallback);else hb.prepend(img);
+      }
+      if(fallback)fallback.style.display="none";
+    }catch(e){}
+  }
+
+  /* ═══════════════════════════════════════════════
+     CHECKOUT STEPPER LOGIC
+  ═══════════════════════════════════════════════ */
+  var _chkStep=1;
+  function _chkGoTo(n){
+    try{
+      for(var i=1;i<=4;i++){
+        var sEl=document.getElementById("chk-s"+i);
+        var siEl=document.getElementById("si-"+i);
+        if(sEl){sEl.classList.toggle("active",i===n);}
+        if(siEl){
+          siEl.classList.toggle("active",i===n);
+          siEl.classList.toggle("done",i<n);
+        }
+      }
+      _chkStep=n;
+      // عند الوصول لخطوة 4 — حدّث الملخص والأسعار
+      if(n===4){_updPreview();}
+    }catch(e){}
+  }
+  function _chkValidStep(n){
+    if(n===1){
+      var name=(document.getElementById("o-name")||{}).value||"";
+      var p1=(document.getElementById("o-p1")||{}).value||"";
+      var p2=(document.getElementById("o-p2")||{}).value||"";
+      if(!name.trim()){_toast("ادخل الاسم الكامل");return false;}
+      if(!p1.trim()){_toast("ادخل رقم الهاتف 1");return false;}
+      if(!p2.trim()){_toast("ادخل رقم الهاتف 2");return false;}
+      if(p1.trim()===p2.trim()){_toast("يجب ان يختلف رقما الهاتف");return false;}
+      var em=(document.getElementById("o-em")||{}).value||"";
+      if(em.trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.trim())){_toast("البريد الالكتروني غير صالح");return false;}
+      return true;
+    }
+    if(n===2){
+      var wilEl=document.getElementById("o-wilaya");
+      var com=(document.getElementById("o-commune")||{}).value||"";
+      if(!wilEl||!wilEl.value){_toast("اختر الولاية");return false;}
+      if(!com.trim()){_toast("اكتب اسم البلدية");return false;}
+      return true;
+    }
+    return true;// خطوات 3 و4 لا تحتاج تحقق إضافي
+  }
+  function _initStepper(){
+    try{
+      var n1=document.getElementById("chk-next-1");
+      var n2=document.getElementById("chk-next-2");
+      var n3=document.getElementById("chk-next-3");
+      var p2=document.getElementById("chk-prev-2");
+      var p3=document.getElementById("chk-prev-3");
+      var p4=document.getElementById("chk-prev-4");
+      var finalBtn=document.getElementById("chk-btn");
+      if(n1)n1.addEventListener("click",function(){if(_chkValidStep(1))_chkGoTo(2);});
+      if(n2)n2.addEventListener("click",function(){if(_chkValidStep(2))_chkGoTo(3);});
+      if(n3)n3.addEventListener("click",function(){_chkGoTo(4);});
+      if(p2)p2.addEventListener("click",function(){_chkGoTo(1);});
+      if(p3)p3.addEventListener("click",function(){_chkGoTo(2);});
+      if(p4)p4.addEventListener("click",function(){_chkGoTo(3);});
+      if(finalBtn)finalBtn.addEventListener("click",_submitOrder);
+    }catch(e){}
   }
 
   /* ── FLOW STATE SCROLL ── */
@@ -2250,6 +2533,8 @@ var WOW = (function(){
       _initLazy();
       _initVoidGlitch();
       _initScroll();
+      _initStepper();
+      _initParallax();
       _restoreDiscount();
       _trackVisit();
       _showSkeletons();
@@ -2279,8 +2564,7 @@ var WOW = (function(){
       // ── CHECKOUT ──
       var checkoutBtn=document.getElementById("checkout-btn");
       if(checkoutBtn)checkoutBtn.addEventListener("click",_openCheckout);
-      var chkBtn=document.getElementById("chk-btn");
-      if(chkBtn)chkBtn.addEventListener("click",_submitOrder);
+      // chk-btn مُربوط داخل _initStepper — لا نربطه هنا مجدداً
       var oWilaya=document.getElementById("o-wilaya");
       if(oWilaya)oWilaya.addEventListener("change",_updPreview);
       var oDel=document.getElementById("o-del");
