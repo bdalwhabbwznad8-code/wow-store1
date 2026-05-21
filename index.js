@@ -268,10 +268,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .vignette{position:fixed;inset:0;pointer-events:none;z-index:9996;background:radial-gradient(ellipse 90% 90% at 50% 50%,transparent 55%,rgba(0,0,0,.45) 100%)}
 
 /* ══ HERO BACKGROUND ══ */
-.hero-bg{position:relative;width:100%;height:38vh;min-height:200px;max-height:340px;overflow:hidden;z-index:3;margin-top:0}
-.hero-bg-media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top}
-.hero-bg-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,5,5,.18) 0%,rgba(5,5,5,.55) 100%);z-index:1}
-.hero-bg-fallback{position:absolute;inset:0;background:linear-gradient(135deg,rgba(88,28,135,.35) 0%,rgba(5,5,5,.98) 100%)}
+.hero-bg{position:relative;width:100%;overflow:hidden;z-index:3;margin-top:0;min-height:180px;max-height:75vh;background:#050505}
+.hero-bg-media{position:relative;width:100%;height:auto;display:block;object-fit:contain;object-position:center center;z-index:1}
+.hero-bg-media.is-img{width:100%;height:38vh;min-height:200px;max-height:340px;object-fit:cover;object-position:center center}
+.hero-bg-fallback{position:absolute;inset:0;background:linear-gradient(135deg,rgba(88,28,135,.35) 0%,rgba(5,5,5,.98) 100%);z-index:0}
+.hero-bg-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,5,5,.18) 0%,rgba(5,5,5,.45) 100%);z-index:2;pointer-events:none}
 .hero-tagline{position:absolute;bottom:22px;right:0;left:0;text-align:center;z-index:2;color:rgba(255,255,255,.75);font-size:12px;letter-spacing:4px;text-transform:uppercase}
 
 /* ══ AMBIENT BACKGROUND — static gradient only ══ */
@@ -2435,17 +2436,16 @@ var WOW = (function(){
       hb.querySelectorAll("img.hero-bg-media,video.hero-bg-media").forEach(function(el){el.remove();});
       if(!url){var fb=document.getElementById("hero-fallback");if(fb)fb.style.display="";return;}
       var fallback=document.getElementById("hero-fallback");
-      // dataURL: تحقق من النوع بدقة
       var isVideo=url.startsWith("data:video/")||/\.(mp4|webm|ogg)/i.test(url.split("?")[0]);
       if(isVideo){
         var vid=document.createElement("video");
-        vid.className="hero-bg-media";
+        vid.className="hero-bg-media";// contain — يعرض الفيديو كاملاً
         vid.src=url;vid.autoplay=true;vid.loop=true;vid.muted=true;vid.playsInline=true;
         vid.style.zIndex="1";
         if(fallback)hb.insertBefore(vid,fallback);else hb.prepend(vid);
       } else {
         var img=document.createElement("img");
-        img.className="hero-bg-media";
+        img.className="hero-bg-media is-img";// cover للصور
         img.src=url;img.alt="";img.loading="eager";
         img.style.zIndex="1";
         if(fallback)hb.insertBefore(img,fallback);else hb.prepend(img);
