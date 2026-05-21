@@ -257,10 +257,6 @@ return `<!DOCTYPE html>
 <meta property="og:description" id="og-desc" content="اكتشف احدث صيحات الموضة">
 <meta property="og:image" id="og-img" content="">
 <meta name="twitter:card" content="summary_large_image">
-<!-- GSAP for performant animations -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-<!-- Embla Carousel (lightweight horizontal scroll) -->
-<script src="https://cdn.jsdelivr.net/npm/embla-carousel@8.3.0/embla-carousel.umd.js" defer></script>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -343,15 +339,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* ══ GRID & CARDS ══ */
 .grid{max-width:1200px;margin:0 auto;padding:0 20px 100px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;position:relative;z-index:5}
 
-/* ══ EMBLA CAROUSEL ══ */
-.embla{overflow:hidden;position:relative;z-index:5;padding:0 20px 100px}
-.embla__container{display:flex;gap:14px;touch-action:pan-y;user-select:none}
-.embla__slide{flex:0 0 210px;min-width:0;position:relative}
-.embla__btn{position:absolute;top:50%;transform:translateY(-50%);z-index:10;background:rgba(8,6,16,.85);border:1px solid rgba(168,85,247,.3);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(192,132,252,.9);font-size:18px;transition:.18s;backdrop-filter:blur(8px);margin-top:-50px}
+/* ══ HORIZONTAL SCROLL CAROUSEL — CSS only, no JS deps ══ */
+.embla{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:relative;z-index:5;padding:0 20px 100px}
+.embla::-webkit-scrollbar{display:none}
+.embla__container{display:flex;gap:14px;width:max-content;min-width:100%}
+.embla__slide{flex:0 0 210px;min-width:0}
+.embla-wrap{position:relative;max-width:100%;overflow:visible}
+.embla__btn{position:fixed;top:50vh;z-index:15;background:rgba(8,6,16,.85);border:1px solid rgba(168,85,247,.3);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(192,132,252,.9);font-size:18px;transition:.18s;pointer-events:auto}
 .embla__btn:hover{background:rgba(168,85,247,.25);border-color:rgba(168,85,247,.6)}
-.embla__btn--prev{right:8px}.embla__btn--next{left:8px}
-.embla__btn:disabled{opacity:.25;cursor:not-allowed}
-.embla-wrap{position:relative;max-width:1200px;margin:0 auto}
+.embla__btn--prev{right:6px}.embla__btn--next{left:6px}
+.embla__btn:disabled{opacity:.2;cursor:not-allowed}
 @media(min-width:768px){.embla__slide{flex:0 0 220px}}
 @media(min-width:1024px){.embla__slide{flex:0 0 240px}}
 
@@ -694,7 +691,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <div class="hero-bg" id="hero-bg">
   <div class="hero-bg-fallback" id="hero-fallback"></div>
   <div class="hero-bg-overlay"></div>
-  <div class="hero-tagline" id="hero-tagline">الموضة لها روح — اكتشف ما يناسبك</div>
 </div>
 
 <div class="cats-bar">
@@ -768,7 +764,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="footer-inner">
     <div>
       <div class="footer-brand">WOW</div>
-      <div class="footer-tagline">الموضة لها روح<br>اكتشف ما يناسبك</div>
+      <div class="footer-tagline">اكتشف ما يناسبك</div>
     </div>
     <div>
       <div class="footer-h">روابط</div>
@@ -1187,11 +1183,6 @@ var WOW = (function(){
     var h="";
     for(var i=0;i<8;i++)h+="<div class='embla__slide'><div class='skel-card'><div class='skel-img skel'></div><div class='skel-body'><div class='skel-line skel' style='width:38%'></div><div class='skel-line skel' style='width:88%'></div><div class='skel-price skel'></div><div class='skel-btn skel'></div></div></div></div>";
     g.innerHTML=h;
-    // تهيئة Embla مؤقتاً للـ skeleton
-    if(typeof EmblaCarousel!=="undefined"){
-      var vp=document.getElementById("embla-viewport");
-      if(vp&&_embla){_embla.reInit();}
-    }
   }
 
   /* ── LAZY LOAD ── */
@@ -1245,6 +1236,10 @@ var WOW = (function(){
   }
 
   /* ── CART UPDATE ── */
+  /* ── CART PERSISTENCE ── */
+  function _saveCart(){try{localStorage.setItem("wow_cart",JSON.stringify(_cart));}catch(e){}}
+  function _loadCart(){try{var c=localStorage.getItem("wow_cart");if(c)_cart=JSON.parse(c)||[];}catch(e){}}
+
   function _updCart(){
     try{
       var count=_cart.reduce(function(a,c){return a+c.qty;},0);
@@ -1268,13 +1263,14 @@ var WOW = (function(){
       cont.querySelectorAll(".rmbtn").forEach(function(b){
         b.addEventListener("click",function(){
           var k=decodeURIComponent(this.getAttribute("data-k"));
-          _cart=_cart.filter(function(c){return c.key!==k;});_updCart();
+          _cart=_cart.filter(function(c){return c.key!==k;});
+          _updCart();_saveCart();
         });
       });
     }catch(e){}
   }
 
-  /* ── SEARCH — FIXED ── */
+  /* ── SEARCH ── */
   function _liveSearch(q){
     try{
       var sq=(q||"").trim().toLowerCase();
@@ -1290,8 +1286,8 @@ var WOW = (function(){
         if(!hide)count++;
       });
       var pc=document.getElementById("pc");if(pc)pc.textContent=count;
-      // أعد تهيئة Embla بعد التصفية
-      if(_embla)try{_embla.reInit();}catch(e){}
+      // إعادة ضبط التمرير بعد التصفية
+      var vp=document.getElementById("embla-viewport");if(vp)vp.scrollLeft=0;
     }catch(e){}
   }
 
@@ -1532,6 +1528,7 @@ var WOW = (function(){
       _cart.push({key:key,id:_pendProd.id,name:_pendProd.name,price:_effPrice(_pendProd),img:imgs[0]||"",qty:1,size:sz,info:info});
     }
     _updCart();
+    _saveCart();
     _closeMod("size-mod");
     _toast("تمت الاضافة — مقاس "+sz);
     _spawnParticles();
@@ -1669,8 +1666,7 @@ var WOW = (function(){
       var invBox=document.getElementById("inv-box");if(invBox)invBox.innerHTML=ih;
       var invDone=document.getElementById("inv-done");
       if(invDone)invDone.onclick=function(){
-        _closeMod("inv-mod");_cart=[];_updCart();
-        // إلغاء الخصم بعد اتمام الطلب
+        _closeMod("inv-mod");_cart=[];_updCart();_saveCart();
         _globalDiscount=0;
         try{localStorage.removeItem("wow_disc_val");localStorage.removeItem("wow_disc_exp");}catch(e){}
       };
@@ -2160,10 +2156,7 @@ var WOW = (function(){
     var md=document.getElementById("mystery-disc"),mc=document.getElementById("mystery-code");
     if(md)md.textContent=d+"%";if(mc)mc.textContent=code;
     _globalDiscount=d;
-    _openMod("mystery-mod");
-    try{sessionStorage.setItem("wow_s_shown","1");}catch(e){}
-    try{localStorage.setItem("wow_myst_ts",Date.now().toString());}catch(e){}
-    // عند قبول العرض: احفظ الخصم لمدة ساعتين
+    // ربط زر القبول قبل فتح المودال
     var acceptBtn=document.getElementById("mystery-accept-btn");
     if(acceptBtn){
       acceptBtn.onclick=function(){
@@ -2176,6 +2169,9 @@ var WOW = (function(){
         _toast("تم تطبيق خصم "+d+"% على طلبيتك — صالح ساعتين");
       };
     }
+    _openMod("mystery-mod");
+    try{sessionStorage.setItem("wow_s_shown","1");}catch(e){}
+    try{localStorage.setItem("wow_myst_ts",Date.now().toString());}catch(e){}
   }
   function _restoreDiscount(){
     try{
@@ -2202,7 +2198,7 @@ var WOW = (function(){
      • لا يحجب أي عنصر تفاعلي — z-index تحت المحتوى
   ══════════════════════════════════════════════════════════════════ */
   function _initVoidGlitch(){
-    var wrap=document.getElementById("void-glitch");
+    try{
     var cvs=document.getElementById("vg-canvas");
     if(!cvs||!wrap)return;
     var ctx=cvs.getContext("2d");
@@ -2315,19 +2311,16 @@ var WOW = (function(){
       });
     });
 
-    // دمية الـ Robot تتحرك ببطء عمودياً — GSAP إذا متاح وإلا setInterval
+    // دمية الـ Robot تتحرك ببطء عمودياً
     var doll=document.getElementById("robot-doll");
     if(doll){
-      if(typeof gsap!=="undefined"){
-        gsap.to(doll,{y:9,duration:1.5,ease:"sine.inOut",repeat:-1,yoyo:true});
-      } else {
-        var _dy=0,_dd=1;
-        setInterval(function(){
-          _dy+=_dd;if(_dy>8||_dy<0)_dd=-_dd;
-          doll.style.transform="translateY("+_dy+"px)";
-        },120);
-      }
+      var _dy=0,_dd=1;
+      setInterval(function(){
+        _dy+=_dd;if(_dy>8||_dy<0)_dd=-_dd;
+        doll.style.transform="translateY("+_dy+"px)";
+      },120);
     }
+    }catch(e){console.warn("VoidGlitch error:",e);}
   }
 
   /* ═══════════════════════════════════════════════
@@ -2335,46 +2328,35 @@ var WOW = (function(){
   ═══════════════════════════════════════════════ */
   var _embla=null;
   function _initCarousel(){
-    try{
-      // UMD build exports as window.EmblaCarousel
-      var EC=window.EmblaCarousel;
-      if(typeof EC==="undefined"){
-        // defer يعني قد يكون لم يُحمَّل بعد — حاول مجدداً بعد 200ms
-        setTimeout(_initCarousel,200);return;
-      }
-      var vp=document.getElementById("embla-viewport");
-      if(!vp)return;
-      if(_embla){try{_embla.destroy();}catch(e){} _embla=null;}
-      _embla=EC(vp,{
-        direction:"rtl",
-        loop:false,
-        align:"start",
-        dragFree:true,
-        containScroll:"trimSnaps"
-      });
-      var prev=document.getElementById("embla-prev");
-      var next=document.getElementById("embla-next");
-      function _updBtns(){
-        if(!prev||!next||!_embla)return;
-        prev.disabled=!_embla.canScrollPrev();
-        next.disabled=!_embla.canScrollNext();
-      }
-      // أزل المستمعات القديمة بنسخ الأزرار
-      if(prev){
-        var pNew=prev.cloneNode(true);prev.parentNode.replaceChild(pNew,prev);
-        pNew.addEventListener("click",function(){_embla&&_embla.scrollPrev();});
-        prev=pNew;
-      }
-      if(next){
-        var nNew=next.cloneNode(true);next.parentNode.replaceChild(nNew,next);
-        nNew.addEventListener("click",function(){_embla&&_embla.scrollNext();});
-        next=nNew;
-      }
-      _embla.on("select",_updBtns);
-      _embla.on("init",_updBtns);
-      _updBtns();
-      _initCardFadeIn();
-    }catch(e){console.warn("Embla init failed",e);}
+    // CSS scroll — لا نحتاج JS library
+    var vp=document.getElementById("embla-viewport");
+    if(!vp)return;
+    var prev=document.getElementById("embla-prev");
+    var next=document.getElementById("embla-next");
+    function _scroll(dir){
+      var w=window.innerWidth*0.75;
+      vp.scrollBy({left:dir==="next"?-w:w,behavior:"smooth"});
+    }
+    function _updBtns(){
+      if(!prev||!next)return;
+      var atStart=vp.scrollLeft>=0&&vp.scrollLeft<=2;
+      var atEnd=vp.scrollLeft+vp.clientWidth>=vp.scrollWidth-4;
+      // RTL: atStart عند scrollLeft=0
+      prev.disabled=(vp.scrollLeft===0);
+      next.disabled=(vp.scrollLeft+vp.clientWidth>=vp.scrollWidth-4);
+    }
+    // أزل القديم وأضف جديد
+    if(prev){
+      var pN=prev.cloneNode(true);prev.parentNode.replaceChild(pN,prev);prev=pN;
+      prev.addEventListener("click",function(){_scroll("prev");});
+    }
+    if(next){
+      var nN=next.cloneNode(true);next.parentNode.replaceChild(nN,next);next=nN;
+      next.addEventListener("click",function(){_scroll("next");});
+    }
+    vp.addEventListener("scroll",_updBtns,{passive:true});
+    _updBtns();
+    _initCardFadeIn();
   }
 
   /* ═══════════════════════════════════════════════
@@ -2535,6 +2517,7 @@ var WOW = (function(){
       _initScroll();
       _initStepper();
       _initParallax();
+      _loadCart();
       _restoreDiscount();
       _trackVisit();
       _showSkeletons();
