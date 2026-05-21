@@ -1097,7 +1097,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="fl"><label>Email</label><input class="inp" id="s-em" placeholder="wowastore15@gmail.com"></div>
         <div class="fl"><label>Instagram (username only)</label><input class="inp" id="s-ig" placeholder="wow.7a"></div>
         <div class="fl"><label>Hero Background (رابط صورة JPG/PNG أو فيديو MP4)</label><input class="inp" id="s-hero" placeholder="https://example.com/banner.jpg"></div>
-        <div style="font-size:10px;color:rgba(168,85,247,.5);margin-bottom:10px;line-height:1.6">يمكن إدخال رابط صورة (jpg, png, webp) أو رابط فيديو (mp4, webm) — إذا تركته فارغاً يظهر التدرج البنفسجي الافتراضي.</div>
+        <div style="margin-bottom:10px">
+          <label style="font-size:10px;color:rgba(168,85,247,.6);display:block;margin-bottom:6px">أو اختر من المعرض مباشرة:</label>
+          <label id="hero-pick-lbl" style="display:flex;align-items:center;gap:8px;background:rgba(168,85,247,.08);border:1px dashed rgba(168,85,247,.3);border-radius:10px;padding:10px 12px;cursor:pointer;transition:.2s">
+            <span style="font-size:18px">🖼️</span>
+            <span id="hero-pick-txt" style="font-size:11px;color:rgba(192,132,252,.7)">اضغط لاختيار صورة أو فيديو من المعرض</span>
+            <input type="file" id="hero-file-inp" accept="image/*,video/mp4,video/webm" style="display:none">
+          </label>
+          <div id="hero-preview-wrap" style="display:none;margin-top:8px;position:relative;border-radius:10px;overflow:hidden;max-height:120px">
+            <img id="hero-preview-img" style="width:100%;max-height:120px;object-fit:cover;display:none" alt="">
+            <video id="hero-preview-vid" style="width:100%;max-height:120px;object-fit:cover;display:none" muted playsinline></video>
+            <button id="hero-preview-clear" style="position:absolute;top:5px;left:5px;background:rgba(0,0,0,.7);border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center">&#10005;</button>
+          </div>
+        </div>
+        <div style="font-size:10px;color:rgba(168,85,247,.4);margin-bottom:10px;line-height:1.6">الصورة أو الفيديو من المعرض يُحوَّل إلى Base64 ويُحفظ مباشرة — لا حاجة لرابط خارجي.</div>
         <button class="btn-main" id="save-settings-btn">Save Settings</button>
       </div>
     </div>
@@ -2419,11 +2432,11 @@ var WOW = (function(){
   function _applyHeroBackground(url){
     try{
       var hb=document.getElementById("hero-bg");if(!hb)return;
-      // أزل أي ميديا سابقة
       hb.querySelectorAll("img.hero-bg-media,video.hero-bg-media").forEach(function(el){el.remove();});
-      if(!url){return;}// يبقى الـ fallback
+      if(!url){var fb=document.getElementById("hero-fallback");if(fb)fb.style.display="";return;}
       var fallback=document.getElementById("hero-fallback");
-      var isVideo=/\.(mp4|webm|ogg)/i.test(url.split("?")[0]);
+      // dataURL: تحقق من النوع بدقة
+      var isVideo=url.startsWith("data:video/")||/\.(mp4|webm|ogg)/i.test(url.split("?")[0]);
       if(isVideo){
         var vid=document.createElement("video");
         vid.className="hero-bg-media";
@@ -2665,7 +2678,58 @@ var WOW = (function(){
       var trackBtn=document.getElementById("track-btn");
       if(trackBtn)trackBtn.addEventListener("click",_doTrack);
 
-      // ── MYSTERY ── (handled inside _showMystery)
+      // ── HERO FILE PICKER ──
+      (function(){
+        var inp=document.getElementById("hero-file-inp");
+        var lbl=document.getElementById("hero-pick-lbl");
+        var txt=document.getElementById("hero-pick-txt");
+        var wrap=document.getElementById("hero-preview-wrap");
+        var prevImg=document.getElementById("hero-preview-img");
+        var prevVid=document.getElementById("hero-preview-vid");
+        var clearBtn=document.getElementById("hero-preview-clear");
+        var heroUrl=document.getElementById("s-hero");
+        if(!inp)return;
+        inp.addEventListener("change",function(){
+          var file=inp.files&&inp.files[0];
+          if(!file)return;
+          // حجم: أقصى 4MB
+          if(file.size>4*1024*1024){_toast("الملف كبير جداً — الحد 4MB");inp.value="";return;}
+          var reader=new FileReader();
+          reader.onload=function(e){
+            var dataUrl=e.target.result;
+            // ضع الـ dataURL في حقل الرابط
+            if(heroUrl)heroUrl.value=dataUrl;
+            // عرض preview
+            wrap.style.display="block";
+            var isVid=file.type.startsWith("video/");
+            if(isVid){
+              prevImg.style.display="none";
+              prevVid.style.display="block";
+              prevVid.src=dataUrl;prevVid.play().catch(function(){});
+            } else {
+              prevVid.style.display="none";
+              prevImg.style.display="block";
+              prevImg.src=dataUrl;
+            }
+            txt.textContent=file.name;
+            _applyHeroBackground(dataUrl);
+          };
+          reader.readAsDataURL(file);
+        });
+        if(clearBtn)clearBtn.addEventListener("click",function(){
+          inp.value="";
+          if(heroUrl)heroUrl.value="";
+          wrap.style.display="none";
+          prevImg.src="";prevVid.src="";
+          txt.textContent="اضغط لاختيار صورة أو فيديو من المعرض";
+          _applyHeroBackground("");
+        });
+        // hover style
+        if(lbl){
+          lbl.addEventListener("mouseenter",function(){lbl.style.borderColor="rgba(168,85,247,.6)";lbl.style.background="rgba(168,85,247,.13)";});
+          lbl.addEventListener("mouseleave",function(){lbl.style.borderColor="rgba(168,85,247,.3)";lbl.style.background="rgba(168,85,247,.08)";});
+        }
+      })();
       var mystSkip=document.getElementById("mystery-skip-btn");
       if(mystSkip)mystSkip.addEventListener("click",function(){_closeMod("mystery-mod");try{localStorage.setItem("wow_myst","1");}catch(e){}});
 
