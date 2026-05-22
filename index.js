@@ -244,6 +244,7 @@ function buildHTML(s){
   const wa=s.whatsapp||"0667881322";
   const em=s.email||"wowastore15@gmail.com";
   const ig=s.instagram||"wow.7a";
+  const adminDisc=Math.max(0,Math.min(90,parseInt(s.admin_discount||0)||0));
   const WILAYAS=["ادرار","الشلف","الاغواط","ام البواقي","باتنة","بجاية","بسكرة","بشار","البليدة","البويرة","تمنراست","تبسة","تلمسان","تيارت","تيزي وزو","الجزائر","الجلفة","جيجل","سطيف","سعيدة","سكيكدة","سيدي بلعباس","عنابة","قالمة","قسنطينة","المدية","مستغانم","المسيلة","معسكر","ورقلة","وهران","البيض","اليزي","برج بوعريريج","بومرداس","الطارف","تندوف","تيسمسيلت","الوادي","خنشلة","سوق اهراس","تيبازة","ميلة","عين الدفلى","النعامة","عين تموشنت","غرداية","غليزان","تيميمون","طولقة","بني عباس","عين صالح","عين قزام","تقرت","جانت","المغير","المنيعة","وادي سوف"];
   const wilayaOpts=WILAYAS.map(w=>`<option value="${w}">${w}</option>`).join("");
 
@@ -790,6 +791,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="cart-items" id="cart-items"><div class="c-empty"><span style="font-size:30px;opacity:.2">&#8711;</span><span>السلة فارغة</span></div></div>
   <div class="cart-ft">
     <div class="cart-tot"><span class="cart-tot-l">المجموع</span><span class="cart-tot-v" id="cart-tot">0 دج</span></div>
+    <div id="cart-disc-row" style="display:none;justify-content:center;font-size:10px;color:rgba(74,222,128,.7);padding:3px 0;letter-spacing:.3px"></div>
     <button class="btn-main" id="checkout-btn">اتمام الشراء &#8594;</button>
   </div>
 </div>
@@ -1097,6 +1099,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="fl"><label>WhatsApp</label><input class="inp" id="s-wa" placeholder="0667881322"></div>
         <div class="fl"><label>Email</label><input class="inp" id="s-em" placeholder="wowastore15@gmail.com"></div>
         <div class="fl"><label>Instagram (username only)</label><input class="inp" id="s-ig" placeholder="wow.7a"></div>
+        <div class="fl">
+          <label>تخفيض عام على المنتجات % <span style="font-size:9px;color:rgba(168,85,247,.5)">(0 = بدون تخفيض — الحد الأقصى 90%)</span></label>
+          <input class="inp" id="s-admin-disc" type="number" min="0" max="90" step="1" placeholder="0" style="width:100px">
+        </div>
         <div class="fl"><label>Hero Background (رابط صورة JPG/PNG أو فيديو MP4)</label><input class="inp" id="s-hero" placeholder="https://example.com/banner.jpg"></div>
         <div style="margin-bottom:10px">
           <label style="font-size:10px;color:rgba(168,85,247,.6);display:block;margin-bottom:6px">أو اختر من المعرض مباشرة:</label>
@@ -1134,7 +1140,7 @@ var WOW = (function(){
   /* ── STATE ── */
   var _prods=[],_cart=[],_curCat="all",_curSort="d";
   var _pendProd=null,_selSz=null,_adminToken="";
-  var _prodImgs=[],_isSilentBlocked=false,_globalDiscount=0;
+  var _prodImgs=[],_isSilentBlocked=false,_globalDiscount=${adminDisc};
   var _toastT=null,_imgObs=null;
   var SESSION_KEY="wow_session",REMEMBER_KEY="wow_remember";
   var CAT={shirts:"القمصان",pants:"البناطيل",shorts:"الشورتات",hats:"القبعات",accessories:"الاكسسوارات",other:"اخرى"};
@@ -1265,11 +1271,16 @@ var WOW = (function(){
   function _updCart(){
     try{
       var count=_cart.reduce(function(a,c){return a+c.qty;},0);
-      var total=_cart.reduce(function(a,c){return a+c.price*c.qty;},0);
+      var rawTotal=_cart.reduce(function(a,c){return a+c.price*c.qty;},0);
+      var discAmt=_globalDiscount>0?Math.round(rawTotal*_globalDiscount/100):0;
+      var total=rawTotal-discAmt;
       var cbdg=document.getElementById("cbdg");
       if(cbdg)cbdg.textContent=count;
       var ctot=document.getElementById("cart-tot");
       if(ctot)ctot.textContent=_fmt(total);
+      // عرض سطر الخصم في السلة
+      var cdiscRow=document.getElementById("cart-disc-row");
+      if(cdiscRow){cdiscRow.style.display=discAmt>0?"flex":"none";cdiscRow.textContent=discAmt>0?"خصم "+_globalDiscount+"% — تخفيض "+_fmt(discAmt):"";}
       var cont=document.getElementById("cart-items");
       if(!cont)return;
       if(!_cart.length){cont.innerHTML="<div class='c-empty'><span style='font-size:30px;opacity:.2'>&#8711;</span><span>السلة فارغة</span></div>";return;}
@@ -1317,14 +1328,14 @@ var WOW = (function(){
   function _calcDisc(){
     try{
       var p=parseFloat(document.getElementById("p-price").value)||0;
-      var d=Math.min(parseFloat(document.getElementById("p-disc").value)||0,10);
+      var d=Math.min(parseFloat(document.getElementById("p-disc").value)||0,90);
       var di=document.getElementById("p-disc");if(di&&parseFloat(di.value)>10){di.value=10;}
       var f=document.getElementById("p-final");if(f)f.value=d>0?Math.round(p*(1-d/100)):"";
     }catch(e){}
   }
   function _effPrice(p){
     if(!p)return 0;
-    if(p.discount&&p.discount>0){var d=Math.min(p.discount,10);return Math.round(p.price*(1-d/100));}
+    if(p.discount&&p.discount>0){var d=Math.min(p.discount,90);return Math.round(p.price*(1-d/100));}
     return p.price;
   }
 
@@ -1397,7 +1408,7 @@ var WOW = (function(){
         var imgs=p.images&&p.images.length?p.images:(p.img?[p.img]:[]);
         var ep=_effPrice(p);
         var ph="<div class='price-wrap'><span class='card-price'>"+_fmt(ep)+"</span>";
-        if(p.discount&&p.discount>0){var _dv=Math.min(p.discount,10);ph+="<span class='card-price-old'>"+_fmt(p.price)+"</span><span class='disc-badge'>-"+_dv+"%</span>";}
+        if(p.discount&&p.discount>0){var _dv=Math.min(p.discount,90);ph+="<span class='card-price-old'>"+_fmt(p.price)+"</span><span class='disc-badge'>-"+_dv+"%</span>";}
         ph+="</div>";
         var views=_socialViews(p.id);
         var spHtml="<div class='social-proof'><svg width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 00-3-3.87'/><path d='M16 3.13a4 4 0 010 7.75'/></svg>"+views+" شخص يتصفح الآن</div>";
@@ -1478,7 +1489,7 @@ var WOW = (function(){
       var pw=document.getElementById("pm-price-wrap");
       if(pw){
         if(p.discount&&p.discount>0){
-          var _dpv=Math.min(p.discount,10);
+          var _dpv=Math.min(p.discount,90);
           pw.innerHTML="<div class='price-wrap'><span style='font-family:Georgia,serif;font-size:20px;color:rgba(192,132,252,.9)'>"+_fmt(ep)+"</span><span style='font-size:13px;color:var(--mu);text-decoration:line-through'>"+_fmt(p.price)+"</span><span class='disc-badge'>-"+_dpv+"%</span></div>";
         }else{
           pw.innerHTML="<span style='font-family:Georgia,serif;font-size:20px;color:rgba(192,132,252,.9)'>"+_fmt(ep)+"</span>";
@@ -1551,6 +1562,7 @@ var WOW = (function(){
     }
     _updCart();
     _saveCart();
+    _pendProd=null;_selSz=null;
     _closeMod("size-mod");
     _toast("تمت الاضافة — مقاس "+sz);
     _spawnParticles();
@@ -2064,9 +2076,14 @@ var WOW = (function(){
   /* ── SETTINGS ── */
   function _loadSettings(){
     _api("/api/settings").then(function(r){return r.json();}).then(function(s){
-      var sn=document.getElementById("s-name"),sw=document.getElementById("s-wa"),se=document.getElementById("s-em"),si=document.getElementById("s-ig"),sh=document.getElementById("s-hero");
+      var sn=document.getElementById("s-name"),sw=document.getElementById("s-wa"),se=document.getElementById("s-em"),si=document.getElementById("s-ig"),sh=document.getElementById("s-hero"),sd=document.getElementById("s-admin-disc");
       var hdr=document.getElementById("store-name-hdr");
       if(sn)sn.value=s.storeName||"";if(sw)sw.value=s.whatsapp||"";if(se)se.value=s.email||"";if(si)si.value=s.instagram||"";if(sh)sh.value=s.hero_background||"";
+      if(sd)sd.value=s.admin_discount||0;
+      // تطبيق تخفيض الأدمن إذا لم يكن هناك تخفيض mystery نشط
+      if(s.admin_discount&&s.admin_discount>0&&_globalDiscount===0){
+        _globalDiscount=s.admin_discount;
+      }
       if(hdr&&s.storeName)hdr.textContent=s.storeName;
       _updateMeta(s.storeName||"WOW Store","تسوق احدث صيحات الموضة");
       if(s.hero_background)_applyHeroBackground(s.hero_background);
@@ -2079,15 +2096,30 @@ var WOW = (function(){
       whatsapp:(document.getElementById("s-wa")||{}).value||"",
       email:(document.getElementById("s-em")||{}).value||"",
       instagram:(document.getElementById("s-ig")||{}).value||"",
-      hero_background:(document.getElementById("s-hero")||{}).value||""
+      hero_background:(document.getElementById("s-hero")||{}).value||"",
+      admin_discount:Math.max(0,Math.min(90,parseInt((document.getElementById("s-admin-disc")||{}).value||"0")||0))
     };
     _api("/api/settings",{method:"POST",body:JSON.stringify(body)}).then(function(){
       if(btn){btn.disabled=false;btn.innerHTML="Save Settings";}
       var hdr=document.getElementById("store-name-hdr");if(hdr&&body.storeName)hdr.textContent=body.storeName;
       _updateMeta(body.storeName||"WOW Store","تسوق احدث صيحات الموضة");
       _applyHeroBackground(body.hero_background);
-      _toast("تم الحفظ");
-    }).catch(function(){if(btn){btn.disabled=false;btn.innerHTML="Save Settings";}  _toast("خطا");});
+      // تطبيق تخفيض الأدمن فوراً — يُعلى على mystery فقط إذا أكبر
+      if(body.admin_discount>0){
+        if(_globalDiscount===0||body.admin_discount>_globalDiscount){
+          _globalDiscount=body.admin_discount;
+        }
+        _toast("تم الحفظ — تخفيض "+body.admin_discount+"% مُفعَّل على المنتجات");
+      } else {
+        // إذا admin_discount=0 أزل تخفيض الأدمن (لكن احتفظ بمystery إذا نشط)
+        if(_globalDiscount>0){
+          var mystExp=null;try{mystExp=localStorage.getItem("wow_disc_exp");}catch(e){}
+          if(!mystExp||Date.now()>=parseInt(mystExp)){_globalDiscount=0;}
+        }
+        _toast("تم الحفظ");
+      }
+      _loadProds();// أعد تحميل المنتجات لتحديث الأسعار
+    }).catch(function(){if(btn){btn.disabled=false;btn.innerHTML="Save Settings";}_toast("خطا");});
   }
 
   /* ══ جدول أسعار التوصيل الحقيقي — SmartShop EXPRESS ══
@@ -2171,7 +2203,7 @@ var WOW = (function(){
       }
     }catch(e){}
     // اختر تخفيضاً عشوائياً
-    var discs=[5,7,8,10,11];
+    var discs=[1,2,3,4,5,6,7,8,9,10];
     var d=discs[Math.floor(Math.random()*discs.length)];
     var codes=["WOW"+d+"NOW","FIRST"+d,"STYLE"+d,"GOTH"+d];
     var code=codes[Math.floor(Math.random()*codes.length)];
@@ -2185,7 +2217,7 @@ var WOW = (function(){
         _closeMod("mystery-mod");
         try{
           localStorage.setItem("wow_disc_val",String(d));
-          localStorage.setItem("wow_disc_exp",String(Date.now()+2*60*60*1000));
+          localStorage.setItem("wow_disc_exp",String(Date.now()+4*60*60*1000));
         }catch(e){}
         _globalDiscount=d;
         _toast("تم تطبيق خصم "+d+"% على طلبيتك — صالح ساعتين");
