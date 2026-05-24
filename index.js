@@ -261,9 +261,23 @@ return `<!DOCTYPE html>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#050505;--p1:rgba(255,255,255,.04);--b1:rgba(255,255,255,.08);--ac:#a855f7;--tx:rgba(255,255,255,.88);--dim:rgba(255,255,255,.4);--mu:rgba(255,255,255,.22);--r:16px;--rs:10px}
+:root{
+  --bg:#050505;--p1:rgba(255,255,255,.04);--b1:rgba(255,255,255,.08);
+  --ac:#a855f7;--tx:rgba(255,255,255,.88);--dim:rgba(255,255,255,.4);
+  --mu:rgba(255,255,255,.22);--r:16px;--rs:10px;
+  --glow-sm:0 0 12px rgba(168,85,247,.25);
+  --glow-md:0 0 24px rgba(168,85,247,.35);
+  --ease-spring:cubic-bezier(.34,1.4,.64,1);
+  --ease-out:cubic-bezier(.4,0,.2,1);
+  --duration:.22s;
+}
 html{scroll-behavior:smooth}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);overflow-x:hidden;min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);overflow-x:hidden;min-height:100vh;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+::selection{background:rgba(168,85,247,.3);color:#fff}
+/* grain overlay — anti-aesthetic quality signal */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity:.028;mix-blend-mode:overlay;}
 
 /* ══ SUBTLE VIGNETTE ══ */
 .vignette{position:fixed;inset:0;pointer-events:none;z-index:9996;background:radial-gradient(ellipse 90% 90% at 50% 50%,transparent 55%,rgba(0,0,0,.45) 100%)}
@@ -276,8 +290,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .hero-bg-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,5,5,.18) 0%,rgba(5,5,5,.45) 100%);z-index:2;pointer-events:none}
 .hero-tagline{position:absolute;bottom:22px;right:0;left:0;text-align:center;z-index:2;color:rgba(255,255,255,.75);font-size:12px;letter-spacing:4px;text-transform:uppercase}
 
-/* ══ AMBIENT BACKGROUND — static gradient only ══ */
-.ambient-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 75% 55% at 30% 40%,rgba(88,28,135,.05),transparent 60%),radial-gradient(ellipse 55% 45% at 70% 60%,rgba(55,48,163,.035),transparent 55%)}
+/* ══ AMBIENT BACKGROUND — atmospheric ══ */
+.ambient-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 30%,rgba(88,28,135,.07),transparent 65%),
+    radial-gradient(ellipse 50% 40% at 80% 70%,rgba(55,48,163,.045),transparent 60%),
+    radial-gradient(ellipse 35% 25% at 50% 50%,rgba(109,40,217,.03),transparent 55%);
+}
 .ambient-bg2{display:none}
 .mist{display:none}.mist3{display:none}.grad-overlay{display:none}
 
@@ -299,9 +318,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 #main-content{}
 
 /* ══ HEADER ══ */
-.hdr{position:sticky;top:0;z-index:200;background:rgba(5,5,5,.93);backdrop-filter:blur(24px);border-bottom:1px solid var(--b1)}
-.hdr-i{max-width:1200px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-.logo{font-family:Georgia,serif;font-size:24px;font-weight:900;color:#fff;letter-spacing:5px;text-decoration:none;white-space:nowrap;flex-shrink:0}
+.hdr{
+  position:sticky;top:0;z-index:200;
+  background:rgba(5,5,5,.92);
+  backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+  border-bottom:1px solid rgba(168,85,247,.1);
+  transition:border-color .3s,box-shadow .3s;
+}
+.hdr.scrolled{
+  border-bottom-color:rgba(168,85,247,.18);
+  box-shadow:0 4px 32px rgba(0,0,0,.6);
+}
+.hdr-i{max-width:1200px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.logo{display:flex;align-items:center;text-decoration:none;flex-shrink:0;cursor:pointer;transition:filter .4s ease,transform .35s cubic-bezier(.34,1.2,.64,1)}
+.logo:hover{filter:drop-shadow(0 0 8px rgba(168,85,247,.55));transform:scale(1.04)}
+.logo svg{display:block;overflow:visible}
+.logo:hover .wow-pupil-text{opacity:1!important;filter:drop-shadow(0 0 3px rgba(168,85,247,.9))}
 .search-wrap{flex:1;max-width:340px;position:relative}
 .search-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:var(--rs);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;padding:8px 34px 8px 12px;outline:none;transition:.25s}
 .search-inp::placeholder{color:var(--mu)}
@@ -322,26 +354,98 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .cats-bar{position:sticky;top:58px;z-index:150;background:rgba(5,5,5,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--b1);padding:9px 20px}
 .cats-i{max-width:1200px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;align-items:center}
 .cats-i::-webkit-scrollbar{display:none}
-.pill{padding:5px 13px;border-radius:var(--rs);border:1px solid var(--b1);background:var(--p1);color:var(--dim);font-size:11px;font-weight:500;cursor:pointer;transition:.18s;white-space:nowrap;user-select:none}
-.pill:hover{border-color:rgba(168,85,247,.3);color:rgba(192,132,252,.8);transform:translateY(-1px)}
-.pill.on{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.4);color:rgba(192,132,252,.95)}
+.pill{
+  padding:5px 14px;border-radius:var(--rs);
+  border:1px solid var(--b1);background:var(--p1);
+  color:var(--dim);font-size:11px;font-weight:500;
+  cursor:pointer;transition:all var(--duration) var(--ease-out);
+  white-space:nowrap;user-select:none;letter-spacing:.3px;
+}
+.pill:hover{
+  border-color:rgba(168,85,247,.32);color:rgba(192,132,252,.85);
+  transform:translateY(-1px);background:rgba(168,85,247,.06);
+}
+.pill.on{
+  background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.42);
+  color:rgba(192,132,252,.98);box-shadow:var(--glow-sm);
+}
 .pill-sep{width:1px;height:14px;background:var(--b1);flex-shrink:0}
 .tb{max-width:1200px;margin:0 auto;padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;position:relative;z-index:5}
 .pc{font-size:11px;color:var(--mu);letter-spacing:2px;text-transform:uppercase}
 .ss{appearance:none;background:var(--p1);border:1px solid var(--b1);border-radius:var(--rs);color:var(--dim);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:11px;padding:6px 24px 6px 10px;outline:none;cursor:pointer}
 .ss option{background:#111}
 
-/* ══ TRUST BAR ══ */
-.trust-bar{background:rgba(0,0,0,.6);border-top:1px solid rgba(168,85,247,.1);border-bottom:1px solid rgba(168,85,247,.1);overflow:hidden;position:relative;z-index:5}
-.trust-bar::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(168,85,247,.015) 3px,rgba(168,85,247,.015) 4px);pointer-events:none}
-.trust-scroll{display:flex;animation:tscroll 28s linear infinite;width:max-content}
-.trust-item{padding:10px 40px;font-size:10px;color:rgba(168,85,247,.5);letter-spacing:3px;text-transform:uppercase;white-space:nowrap;border-right:1px solid rgba(168,85,247,.07)}
+/* ══ TRUST BAR — premium edition ══ */
+.trust-bar{
+  background:rgba(0,0,0,.72);
+  border-top:1px solid rgba(168,85,247,.12);
+  border-bottom:1px solid rgba(168,85,247,.12);
+  overflow:hidden;position:relative;z-index:5;
+}
+.trust-bar::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(168,85,247,.012) 3px,rgba(168,85,247,.012) 4px);
+  pointer-events:none;
+}
+.trust-scroll{display:flex;animation:tscroll 32s linear infinite;width:max-content}
+.trust-scroll:hover{animation-play-state:paused}
+.trust-item{
+  padding:11px 44px;font-size:9px;
+  color:rgba(168,85,247,.55);letter-spacing:3px;text-transform:uppercase;
+  white-space:nowrap;border-right:1px solid rgba(168,85,247,.07);
+  display:flex;align-items:center;gap:8px;
+}
+.trust-item::before{
+  content:'✦';font-size:7px;color:rgba(168,85,247,.3);
+}
 @keyframes tscroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
 /* ══ GRID & CARDS ══ */
 .grid{max-width:1200px;margin:0 auto;padding:0 20px 100px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;position:relative;z-index:5}
 
-/* ══ HORIZONTAL SCROLL CAROUSEL — CSS only, no JS deps ══ */
+/* card */
+.card{
+  background:rgba(12,8,22,.95);
+  border:1px solid rgba(168,85,247,.1);
+  border-radius:var(--r);
+  overflow:hidden;
+  cursor:pointer;
+  display:flex;flex-direction:column;
+  transition:transform var(--duration) var(--ease-spring),
+             border-color var(--duration) var(--ease-out),
+             box-shadow var(--duration) var(--ease-out);
+  position:relative;
+}
+.card::before{
+  content:'';position:absolute;inset:0;border-radius:var(--r);
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(168,85,247,.06),transparent 70%);
+  opacity:0;transition:opacity .35s;pointer-events:none;z-index:1;
+}
+.card:hover{
+  transform:translateY(-5px) scale(1.012);
+  border-color:rgba(168,85,247,.32);
+  box-shadow:0 12px 40px rgba(0,0,0,.55),var(--glow-sm);
+}
+.card:hover::before{opacity:1}
+.card:active{transform:translateY(-2px) scale(1.005)}
+.card.hidden{display:none!important}
+
+/* New / Hot badge — stamp style */
+.card-badge{
+  position:absolute;top:10px;right:10px;z-index:8;
+  font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  padding:3px 8px;border-radius:3px;
+  background:rgba(168,85,247,.18);border:1px solid rgba(168,85,247,.35);
+  color:rgba(192,132,252,.9);backdrop-filter:blur(6px);
+}
+.card-badge.hot{
+  background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.28);
+  color:rgba(252,165,165,.85);
+}
+
+/* ══ CARD FADE-IN — handled by JS IntersectionObserver ══ */
+
+/* ══ IMG SLIDER — upgrade ══ */
 .embla{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:relative;z-index:5;padding:0 20px 100px}
 .embla::-webkit-scrollbar{display:none}
 .embla__container{display:flex;gap:14px;width:max-content;min-width:100%}
@@ -369,50 +473,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .btn-back{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:11px;color:var(--dim);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;font-weight:600;padding:11px;cursor:pointer;flex:1;transition:.2s}
 .btn-back:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18)}
 
-/* ══ HOVER ZOOM ON ACTIVE IMAGE ══ */
-.card:hover .img-slider img.active{transform:scale(1.08);transition:transform .35s cubic-bezier(.2,.9,.4,1.1),filter .4s,opacity .3s}
-
-/* ══ HOVER LIFT + SCALE + DEPTH SHADOW ══ */
-.card{background:rgba(255,255,255,.038);border:1px solid rgba(255,255,255,.065);border-radius:var(--r);overflow:visible;display:flex;flex-direction:column;cursor:pointer;transition:transform .3s cubic-bezier(.34,1.1,.64,1),box-shadow .3s ease,border-color .3s;position:relative}
-.card:hover{transform:translateY(-8px) scale(1.012);border-color:rgba(168,85,247,.3);box-shadow:0 22px 55px rgba(0,0,0,.6),0 0 25px rgba(168,85,247,.07),0 0 1px rgba(168,85,247,.15)}
-.card.hidden{display:none}
-
-/* ══ PATTERN INTERRUPTION — every 5th card ══ */
-.card:nth-child(5n+3){border-color:rgba(168,85,247,.11);background:rgba(168,85,247,.032)}
-
-/* ══ VOID CARD CORNERS ══ */
-.card::before{content:'';position:absolute;inset:0;border-radius:var(--r);pointer-events:none;z-index:3;background:linear-gradient(135deg,rgba(168,85,247,.11) 0 8px,transparent 8px) top right/30px 30px no-repeat,linear-gradient(225deg,rgba(168,85,247,.11) 0 8px,transparent 8px) top left/30px 30px no-repeat,linear-gradient(-45deg,rgba(88,28,135,.09) 0 8px,transparent 8px) bottom right/30px 30px no-repeat,linear-gradient(45deg,rgba(88,28,135,.09) 0 8px,transparent 8px) bottom left/30px 30px no-repeat;opacity:0;transition:opacity .35s}
-.card:hover::before{opacity:1}
-
-/* Warm edge on hover */
-.card::after{content:'';position:absolute;inset:0;border-radius:var(--r);pointer-events:none;z-index:4;background:linear-gradient(135deg,rgba(251,146,60,.035) 0%,transparent 40%,transparent 60%,rgba(251,191,36,.025) 100%);opacity:0;transition:opacity .3s}
-.card:hover::after{opacity:1}
-
-/* Image slider depth shadow on hover */
-.card:hover .img-slider{box-shadow:0 10px 35px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05)}
-.img-slider{position:relative;overflow:hidden;aspect-ratio:3/4;background:#111;transition:box-shadow .3s;border-radius:var(--r) var(--r) 0 0}
-.img-slider::after{content:'';position:absolute;inset:0;z-index:4;pointer-events:none;box-shadow:inset 0 0 22px rgba(88,28,135,.22),inset 0 0 1px rgba(168,85,247,.25);border-radius:inherit}
-.img-slider img{width:100%;height:100%;object-fit:cover;filter:brightness(.82) saturate(.72);transition:filter .4s,opacity .3s;position:absolute;top:0;left:0;opacity:0}
+/* ══ IMAGE SLIDER ══ */
+.img-slider{position:relative;overflow:hidden;aspect-ratio:3/4;background:#0d0020;transition:box-shadow .3s;border-radius:var(--r) var(--r) 0 0}
+.img-slider::after{content:'';position:absolute;inset:0;z-index:4;pointer-events:none;box-shadow:inset 0 0 22px rgba(55,28,110,.28),inset 0 0 1px rgba(168,85,247,.2);border-radius:inherit}
+.img-slider img{width:100%;height:100%;object-fit:cover;filter:brightness(.84) saturate(.75);transition:filter .4s,opacity .3s;position:absolute;top:0;left:0;opacity:0}
 .img-slider img.active{opacity:1;position:relative}
-.img-slider img.lazy-blur{filter:brightness(.82) saturate(.72) blur(10px);transform:scale(1.04)}
+.img-slider img.lazy-blur{filter:brightness(.84) saturate(.75) blur(12px);transform:scale(1.05)}
 .img-slider img.lazy-loaded{transition:filter .55s,transform .55s}
-.card:hover .img-slider img.active{filter:brightness(.88) saturate(.88) sepia(.03)}
+.card:hover .img-slider{box-shadow:0 10px 35px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.04)}
+.card:hover .img-slider img.active{filter:brightness(.9) saturate(.85)}
 
-
-.slide-arr{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.5);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;z-index:5;transition:.18s;opacity:0}
+.slide-arr{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.55);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;z-index:5;transition:.18s;opacity:0;backdrop-filter:blur(4px)}
 .img-slider:hover .slide-arr{opacity:1}
 .slide-arr.prev{right:6px}.slide-arr.next{left:6px}
-.slide-arr:hover{background:rgba(168,85,247,.6)}
-.slide-dots{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:5}
-.slide-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.3);cursor:pointer;transition:.18s}
-.slide-dot.on{background:rgba(192,132,252,.9);width:12px;border-radius:3px}
+.slide-arr:hover{background:rgba(109,40,217,.65)}
+.slide-dots{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:5}
+.slide-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.28);cursor:pointer;transition:.2s}
+.slide-dot.on{background:rgba(192,132,252,.9);width:14px;border-radius:3px}
 
-.card-body{padding:11px;flex:1;display:flex;flex-direction:column;gap:5px;position:relative}
-.card-cat{font-size:9px;color:rgba(168,85,247,.5);letter-spacing:2px;text-transform:uppercase}
-.card-name{font-size:13px;font-weight:500;color:rgba(255,255,255,.78);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.card-body{padding:11px;flex:1;display:flex;flex-direction:column;gap:5px;position:relative;z-index:2}
+.card-cat{font-size:9px;color:rgba(168,85,247,.45);letter-spacing:2.5px;text-transform:uppercase}
+/* name — secondary — smaller, dimmer. eye goes to price first */
+.card-name{font-size:12px;font-weight:400;color:rgba(255,255,255,.55);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;letter-spacing:.2px}
 
-.price-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.card-price{font-family:Georgia,serif;font-size:14px;color:rgba(192,132,252,.9)}
+/* price — dominant — Gestalt: price+button proximity */
+.price-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px}
+.card-price{font-family:Georgia,serif;font-size:16px;font-weight:700;color:rgba(192,132,252,.95);letter-spacing:.5px}
 .card-price-old{font-size:11px;color:var(--mu);text-decoration:line-through}
 .disc-badge{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.25);color:rgba(252,165,165,.85);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px}
 
@@ -427,9 +513,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .scarcity-txt{font-size:9px;color:rgba(252,165,165,.68);letter-spacing:.5px;margin-top:2px}
 .fomo-txt{font-size:9px;color:rgba(168,85,247,.35);letter-spacing:.5px;font-style:italic;margin-top:auto}
 
-/* ══ HOVER LIFT ADD BUTTON ══ */
-.addbtn{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2);border-radius:8px;color:rgba(192,132,252,.8);font-size:11px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;padding:8px;cursor:pointer;transition:transform .22s cubic-bezier(.34,1.2,.64,1),background .22s,border-color .22s,box-shadow .22s;margin-top:6px;position:relative;overflow:hidden}
-.addbtn:hover{background:rgba(168,85,247,.22);border-color:rgba(168,85,247,.45);transform:translateY(-2px);box-shadow:0 6px 20px rgba(168,85,247,.15)}
+/* ══ HOVER LIFT ADD BUTTON — CTA prominence ══ */
+.addbtn{
+  background:rgba(109,40,217,.18);
+  border:1px solid rgba(168,85,247,.28);
+  border-radius:10px;
+  color:rgba(216,180,254,.92);
+  font-size:11px;font-weight:600;letter-spacing:.8px;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  padding:10px;cursor:pointer;
+  transition:transform var(--duration) var(--ease-spring),
+             background var(--duration),
+             border-color var(--duration),
+             box-shadow var(--duration);
+  margin-top:8px;position:relative;overflow:hidden;
+  text-align:center;
+}
+.addbtn::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(168,85,247,.12),transparent);
+  opacity:0;transition:opacity .2s;
+}
+.addbtn:hover{
+  background:rgba(109,40,217,.32);
+  border-color:rgba(168,85,247,.55);
+  transform:translateY(-2px);
+  box-shadow:0 8px 24px rgba(109,40,217,.28),var(--glow-sm);
+}
+.addbtn:hover::after{opacity:1}
 .addbtn:active{transform:scale(.96)}
 
 /* ══ MICRO-REWARD PARTICLES ══ */
@@ -476,12 +587,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
 /* ══ MODALS — full screen cover ══ */
-.mod-ov{position:fixed;inset:0;width:100%;height:100%;background:rgba(0,0,0,.9);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);z-index:1000;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.mod-ov{
+  position:fixed;inset:0;width:100%;height:100%;
+  background:rgba(0,0,0,.88);
+  backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+  z-index:1000;display:none;align-items:flex-start;justify-content:center;
+  padding:20px;overflow-y:auto;
+}
 .mod-ov.on{display:flex}
-.mod{background:rgba(8,6,16,.98);border:1px solid rgba(168,85,247,.18);border-radius:20px;padding:28px;width:100%;max-width:520px;animation:pop .3s cubic-bezier(.34,1.4,.64,1);position:relative;margin:auto;flex-shrink:0}
+.mod{
+  background:rgba(8,5,18,.98);
+  border:1px solid rgba(168,85,247,.16);
+  border-radius:20px;padding:28px;width:100%;max-width:520px;
+  animation:pop .28s cubic-bezier(.34,1.4,.64,1);
+  position:relative;margin:auto;flex-shrink:0;
+}
 .mod::-webkit-scrollbar{width:3px}
 .mod::-webkit-scrollbar-thumb{background:rgba(168,85,247,.3);border-radius:2px}
-@keyframes pop{from{opacity:0;transform:scale(.9) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes pop{from{opacity:0;transform:scale(.92) translateY(18px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .mod-title{font-family:Georgia,serif;font-size:16px;color:rgba(192,132,252,.9);letter-spacing:2px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
 .fl{margin-bottom:12px}
 .fl label{display:block;font-size:10px;font-weight:500;color:rgba(168,85,247,.75);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px}
@@ -647,7 +770,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   .cart-sb{width:100%;right:-100%}
   .mod{padding:20px 14px}
   .hdr-i{padding:9px 13px}
-  .logo{font-size:19px;letter-spacing:3px}
+  .logo svg{width:88px;height:auto}
   .search-wrap{flex:1}
   .meas-g{grid-template-columns:1fr 1fr}
   .adm-side{width:145px}
@@ -655,6 +778,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   .inv-grid{grid-template-columns:1fr}
   .footer-inner{grid-template-columns:1fr}
   .adm-btn span{display:none}
+  .card-price{font-size:14px}
+  .card-name{font-size:11px}
 }
 @media(max-width:400px){.grid{grid-template-columns:1fr 1fr;gap:8px}}
 @media print{
@@ -671,7 +796,85 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 <header class="hdr">
   <div class="hdr-i">
-    <a href="#" class="logo" id="store-name-hdr">WOW</a>
+    <a href="#" class="logo" id="store-name-hdr" aria-label="WOW Store">
+      <!-- Eye of Horus brand mark — "wow" is written inside the pupil -->
+      <!-- Visitor discovers the brand name naturally through exploration -->
+      <svg width="112" height="56" viewBox="0 0 320 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <style>
+            @keyframes hdr-fl{0%,91%,100%{opacity:1}92%{opacity:.18}93%{opacity:1}96%{opacity:.42}97%{opacity:1}}
+            .hdr-fl{animation:hdr-fl 9s infinite}
+          </style>
+          <filter id="hdr-neon" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="3.5" result="b1"/>
+            <feGaussianBlur stdDeviation="1.4" result="b2"/>
+            <feMerge><feMergeNode in="b1"/><feMergeNode in="b2"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <radialGradient id="hdr-iris" cx="38%" cy="32%" r="65%">
+            <stop offset="0%" stop-color="#6d28d9"/>
+            <stop offset="35%" stop-color="#4c1d95"/>
+            <stop offset="75%" stop-color="#2e0050"/>
+            <stop offset="100%" stop-color="#06000e"/>
+          </radialGradient>
+          <radialGradient id="hdr-pupil" cx="40%" cy="35%" r="60%">
+            <stop offset="0%" stop-color="#0d0020"/>
+            <stop offset="100%" stop-color="#000000"/>
+          </radialGradient>
+          <clipPath id="hdr-clip">
+            <path d="M60,72 C70,48 105,22 135,22 C148,22 158,28 170,34 C196,46 244,60 256,72 C240,90 195,108 160,108 C125,108 80,90 60,72 Z"/>
+          </clipPath>
+        </defs>
+
+        <g filter="url(#hdr-neon)" class="hdr-fl">
+          <!-- Eyebrow -->
+          <path d="M72,46 C90,30 130,12 160,10 C182,8 210,18 230,32"
+            fill="none" stroke="#a855f7" stroke-width="5.5" stroke-linecap="round" opacity="0.75"/>
+          <!-- Upper lid — angular Egyptian kink at 170,34 -->
+          <path d="M60,72 C70,48 105,22 135,22 C148,22 158,28 170,34 C196,46 244,60 256,72"
+            fill="none" stroke="#a855f7" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- Lower lid -->
+          <path d="M60,72 C80,90 125,108 160,108 C195,108 240,90 256,72"
+            fill="none" stroke="#a855f7" stroke-width="3.5" stroke-linecap="round"/>
+          <!-- Upper lash accent -->
+          <path d="M85,52 C115,36 148,26 170,34"
+            fill="none" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round" opacity="0.38"/>
+          <!-- Inner corner teardrop -->
+          <path d="M60,72 C52,66 42,67 38,72 C42,77 52,78 60,72 Z"
+            fill="#a855f7" opacity="0.82"/>
+          <!-- Kohl tail — authentic hook -->
+          <path d="M256,72 L272,94 L291,112 C300,122 302,132 295,138 C288,144 276,141 268,132 C261,123 265,114 272,112"
+            fill="none" stroke="#a855f7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+
+        <!-- Iris -->
+        <circle cx="155" cy="72" r="31" fill="url(#hdr-iris)" clip-path="url(#hdr-clip)"/>
+        <!-- Concentric rings -->
+        <circle cx="155" cy="72" r="24" fill="none" stroke="#7c3aed" stroke-width="1.1" opacity="0.32" clip-path="url(#hdr-clip)"/>
+        <circle cx="155" cy="72" r="18" fill="none" stroke="#6d28d9" stroke-width="0.8" opacity="0.2" clip-path="url(#hdr-clip)"/>
+        <!-- Pupil -->
+        <circle cx="154" cy="71" r="13" fill="url(#hdr-pupil)" clip-path="url(#hdr-clip)"/>
+
+        <!-- "wow" inside pupil — barely visible at rest, glows on hover via CSS -->
+        <text x="154" y="74.5"
+          text-anchor="middle"
+          font-family="Georgia, serif"
+          font-weight="900"
+          font-size="6"
+          letter-spacing="0.4"
+          fill="#7c3aed"
+          opacity="0.55"
+          clip-path="url(#hdr-clip)"
+          class="wow-pupil-text">wow</text>
+
+        <!-- Catchlight -->
+        <ellipse cx="147" cy="63" rx="4.5" ry="3" fill="#6d28d9" opacity="0.55" clip-path="url(#hdr-clip)"/>
+
+        <!-- Crown star -->
+        <polygon
+          points="160,3 161.8,8.4 167.5,8.4 163,11.8 164.8,17.2 160,13.8 155.2,17.2 157,11.8 152.5,8.4 158.2,8.4"
+          fill="#a855f7" opacity="0.7" filter="url(#hdr-neon)" class="hdr-fl"/>
+      </svg>
+    </a>
     <div class="search-wrap">
       <span class="search-ico">&#9906;</span>
       <input class="search-inp" id="search-inp" type="text" placeholder="ابحث عن منتج..." oninput="WOW.liveSearch(this.value)">
@@ -721,12 +924,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 <div class="trust-bar">
   <div class="trust-scroll">
-    <div class="trust-item">التوصيل متوفر لـ 58 ولاية</div>
-    <div class="trust-item">الدفع عند الاستلام بعد فحص المنتج</div>
-    <div class="trust-item">ضمان الاستبدال في غضون 3 ايام</div>
-    <div class="trust-item">التوصيل متوفر لـ 58 ولاية</div>
-    <div class="trust-item">الدفع عند الاستلام بعد فحص المنتج</div>
-    <div class="trust-item">ضمان الاستبدال في غضون 3 ايام</div>
+    <div class="trust-item">التوصيل لـ 58 ولاية</div>
+    <div class="trust-item">الدفع عند الاستلام بعد الفحص</div>
+    <div class="trust-item">ضمان الاستبدال 3 أيام</div>
+    <div class="trust-item">قطع محدودة — تصاميم حصرية</div>
+    <div class="trust-item">تصوير احترافي لكل قطعة</div>
+    <div class="trust-item">التوصيل لـ 58 ولاية</div>
+    <div class="trust-item">الدفع عند الاستلام بعد الفحص</div>
+    <div class="trust-item">ضمان الاستبدال 3 أيام</div>
+    <div class="trust-item">قطع محدودة — تصاميم حصرية</div>
+    <div class="trust-item">تصوير احترافي لكل قطعة</div>
   </div>
 </div>
 
@@ -765,8 +972,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <footer class="footer">
   <div class="footer-inner">
     <div>
-      <div class="footer-brand">WOW</div>
-      <div class="footer-tagline">اكتشف ما يناسبك</div>
+      <!-- Footer brand: eye mark small + store name discovery -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <svg width="52" height="26" viewBox="0 0 320 160" xmlns="http://www.w3.org/2000/svg" style="opacity:.45;flex-shrink:0">
+          <defs>
+            <filter id="ft-glow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="3" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <clipPath id="ft-clip">
+              <path d="M60,72 C70,48 105,22 135,22 C148,22 158,28 170,34 C196,46 244,60 256,72 C240,90 195,108 160,108 C125,108 80,90 60,72 Z"/>
+            </clipPath>
+          </defs>
+          <g filter="url(#ft-glow)">
+            <path d="M72,46 C90,30 130,12 160,10 C182,8 210,18 230,32" fill="none" stroke="#7e22ce" stroke-width="5.5" stroke-linecap="round" opacity=".7"/>
+            <path d="M60,72 C70,48 105,22 135,22 C148,22 158,28 170,34 C196,46 244,60 256,72" fill="none" stroke="#7e22ce" stroke-width="4.5" stroke-linecap="round"/>
+            <path d="M60,72 C80,90 125,108 160,108 C195,108 240,90 256,72" fill="none" stroke="#7e22ce" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M60,72 C52,66 42,67 38,72 C42,77 52,78 60,72 Z" fill="#7e22ce" opacity=".8"/>
+            <path d="M256,72 L272,94 L291,112 C300,122 302,132 295,138 C288,144 276,141 268,132 C261,123 265,114 272,112" fill="none" stroke="#7e22ce" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+          <circle cx="155" cy="72" r="24" fill="none" stroke="#3b0764" stroke-width="1" opacity=".4" clip-path="url(#ft-clip)"/>
+          <circle cx="154" cy="71" r="10" fill="#0d0020" clip-path="url(#ft-clip)"/>
+          <text x="154" y="74.5" text-anchor="middle" font-family="Georgia,serif" font-weight="900" font-size="5.5" fill="#4c1d95" opacity=".7" clip-path="url(#ft-clip)">wow</text>
+        </svg>
+        <div class="footer-brand">WOW</div>
+      </div>
+      <div class="footer-tagline">اكتشف ما يناسبك<br><span style="opacity:.5;font-size:9px;letter-spacing:1.5px">كل قطعة تحمل رسالة</span></div>
     </div>
     <div>
       <div class="footer-h">روابط</div>
@@ -788,7 +1019,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <div class="ov" id="ov"></div>
 <div class="cart-sb" id="cart-sb">
   <div class="cart-hdr"><div class="cart-title">CART</div><button class="xbtn" id="cart-xbtn">&#10005;</button></div>
-  <div class="cart-items" id="cart-items"><div class="c-empty"><span style="font-size:30px;opacity:.2">&#8711;</span><span>السلة فارغة</span></div></div>
+  <div class="cart-items" id="cart-items">
+    <div class="c-empty">
+      <svg width="36" height="18" viewBox="0 0 320 160" style="opacity:.15">
+        <path d="M60,72 C70,48 105,22 135,22 C148,22 158,28 170,34 C196,46 244,60 256,72 C240,90 195,108 160,108 C125,108 80,90 60,72 Z" fill="none" stroke="rgba(168,85,247,.8)" stroke-width="6"/>
+        <circle cx="155" cy="72" r="22" fill="rgba(168,85,247,.1)"/>
+        <circle cx="154" cy="71" r="10" fill="rgba(0,0,0,.8)"/>
+      </svg>
+      <span>السلة فارغة</span>
+    </div>
+  </div>
   <div class="cart-ft">
     <div class="cart-tot"><span class="cart-tot-l">المجموع</span><span class="cart-tot-v" id="cart-tot">0 دج</span></div>
     <div id="cart-disc-row" style="display:none;justify-content:center;font-size:10px;color:rgba(74,222,128,.7);padding:3px 0;letter-spacing:.3px"></div>
@@ -1205,6 +1445,19 @@ var WOW = (function(){
   function _getVID(){try{var v=localStorage.getItem("wvid");if(!v){v="V"+Date.now().toString(36).toUpperCase();localStorage.setItem("wvid",v);}return v;}catch(e){return "V"+Date.now().toString(36).toUpperCase();}}
   function _trackVisit(){_api("/api/analytics",{method:"POST",body:JSON.stringify({vid:_getVID()})}).catch(function(){});}
 
+  /* ── HEADER SCROLL GLOW ── */
+  function _initHeaderScroll(){
+    var hdr=document.querySelector(".hdr");if(!hdr)return;
+    window.addEventListener("scroll",function(){
+      hdr.classList.toggle("scrolled",window.scrollY>40);
+    },{passive:true});
+  }
+
+  /* ── SCROLL REVEAL OBSERVER ── */
+  function _initReveal(){
+    /* merged into _initCardFadeIn — no-op to avoid double observer */
+  }
+
   /* ── SKELETON ── */
   function _showSkeletons(){
     var g=document.getElementById("grid");if(!g)return;
@@ -1420,12 +1673,14 @@ var WOW = (function(){
                   +"<div class='scarcity-txt'>تبقى "+p.quantity+" قطعة فقط</div>";
         }
         html+="<div class='embla__slide'><div class='card' data-pid='"+p.id+"' data-name='"+_esc(p.name)+"' data-cat='"+_esc(p.cat)+"'>"
+             +(p.salesCount&&p.salesCount>10?"<div class='card-badge hot'>HOT</div>":idx<3?"<div class='card-badge'>NEW</div>":"")
              +_makeSlider(imgs,p.id)
              +"<div class='card-body'><div class='card-cat'>"+_esc(CAT[p.cat]||p.cat)+"</div>"
-             +"<div class='card-name'>"+_esc(p.name)+"</div>"+ph
+             +ph
+             +"<div class='card-name'>"+_esc(p.name)+"</div>"
              +spHtml+scarHtml
              +"<div class='fomo-txt'>قطع محدودة جداً من هذا التصميم هذا الاسبوع</div>"
-             +"<button class='addbtn' data-pid='"+p.id+"'>+ اضف للسلة</button></div></div></div>";
+             +"<button class='addbtn' data-pid='"+p.id+"'>أضف للسلة ←</button></div></div></div>";
       });
       g.innerHTML=html;
       g.querySelectorAll(".card").forEach(function(card){
@@ -1467,6 +1722,7 @@ var WOW = (function(){
       });
       _obsLazy();
       _initCarousel();
+      _initReveal();
       _updateMeta("WOW Store — "+fp.length+" منتج","تسوق احدث صيحات الموضة في الجزائر");
     }catch(e){}
   }
@@ -2419,21 +2675,25 @@ var WOW = (function(){
   function _initCardFadeIn(){
     if(!("IntersectionObserver" in window))return;
     try{
+      /* set hidden state first, then reveal on intersect */
+      document.querySelectorAll(".embla__slide").forEach(function(s){
+        s.style.opacity="0";
+        s.style.transform="translateY(16px)";
+        s.style.transition="none";
+      });
       var obs=new IntersectionObserver(function(entries){
         entries.forEach(function(e){
           if(e.isIntersecting){
             var el=e.target;
-            el.style.opacity="0";
-            el.style.transform="translateY(18px)";
             requestAnimationFrame(function(){
-              el.style.transition="opacity .4s ease,transform .4s ease";
+              el.style.transition="opacity .42s cubic-bezier(.4,0,.2,1),transform .42s cubic-bezier(.4,0,.2,1)";
               el.style.opacity="1";
               el.style.transform="translateY(0)";
             });
             obs.unobserve(el);
           }
         });
-      },{threshold:0.08,rootMargin:"0px 80px 0px 80px"});
+      },{threshold:0.06,rootMargin:"0px 60px 0px 60px"});
       document.querySelectorAll(".embla__slide").forEach(function(s){obs.observe(s);});
     }catch(e){}
   }
@@ -2449,12 +2709,15 @@ var WOW = (function(){
         var rect=card.getBoundingClientRect();
         var cx=(e.clientX-rect.left)/rect.width-0.5;
         var cy=(e.clientY-rect.top)/rect.height-0.5;
-        var mx=cx*4,my=cy*4;// أقصى 4%
+        var mx=cx*3,my=cy*3;
+        /* include hover scale so inline style doesn't override CSS hover */
         img.style.transform="scale(1.08) translate("+mx+"px,"+my+"px)";
+        img.style.transition="transform .15s ease";
       },{passive:true});
       document.addEventListener("mouseleave",function(e){
         var card=e.target.closest(".card");if(!card)return;
-        var img=card.querySelector(".img-slider img.active");if(img){img.style.transform="";}
+        var img=card.querySelector(".img-slider img.active");
+        if(img){img.style.transform="";img.style.transition="";}
       },{passive:true});
     }catch(e){}
   }
@@ -2570,6 +2833,7 @@ var WOW = (function(){
       _initScroll();
       _initStepper();
       _initParallax();
+      _initHeaderScroll();
       _loadCart();
       _restoreDiscount();
       _trackVisit();
