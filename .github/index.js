@@ -383,7 +383,7 @@ export default {
         if(fpList.keys.length)keyDetails.push({key:"fp:* ("+fpList.keys.length+" entries)",bytes:fpBytes});
       }catch{}
       const usedMB=totalBytes/(1024*1024);
-      const totalMB=KV_MAX_BYTES/(1024*1024*1024)*1024;
+      // totalMB = 1024 MB (حد الخطة المجانية)
       const pctUsed=Math.min(100,(totalBytes/KV_MAX_BYTES)*100);
       const pctFree=100-pctUsed;
       return R({ok:true,usedBytes:totalBytes,usedMB:+usedMB.toFixed(3),totalMB:1024,pctUsed:+pctUsed.toFixed(2),pctFree:+pctFree.toFixed(2),keyDetails});
@@ -2355,7 +2355,7 @@ var WOW = (function(){
         +"<span style='font-size:11px;color:var(--dim)'>متبقٍ: "+pctFree.toFixed(1)+"%</span>"
         +"</div>"
         +"<div style='height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden'>"
-        +"<div style='height:100%;width:"+pctUsed+"%25;background:"+barColor+";border-radius:4px;transition:width .4s'></div>"
+        +"<div style='height:100%;width:"+pctUsed+"%;background:"+barColor+";border-radius:4px;transition:width .4s'></div>"
         +"</div></div>"
         +details+warn;
     }).catch(function(){if(c)c.innerHTML="<span style='color:rgba(239,68,68,.7)'>خطا في الاتصال</span>";});
@@ -3107,11 +3107,11 @@ var WOW = (function(){
       _initStepper();
       _initParallax();
       _loadCart();
-      _restoreDiscount();
       _trackVisit();
       _showSkeletons();
       _loadProds();
-      _loadSettings();
+      _loadSettings(); // يُحدّث _adminDiscountCache أولاً
+      _restoreDiscount(); // ثم يستعيد الخصم مع cache محدّث
       _updCart();
       _showMystery();
 
