@@ -14,17 +14,31 @@ const ADMIN_PASS_HASH = "881b9563ffff9349eb3ad4efeb71c7355d7878644e385d71d26b846
 const BLOCK_MS = 8*3600000;
 const MAX_ATT  = 5;
 
-const CORS={
-  "Access-Control-Allow-Origin":"*",
-  "Access-Control-Allow-Methods":"GET,POST,PUT,DELETE,OPTIONS,PATCH",
-  "Access-Control-Allow-Headers":"Content-Type,X-Admin-Key",
-};
+// ── قائمة النطاقات المسموح بها لـ CORS — عدّلها يدوياً حسب نطاقك ──
+const ALLOWED_ORIGINS = [
+  "https://your-site.com",
+  "https://www.your-site.com",
+  // "http://localhost:8788", // للتطوير المحلي
+];
 
-function R(body,status=200,extra={}){
+function _getCorsHeaders(req){
+  const origin = req ? req.headers.get("Origin") : null;
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin)
+    ? origin
+    : (ALLOWED_ORIGINS[0] || "https://your-site.com");
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS,PATCH",
+    "Access-Control-Allow-Headers": "Content-Type,X-Admin-Key",
+    "Vary": "Origin",
+  };
+}
+
+function R(body,status=200,extra={},_req=null){
   const isStr=typeof body==="string";
   return new Response(isStr?body:JSON.stringify(body),{
     status,
-    headers:{...CORS,"Content-Type":isStr?"text/html;charset=utf-8":"application/json",...extra}
+    headers:{..._getCorsHeaders(_req),"Content-Type":isStr?"text/html;charset=utf-8":"application/json",...extra}
   });
 }
 
@@ -69,7 +83,7 @@ export default {
     const url=new URL(request.url);
     const path=url.pathname;
     const method=request.method;
-    if(method==="OPTIONS")return new Response(null,{headers:CORS});
+    if(method==="OPTIONS")return new Response(null,{headers:_getCorsHeaders(request)});
 
     if(path==="/api/auth"&&method==="POST"){
       const fp=getFP(request);
@@ -337,6 +351,42 @@ export default {
       if(method==="GET")return R(await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"wowastore15@gmail.com",instagram:"wow.7a"}));
       if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
       await kvSet(env,"settings",await request.json());return R({ok:true});
+    }
+
+    /* ── KV STATS — تقدير المساحة المستخدمة ── */
+    if(path==="/api/kv-stats"&&method==="GET"){
+      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      const KV_MAX_BYTES=1*1024*1024*1024; // 1 GB — حد الخطة المجانية
+      const MAIN_KEYS=["products","orders","visits","settings","push_subscription"];
+      let totalBytes=0;
+      const keyDetails=[];
+      // المفاتيح الرئيسية
+      for(const k of MAIN_KEYS){
+        try{
+          const raw=await env.DATABASE.get(k);
+          if(raw!==null){const b=new TextEncoder().encode(raw).length;totalBytes+=b;keyDetails.push({key:k,bytes:b});}
+        }catch{}
+      }
+      // مفاتيح admin_token — نحصل على قائمتها
+      try{
+        const listed=await env.DATABASE.list({prefix:"admin_token:"});
+        for(const {name} of listed.keys){
+          try{const raw=await env.DATABASE.get(name);if(raw!==null){const b=new TextEncoder().encode(raw).length;totalBytes+=b;}}catch{}
+        }
+        if(listed.keys.length)keyDetails.push({key:"admin_token:* ("+listed.keys.length+")",bytes:listed.keys.length*40});
+      }catch{}
+      // مفاتيح rate-limit fp:*
+      try{
+        const fpList=await env.DATABASE.list({prefix:"fp:"});
+        const fpBytes=fpList.keys.length*80;
+        totalBytes+=fpBytes;
+        if(fpList.keys.length)keyDetails.push({key:"fp:* ("+fpList.keys.length+" entries)",bytes:fpBytes});
+      }catch{}
+      const usedMB=totalBytes/(1024*1024);
+      const totalMB=KV_MAX_BYTES/(1024*1024*1024)*1024;
+      const pctUsed=Math.min(100,(totalBytes/KV_MAX_BYTES)*100);
+      const pctFree=100-pctUsed;
+      return R({ok:true,usedBytes:totalBytes,usedMB:+usedMB.toFixed(3),totalMB:1024,pctUsed:+pctUsed.toFixed(2),pctFree:+pctFree.toFixed(2),keyDetails});
     }
 
     const settings=await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"wowastore15@gmail.com",instagram:"wow.7a"});
@@ -1458,6 +1508,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="sg" id="stat-cards"></div>
         <div class="cw"><div class="cl">Device Types</div><div id="dev-chart"></div></div>
         <div class="cw"><div class="cl">Visit Hours (24h)</div><div id="hr-chart"></div></div>
+        <div class="cw" id="kv-stats-section">
+          <div class="cl" style="display:flex;justify-content:space-between;align-items:center">
+            <span>KV Storage Usage</span>
+            <button onclick="WOW._loadKvStats()" style="background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:rgba(168,85,247,.9);border-radius:6px;padding:3px 10px;font-size:10px;cursor:pointer">تحديث</button>
+          </div>
+          <div id="kv-stats-c" style="color:var(--mu);font-size:12px">اضغط تحديث لفحص المساحة</div>
+        </div>
       </div>
       <div class="asec" id="as-products">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
@@ -1563,6 +1620,7 @@ var WOW = (function(){
   var _prods=[],_cart=[],_curCat="all",_curSort="d";
   var _pendProd=null,_selSz=null,_adminToken="";
   var _prodImgs=[],_isSilentBlocked=false,_globalDiscount=${adminDisc};
+  var _adminDiscountCache=${adminDisc}; // يُحدَّث عند _loadSettings
   var _toastT=null,_imgObs=null;
   var SESSION_KEY="wow_session",REMEMBER_KEY="wow_remember";
   var CAT={shirts:"القمصان",pants:"البناطيل",shorts:"الشورتات",hats:"القبعات",accessories:"الاكسسوارات",other:"اخرى"};
@@ -2134,7 +2192,7 @@ var WOW = (function(){
         // أزل فقط خصم mystery — احتفظ بخصم الأدمن
         try{
           var mystExp=localStorage.getItem("wow_disc_exp");
-          if(mystExp){localStorage.removeItem("wow_disc_val");localStorage.removeItem("wow_disc_exp");_globalDiscount=0;}
+          if(mystExp){localStorage.removeItem("wow_disc_val");localStorage.removeItem("wow_disc_exp");_globalDiscount=(_adminDiscountCache&&_adminDiscountCache>0)?_adminDiscountCache:0;}
         }catch(e){}
       };
       _closeMod("checkout-mod");_openMod("inv-mod");
@@ -2272,6 +2330,36 @@ var WOW = (function(){
     }).catch(function(){_setApiSt(false);});
   }
   function _sc(label,val){return "<div class='sc'><div class='sv'>"+val+"</div><div class='sl'>"+label+"</div></div>";}
+
+  /* ── KV STORAGE STATS ── */
+  function _loadKvStats(){
+    var c=document.getElementById("kv-stats-c");
+    if(c)c.innerHTML="<span class='spin'></span> جاري الفحص...";
+    _api("/api/kv-stats").then(function(r){return r.json();}).then(function(d){
+      if(!c)return;
+      if(!d.ok){c.innerHTML="<span style='color:rgba(239,68,68,.7)'>خطا في جلب البيانات</span>";return;}
+      var usedMB=d.usedMB||0;
+      var pctUsed=d.pctUsed||0;
+      var pctFree=d.pctFree||100;
+      var isWarning=pctFree<10||(d.totalMB-usedMB)<100;
+      var barColor=isWarning?"rgba(239,68,68,.8)":"rgba(168,85,247,.8)";
+      var warn=isWarning
+        ?"<div style='margin-top:10px;padding:8px 12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;color:rgba(239,68,68,.9);font-size:11px'>⚠️ المساحة تقترب من النفاذ — يرجى الترقية أو حذف بيانات قديمة</div>"
+        :"";
+      var details=(d.keyDetails||[]).map(function(k){
+        return "<div style='display:flex;justify-content:space-between;font-size:10px;color:var(--mu);padding:2px 0'><span>"+_esc(k.key)+"</span><span>"+(k.bytes/1024).toFixed(1)+" KB</span></div>";
+      }).join("");
+      c.innerHTML="<div style='margin-bottom:8px'>"
+        +"<div style='display:flex;justify-content:space-between;margin-bottom:4px'>"
+        +"<span style='font-size:11px;color:var(--tx)'>"+usedMB.toFixed(2)+" MB / 1024 MB</span>"
+        +"<span style='font-size:11px;color:var(--dim)'>متبقٍ: "+pctFree.toFixed(1)+"%</span>"
+        +"</div>"
+        +"<div style='height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden'>"
+        +"<div style='height:100%;width:"+pctUsed+"%25;background:"+barColor+";border-radius:4px;transition:width .4s'></div>"
+        +"</div></div>"
+        +details+warn;
+    }).catch(function(){if(c)c.innerHTML="<span style='color:rgba(239,68,68,.7)'>خطا في الاتصال</span>";});
+  }
 
   /* ── ADMIN PRODUCTS ── */
   function _loadAdmProds(){
@@ -2506,7 +2594,7 @@ var WOW = (function(){
       var c=document.getElementById("visitors-c");if(!c)return;
       var vs=d.visitors||[];
       if(!vs.length){c.innerHTML="<div style='color:var(--mu);font-size:12px'>لا توجد بيانات</div>";return;}
-      c.innerHTML=vs.map(function(v){return "<div class='vr'><span class='vr-id'>"+_esc(v.vid)+"</span><span style='color:var(--dim)'>"+v.dev+"</span><span style='color:rgba(192,132,252,.8);font-family:Georgia,serif'>"+v.count+" زيارة</span></div>";}).join("");
+      c.innerHTML=vs.map(function(v){return "<div class='vr'><span class='vr-id'>"+_esc(v.vid)+"</span><span style='color:var(--dim)'>"+_esc(v.dev)+"</span><span style='color:rgba(192,132,252,.8);font-family:Georgia,serif'>"+v.count+" زيارة</span></div>";}).join("");
     }).catch(function(){});
   }
 
@@ -2518,6 +2606,7 @@ var WOW = (function(){
       if(sn)sn.value=s.storeName||"";if(sw)sw.value=s.whatsapp||"";if(se)se.value=s.email||"";if(si)si.value=s.instagram||"";if(sh)sh.value=s.hero_background||"";
       if(sd)sd.value=s.admin_discount||0;
       // تطبيق تخفيض الأدمن إذا لم يكن هناك تخفيض mystery نشط
+      _adminDiscountCache=s.admin_discount&&s.admin_discount>0?parseInt(s.admin_discount)||0:0;
       if(s.admin_discount&&s.admin_discount>0&&_globalDiscount===0){
         _globalDiscount=s.admin_discount;
       }
@@ -2542,6 +2631,7 @@ var WOW = (function(){
       _updateMeta(body.storeName||"WOW Store","تسوق احدث صيحات الموضة");
       _applyHeroBackground(body.hero_background);
       // تطبيق تخفيض الأدمن فوراً — يُعلى على mystery فقط إذا أكبر
+      _adminDiscountCache=body.admin_discount>0?body.admin_discount:0;
       if(body.admin_discount>0){
         if(_globalDiscount===0||body.admin_discount>_globalDiscount){
           _globalDiscount=body.admin_discount;
@@ -2680,7 +2770,8 @@ var WOW = (function(){
       } else {
         localStorage.removeItem("wow_disc_val");
         localStorage.removeItem("wow_disc_exp");
-        _globalDiscount=0;
+        // استعادة خصم الأدمن إذا كان مُعيَّناً
+        _globalDiscount=(_adminDiscountCache&&_adminDiscountCache>0)?_adminDiscountCache:0;
       }
     }catch(e){}
   }
@@ -3290,6 +3381,7 @@ var WOW = (function(){
     closeAdm:_closeAdm,
     aTab:_aTab,
     loadOrders:_loadOrders,
+    _loadKvStats:_loadKvStats,
     clearOrders:_clearOrders,
     confOrd:function(id,confirmed){_api("/api/orders",{method:"PATCH",body:JSON.stringify({id:id,confirmed:confirmed})}).then(function(){_loadOrders();_toast(confirmed?"تم التاكيد":"تم الالغاء");}).catch(function(){_toast("خطا");});},
     updOrderStatus:function(id,status){_api("/api/orders",{method:"PATCH",body:JSON.stringify({id:id,status:status})}).then(function(){_toast("تم تحديث الحالة");}).catch(function(){_toast("خطا");});},
