@@ -33,9 +33,10 @@ async function kvGet(env,key,def=null){
 }
 async function kvSet(env,key,val,opts={}){await env.DATABASE.put(key,JSON.stringify(val),opts);}
 
-async function isAdmin(req){
+async function isAdmin(req,env){
   const k=req.headers.get("X-Admin-Key")||"";
-  return k?(await hashPass(k))===ADMIN_PASS_HASH:false;
+  if(!k)return false;
+  try{const val=await env.DATABASE.get("admin_token:"+k);return val!==null;}catch{return false;}
 }
 function getFP(req){
   const ip=req.headers.get("CF-Connecting-IP")||req.headers.get("X-Forwarded-For")||"unknown";
@@ -78,7 +79,8 @@ export default {
       const ih=await hashPass(body.password||"");
       if(ih===ADMIN_PASS_HASH){
         await clrRL(env,fp);
-        const token=await hashPass(ADMIN_PASS_RAW+"|"+Math.floor(Date.now()/3600000));
+        const token=crypto.randomUUID();
+        await env.DATABASE.put("admin_token:"+token,"1",{expirationTtl:3600});
         return R({ok:true,token});
       }
       const after=await incRL(env,fp);
@@ -87,23 +89,28 @@ export default {
       return R({ok:false,remaining:after.remaining},401);
     }
 
-    if(path==="/api/auth-verify"&&method==="POST")return R({ok:await isAdmin(request)});
+    if(path==="/api/auth-verify"&&method==="POST")return R({ok:await isAdmin(request,env)});
 
     if(path==="/api/push-subscribe"&&method==="POST"){
-      if(!await isAdmin(request))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
       await kvSet(env,"push_subscription",await request.json());
       return R({ok:true});
     }
 
     if(path==="/api/products"){
       if(method==="GET")return R(await kvGet(env,"products",[]),200,{"Cache-Control":"public,max-age=30"});
-      if(!await isAdmin(request))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
       if(method==="POST"){
         const body=await request.json(),prods=await kvGet(env,"products",[]);
-        const p={id:Date.now(),name:(body.name||"").substring(0,120),price:Math.max(0,+body.price||0),
-          discount:body.discount?+body.discount:0,cat:body.cat||"other",desc:(body.desc||"").substring(0,600),
+        const _rp=+body.price||0,_rd=+body.discount||0;
+        const _rq=body.quantity!==undefined&&body.quantity!==null?+body.quantity:null;
+        const p={id:Date.now(),name:(body.name||"").substring(0,120),
+          price:Math.max(0,isNaN(_rp)?0:_rp),
+          discount:Math.min(90,Math.max(0,isNaN(_rd)?0:_rd)),
+          cat:body.cat||"other",desc:(body.desc||"").substring(0,600),
           images:Array.isArray(body.images)?body.images.slice(0,4):[],
-          stock:body.stock!==false,quantity:body.quantity!==undefined?+body.quantity:null,
+          stock:body.stock!==false,
+          quantity:_rq!==null?(Math.max(0,Math.floor(isNaN(_rq)?0:_rq))):null,
           salesCount:0,createdAt:Date.now()};
         prods.push(p);await kvSet(env,"products",prods);return R(p);
       }
@@ -111,7 +118,13 @@ export default {
         const body=await request.json(),prods=await kvGet(env,"products",[]);
         const i=prods.findIndex(p=>p.id===body.id);
         if(i<0)return R({error:"Not found"},404);
-        prods[i]={...prods[i],...body};await kvSet(env,"products",prods);return R(prods[i]);
+        const _allowed=["name","price","discount","desc","images","stock","quantity","cat"];
+        const _upd={};
+        _allowed.forEach(f=>{if(body[f]!==undefined)_upd[f]=body[f];});
+        if(_upd.price!==undefined)_upd.price=Math.max(0,isNaN(+_upd.price)?0:+_upd.price);
+        if(_upd.discount!==undefined)_upd.discount=Math.min(90,Math.max(0,isNaN(+_upd.discount)?0:+_upd.discount));
+        if(_upd.quantity!==undefined&&_upd.quantity!==null)_upd.quantity=Math.max(0,Math.floor(isNaN(+_upd.quantity)?0:+_upd.quantity));
+        prods[i]={...prods[i],..._upd};await kvSet(env,"products",prods);return R(prods[i]);
       }
       if(method==="DELETE"){
         const id=+url.searchParams.get("id");
@@ -127,23 +140,115 @@ export default {
         if(!body.name||!body.phone1||!body.phone2||!body.wilaya||!body.commune||!body.items?.length)
           return R({error:"Missing fields"},400);
         if(body.phone1===body.phone2)return R({error:"Phones must differ"},400);
+
+        /* ── جدول رسوم الشحن (نسخة الخادم) ── */
+        const SF={
+          "ادرار":{h:1700,d:900,r:400},"الشلف":{h:1100,d:700,r:400},"الاغواط":{h:1300,d:800,r:400},
+          "ام البواقي":{h:1100,d:700,r:400},"باتنة":{h:1100,d:700,r:400},"بجاية":{h:1100,d:700,r:400},
+          "بسكرة":{h:1300,d:800,r:400},"بشار":{h:1400,d:900,r:400},"البليدة":{h:1100,d:700,r:400},
+          "البويرة":{h:1100,d:700,r:400},"تمنراست":{h:2200,d:1300,r:400},"تبسة":{h:800,d:500,r:400},
+          "تلمسان":{h:1200,d:700,r:400},"تيارت":{h:1200,d:700,r:400},"تيزي وزو":{h:1100,d:700,r:400},
+          "الجزائر":{h:1100,d:700,r:400},"الجلفة":{h:1300,d:800,r:400},"جيجل":{h:1100,d:700,r:400},
+          "سطيف":{h:1100,d:700,r:400},"سعيدة":{h:1200,d:700,r:400},"سكيكدة":{h:1100,d:700,r:400},
+          "سيدي بلعباس":{h:1100,d:700,r:400},"عنابة":{h:1100,d:700,r:400},"قالمة":{h:1100,d:700,r:400},
+          "قسنطينة":{h:1100,d:700,r:400},"المدية":{h:1100,d:700,r:400},"مستغانم":{h:1100,d:700,r:400},
+          "المسيلة":{h:1100,d:700,r:400},"معسكر":{h:1100,d:700,r:400},"ورقلة":{h:1300,d:800,r:400},
+          "وهران":{h:1100,d:700,r:400},"البيض":{h:1400,d:900,r:400},"اليزي":{h:2200,d:1300,r:400},
+          "برج بوعريريج":{h:1100,d:700,r:400},"بومرداس":{h:1100,d:700,r:400},"الطارف":{h:1100,d:700,r:400},
+          "تندوف":{h:1900,d:1200,r:400},"تيسمسيلت":{h:1100,d:700,r:400},"الوادي":{h:1300,d:800,r:400},
+          "خنشلة":{h:1100,d:700,r:400},"سوق اهراس":{h:1100,d:700,r:400},"تيبازة":{h:1100,d:700,r:400},
+          "ميلة":{h:1100,d:700,r:400},"عين الدفلى":{h:1100,d:700,r:400},"النعامة":{h:1400,d:800,r:400},
+          "عين تموشنت":{h:1100,d:700,r:400},"غرداية":{h:1300,d:800,r:400},"غليزان":{h:1200,d:700,r:400},
+          "تيميمون":{h:1700,d:1100,r:400},"طولقة":{h:1300,d:900,r:400},"بني عباس":{h:1400,d:900,r:400},
+          "عين صالح":{h:2200,d:1300,r:400},"عين قزام":{h:2200,d:1300,r:400},"تقرت":{h:1300,d:800,r:400},
+          "جانت":{h:2500,d:1400,r:400},"المغير":{h:1300,d:800,r:400},"المنيعة":{h:1300,d:800,r:400},
+          "وادي سوف":{h:1300,d:800,r:400}
+        };
+
+        /* ── جلب المنتجات والإعدادات ── */
+        const [prodsData,settings]=await Promise.all([kvGet(env,"products",[]),kvGet(env,"settings",{})]);
+
+        /* ── التحقق من المخزون (أول فحص) ── */
+        for(const item of body.items){
+          const prod=prodsData.find(p=>p.id===item.id);
+          if(!prod)return R({error:"المنتج غير موجود: "+item.id},400);
+          if(prod.quantity!==null&&prod.quantity!==undefined){
+            if((item.qty||1)>prod.quantity)
+              return R({error:"الكمية غير متوفرة للمنتج "+prod.name},400);
+          }
+        }
+
+        /* ── حساب الأسعار من الخادم ── */
+        let rawSubOriginal=0,subWithProductDisc=0;
+        for(const item of body.items){
+          const prod=prodsData.find(p=>p.id===item.id);
+          const qty=item.qty||1;
+          rawSubOriginal+=prod.price*qty;
+          const disc=prod.discount&&prod.discount>0?Math.min(prod.discount,90):0;
+          const effPrice=disc>0?Math.round(prod.price*(1-disc/100)):prod.price;
+          subWithProductDisc+=effPrice*qty;
+        }
+
+        /* ── خصم Mystery vs Admin ── */
+        const adminDisc=Math.max(0,Math.min(90,parseInt(settings.admin_discount||0)||0));
+        let appliedGlobalDisc=adminDisc;
+        let appliedDiscountMethod="global";
+        const clientGD=+body.globalDiscount||0;
+        const mysteryExp=+body.mysteryExp||0;
+        if(mysteryExp>Date.now()&&clientGD>=1&&clientGD<=10){
+          appliedGlobalDisc=clientGD;
+          appliedDiscountMethod="mystery";
+        }
+        const subWithGlobalDisc=appliedGlobalDisc>0?Math.round(rawSubOriginal*(1-appliedGlobalDisc/100)):rawSubOriginal;
+
+        /* ── اختر الخصم الأكبر ── */
+        let finalSub,discountMethodFinal;
+        if(subWithProductDisc<=subWithGlobalDisc){finalSub=subWithProductDisc;discountMethodFinal="product";}
+        else{finalSub=subWithGlobalDisc;discountMethodFinal=appliedDiscountMethod;}
+        const discAmt=rawSubOriginal-finalSub;
+
+        /* ── رسوم التوصيل والإرجاع ── */
+        const isHome=(body.dlbl||"").includes("منزل");
+        const shipRow=SF[body.wilaya]||{h:1100,d:700,r:400};
+        const fee=isHome?shipRow.h:shipRow.d;
+        const returnFee=shipRow.r;
+
+        /* ── رسوم CCP ── */
+        const payMethod=body.payMethod||"cod";
+        const ccpDisc=payMethod==="ccp"?50:0;
+        const total=finalSub+fee-ccpDisc;
+
+        /* ── إنشاء الطلب ── */
         const orders=await kvGet(env,"orders",[]);
-        const o={id:"WOW-"+Date.now().toString().slice(-7),date:new Date().toISOString(),confirmed:false,status:"processing",...body};
+        const o={
+          id:"WOW-"+Date.now().toString().slice(-7),date:new Date().toISOString(),
+          confirmed:false,status:"processing",
+          name:body.name,phone1:body.phone1,phone2:body.phone2,email:body.email||"",
+          wilaya:body.wilaya,commune:body.commune,dlbl:body.dlbl||"",
+          ccpRef:body.ccpRef||"",payMethod,
+          items:body.items,
+          originalSub:rawSubOriginal,finalSub,total,discAmt,fee,returnFee,ccpDisc,
+          appliedDiscountMethod:discountMethodFinal,
+          globalDiscount:appliedGlobalDisc
+        };
         orders.unshift(o);await kvSet(env,"orders",orders.slice(0,500));
-        const prods=await kvGet(env,"products",[]);
+
+        /* ── تحديث الكمية مع double-check (race condition mitigation) ── */
+        const prodsRefresh=await kvGet(env,"products",[]);
         let changed=false;
-        body.items.forEach(item=>{
-          const pi=prods.findIndex(p=>p.id===item.id);
-          if(pi>=0&&prods[pi].quantity!==null&&prods[pi].quantity!==undefined){
-            prods[pi].quantity=Math.max(0,prods[pi].quantity-(item.qty||1));
+        for(const item of body.items){
+          const pi=prodsRefresh.findIndex(p=>p.id===item.id);
+          if(pi>=0&&prodsRefresh[pi].quantity!==null&&prodsRefresh[pi].quantity!==undefined){
+            prodsRefresh[pi].quantity=Math.max(0,prodsRefresh[pi].quantity-(item.qty||1));
             changed=true;
           }
-        });
-        if(changed)await kvSet(env,"products",prods);
-        await sendPush(env,"طلبية جديدة","من: "+o.name+" | "+o.wilaya+" | "+(o.total||0).toLocaleString()+" دج");
-        return R({ok:true,orderId:o.id});
+        }
+        if(changed)await kvSet(env,"products",prodsRefresh);
+
+        await sendPush(env,"طلبية جديدة","من: "+o.name+" | "+o.wilaya+" | "+total.toLocaleString()+" دج");
+        return R({ok:true,orderId:o.id,total,finalSub,fee,discAmt,ccpDisc,globalDiscount:appliedGlobalDisc});
       }
-      if(!await isAdmin(request))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
       if(method==="GET")return R(await kvGet(env,"orders",[]));
       if(method==="PATCH"){
         const body=await request.json(),orders=await kvGet(env,"orders",[]);
@@ -208,14 +313,14 @@ export default {
         await kvSet(env,"visits",visits.slice(-2000));
         return R({ok:true});
       }
-      if(!await isAdmin(request))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
       const[visits,orders,prods]=await Promise.all([kvGet(env,"visits",[]),kvGet(env,"orders",[]),kvGet(env,"products",[])]);
       const uniq=new Set(visits.map(v=>v.vid)).size;
       const conf=orders.filter(o=>o.confirmed).length;
-      const rev=orders.filter(o=>o.status!=="returned").reduce((a,o)=>a+(o.sub||o.total||0),0);
+      const rev=orders.filter(o=>o.status!=="returned").reduce((a,o)=>a+(o.finalSub||o.sub||o.total||0),0);
       const returnedOrders=orders.filter(o=>o.status==="returned");
       const totalReturnCost=returnedOrders.reduce((a,o)=>a+(o.returnFee||400),0);
-      const totalReturnedSub=returnedOrders.reduce((a,o)=>a+(o.sub||0),0);
+      const totalReturnedSub=returnedOrders.reduce((a,o)=>a+(o.finalSub||o.sub||0),0);
       const netRevenue=rev-totalReturnCost;
       const devMap={},hourMap={},visMap={};
       visits.forEach(v=>{devMap[v.dev]=(devMap[v.dev]||0)+1;});
@@ -230,7 +335,7 @@ export default {
 
     if(path==="/api/settings"){
       if(method==="GET")return R(await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"wowastore15@gmail.com",instagram:"wow.7a"}));
-      if(!await isAdmin(request))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
       await kvSet(env,"settings",await request.json());return R({ok:true});
     }
 
@@ -1981,9 +2086,10 @@ var WOW = (function(){
     var total=sub+fee-ccpDisc;
     var btn=document.getElementById("chk-btn");
     if(btn){btn.disabled=true;btn.innerHTML="<span class='spin'></span>";}
+    var _mystExp=0;try{var _me=localStorage.getItem("wow_disc_exp");if(_me)_mystExp=parseInt(_me)||0;}catch(e){}
     _api("/api/orders",{method:"POST",body:JSON.stringify({
-      name:name,phone1:p1,phone2:p2,email:em,wilaya:wilaya,commune:commune,dlbl:dlbl,fee:fee,sub:sub,total:total,
-      returnFee:returnFee,discAmt:discAmt,globalDiscount:_globalDiscount,
+      name:name,phone1:p1,phone2:p2,email:em,wilaya:wilaya,commune:commune,dlbl:dlbl,
+      globalDiscount:_globalDiscount,mysteryExp:_mystExp,
       payMethod:payMethod,ccpRef:ccpRef,
       items:_cart.map(function(c){return{id:c.id,name:c.name,price:c.price,qty:c.qty,size:c.size,img:c.img};})
     })})
@@ -1992,6 +2098,13 @@ var WOW = (function(){
       if(btn){btn.disabled=false;btn.innerHTML="تاكيد الطلبية &#8594;";}
       if(!data.ok){_toast("خطا: "+(data.error||"حاول مجددا"));return;}
       var oid=data.orderId;
+      // استخدم القيم المحسوبة من الخادم
+      var srvTotal=data.total||total;
+      var srvFinalSub=data.finalSub||sub;
+      var srvFee=data.fee||fee;
+      var srvDiscAmt=data.discAmt||discAmt;
+      var srvCcpDisc=data.ccpDisc||ccpDisc;
+      var srvGlobalDisc=data.globalDiscount||_globalDiscount;
       var date=new Date().toLocaleDateString("ar-DZ",{day:"2-digit",month:"2-digit",year:"numeric"});
       var ih="<div style='text-align:center;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #111'><div class='inv-brand'>WOW</div><div class='inv-sub'>Invoice / فاتورة</div></div>"
         +"<div class='inv-grid'>"
@@ -2007,10 +2120,10 @@ var WOW = (function(){
         +"</div>";
       _cart.forEach(function(c){ih+="<div class='inv-item'><span style='color:#333;max-width:60%'>"+_esc(c.name)+" ["+_esc(c.size)+"] x"+c.qty+"</span><span style='font-weight:600;color:#111'>"+_fmt(c.price*c.qty)+"</span></div>";});
       ih+="<div class='inv-tots'><div class='inv-row'><span>المنتجات</span><span>"+_fmt(rawSub)+"</span></div>"
-        +(discAmt>0?"<div class='inv-row'><span style='color:#16a34a'>خصم "+_globalDiscount+"%</span><span style='color:#16a34a'>-"+_fmt(discAmt)+"</span></div>":"")
-        +"<div class='inv-row'><span>التوصيل</span><span style='color:#6d28d9'>"+_fmt(fee)+"</span></div>"
-        +(ccpDisc>0?"<div class='inv-row'><span style='color:#16a34a'>خصم CCP</span><span style='color:#16a34a'>-"+_fmt(ccpDisc)+"</span></div>":"")
-        +"<div class='inv-main'><span>TOTAL</span><span>"+_fmt(total)+"</span></div></div>"
+        +(srvDiscAmt>0?"<div class='inv-row'><span style='color:#16a34a'>خصم "+srvGlobalDisc+"%</span><span style='color:#16a34a'>-"+_fmt(srvDiscAmt)+"</span></div>":"")
+        +"<div class='inv-row'><span>التوصيل</span><span style='color:#6d28d9'>"+_fmt(srvFee)+"</span></div>"
+        +(srvCcpDisc>0?"<div class='inv-row'><span style='color:#16a34a'>خصم CCP</span><span style='color:#16a34a'>-"+_fmt(srvCcpDisc)+"</span></div>":"")
+        +"<div class='inv-main'><span>TOTAL</span><span>"+_fmt(srvTotal)+"</span></div></div>"
         +"<div class='inv-note'>سوف نتصل بك لتاكيد الطلبية</div>"
         +"<div class='inv-btns'><button class='inv-btn inv-btn-p' onclick='window.print()'>Print</button>"
         +"<button class='inv-btn inv-btn-d' id='inv-done'>Done</button></div>";
@@ -2517,39 +2630,46 @@ var WOW = (function(){
   function _getReturnFee(wilaya){return _getShipFee(wilaya,"r");}
   function _showMystery(){
     try{
-      // لا تعرض إذا سبق عرضه في هذا التبويب
+      // لا تعرض أكثر من مرة في نفس الجلسة
       if(sessionStorage.getItem("wow_s_shown")==="1")return;
-      // تحقق من آخر مرة عُرض (10 أيام)
+      // تحقق من آخر مرة عُرض/رُفض (20 يوماً)
       var last=localStorage.getItem("wow_myst_ts");
       if(last){
-        var daysPassed=(Date.now()-parseInt(last))/(1000*60*60*24);
-        if(daysPassed<10)return;
+        var ms=Date.now()-parseInt(last);
+        if(ms<20*24*60*60*1000)return;
       }
     }catch(e){}
-    // اختر تخفيضاً عشوائياً
+    // اختر تخفيضاً عشوائياً — لا تُطبقه تلقائياً
     var discs=[1,2,3,4,5,6,7,8,9,10];
     var d=discs[Math.floor(Math.random()*discs.length)];
     var codes=["WOW"+d+"NOW","FIRST"+d,"STYLE"+d,"GOTH"+d];
     var code=codes[Math.floor(Math.random()*codes.length)];
     var md=document.getElementById("mystery-disc"),mc=document.getElementById("mystery-code");
     if(md)md.textContent=d+"%";if(mc)mc.textContent=code;
-    _globalDiscount=d;
-    // ربط زر القبول قبل فتح المودال
+    // زر القبول: طبّق الخصم واحفظ
     var acceptBtn=document.getElementById("mystery-accept-btn");
     if(acceptBtn){
       acceptBtn.onclick=function(){
-        _closeMod("mystery-mod");
         try{
           localStorage.setItem("wow_disc_val",String(d));
           localStorage.setItem("wow_disc_exp",String(Date.now()+4*60*60*1000));
+          localStorage.setItem("wow_myst_ts",Date.now().toString());
         }catch(e){}
         _globalDiscount=d;
+        _closeMod("mystery-mod");
         _toast("تم تطبيق خصم "+d+"% على طلبيتك — صالح 4 ساعات");
+      };
+    }
+    // زر التخطي: احفظ الوقت فقط، لا تُطبق الخصم
+    var skipBtn=document.getElementById("mystery-skip-btn");
+    if(skipBtn){
+      skipBtn.onclick=function(){
+        try{localStorage.setItem("wow_myst_ts",Date.now().toString());}catch(e){}
+        _closeMod("mystery-mod");
       };
     }
     _openMod("mystery-mod");
     try{sessionStorage.setItem("wow_s_shown","1");}catch(e){}
-    try{localStorage.setItem("wow_myst_ts",Date.now().toString());}catch(e){}
   }
   function _restoreDiscount(){
     try{
@@ -2718,11 +2838,11 @@ var WOW = (function(){
     }
     function _updBtns(){
       if(!prev||!next)return;
-      var atStart=vp.scrollLeft>=0&&vp.scrollLeft<=2;
-      var atEnd=vp.scrollLeft+vp.clientWidth>=vp.scrollWidth-4;
-      // RTL: atStart عند scrollLeft=0
-      prev.disabled=(Math.abs(vp.scrollLeft)<=2);
-      next.disabled=(Math.abs(vp.scrollLeft)+vp.clientWidth>=vp.scrollWidth-4);
+      var maxScroll=vp.scrollWidth-vp.clientWidth;
+      var atStart=vp.scrollLeft<=2;
+      var atEnd=maxScroll-vp.scrollLeft<=2;
+      prev.disabled=atStart;
+      next.disabled=atEnd;
     }
     // أزل القديم وأضف جديد
     if(prev){
@@ -3096,7 +3216,10 @@ var WOW = (function(){
         }
       })();
       var mystSkip=document.getElementById("mystery-skip-btn");
-      if(mystSkip)mystSkip.addEventListener("click",function(){_closeMod("mystery-mod");try{localStorage.setItem("wow_myst","1");}catch(e){}});
+      if(mystSkip)mystSkip.addEventListener("click",function(){
+        try{localStorage.setItem("wow_myst_ts",Date.now().toString());}catch(e){}
+        _closeMod("mystery-mod");
+      });
 
       // ── ADMIN ──
       var admCloseBtn=document.getElementById("adm-close-btn");
