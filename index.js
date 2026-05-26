@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// WOW STORE — Cloudflare Worker — v9.1 (Security + Stability Fixes)
+// WOW STORE — Cloudflare Worker — v9.2 (Clean UI — No Glitch)
 // KV Binding : env.DATABASE
 // ═══════════════════════════════════════════════════════════════
 
@@ -508,10 +508,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .ambient-bg2{display:none}
 .mist{display:none}.mist3{display:none}.grad-overlay{display:none}
 
-/* ══ VOID GLITCH ENTITY ══ */
-#void-glitch{position:fixed;pointer-events:none;z-index:2;mix-blend-mode:screen;will-change:transform,opacity}
-#void-glitch canvas{display:block}
-#robot-doll{position:fixed;bottom:80px;left:12px;pointer-events:none;z-index:3;opacity:.55;font-size:18px;line-height:1;user-select:none;will-change:transform}
+/* void-glitch and robot-doll removed — performance */
+#void-glitch,#robot-doll{display:none!important}
 
 /* ══ CCP PAYMENT OPTION ══ */
 .pay-opt{display:flex;align-items:flex-start;gap:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:10px 12px;cursor:pointer;transition:border-color .2s,background .2s}
@@ -531,8 +529,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .hdr-i{max-width:1200px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 /* ══ LOGO ══ */
 .logo{display:flex;align-items:center;text-decoration:none;flex-shrink:0;cursor:pointer;
-  transition:filter .35s ease,transform .3s cubic-bezier(.34,1.2,.64,1)}
-.logo:hover{filter:drop-shadow(0 0 10px rgba(192,132,252,.45));transform:scale(1.03)}
+  transition:filter .25s ease}
+.logo:hover{filter:drop-shadow(0 0 8px rgba(192,132,252,.35))}
 .logo svg{display:block;overflow:visible}
 /* wow text in pupil glows on hover */
 .logo:hover .wow-pupil{opacity:.95!important}
@@ -544,10 +542,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .hdr-r{display:flex;align-items:center;gap:7px;flex-shrink:0}
 
 .cart-btn{display:flex;align-items:center;gap:6px;background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.25);border-radius:var(--rs);padding:8px 12px;cursor:pointer;color:rgba(192,132,252,.9);font-size:12px;font-weight:500;white-space:nowrap;transition:.2s}
-.cart-btn:hover{background:rgba(168,85,247,.22);transform:translateY(-1px)}
-.cbdg{background:var(--ac);color:#fff;font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.cart-btn:hover{background:rgba(168,85,247,.22)}
+.cbdg{background:var(--ac);color:#fff;font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
 .adm-btn{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:8px;padding:7px 11px;cursor:pointer;color:var(--dim);font-size:11px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;transition:.18s;white-space:nowrap}
-.adm-btn:hover{background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.3);color:rgba(192,132,252,.85);transform:translateY(-1px)}
+.adm-btn:hover{background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.3);color:rgba(192,132,252,.85)}
 .adm-btn svg{width:12px;height:12px;flex-shrink:0}
 .xbtn{background:rgba(255,255,255,.06);border:1px solid var(--b1);border-radius:8px;width:29px;height:29px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dim);font-size:13px;transition:.18s}
 .xbtn:hover{background:rgba(168,85,247,.12);color:#fff}
@@ -557,7 +555,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .cats-i{max-width:1200px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;align-items:center}
 .cats-i::-webkit-scrollbar{display:none}
 .pill{padding:5px 13px;border-radius:var(--rs);border:1px solid var(--b1);background:var(--p1);color:var(--dim);font-size:11px;font-weight:500;cursor:pointer;transition:.18s;white-space:nowrap;user-select:none}
-.pill:hover{border-color:rgba(168,85,247,.3);color:rgba(192,132,252,.8);transform:translateY(-1px)}
+.pill:hover{border-color:rgba(168,85,247,.3);color:rgba(192,132,252,.8)}
 .pill.on{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.4);color:rgba(192,132,252,.95)}
 .pill-sep{width:1px;height:14px;background:var(--b1);flex-shrink:0}
 .tb{max-width:1200px;margin:0 auto;padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;position:relative;z-index:5}
@@ -567,8 +565,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* ══ TRUST BAR ══ */
 .trust-bar{background:rgba(0,0,0,.75);border-top:1px solid rgba(168,85,247,.14);border-bottom:1px solid rgba(168,85,247,.14);overflow:hidden;position:relative;z-index:5}
-.trust-bar::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent,transparent 200px,rgba(168,85,247,.018) 200px,rgba(168,85,247,.018) 201px);pointer-events:none}
-.trust-scroll{display:flex;animation:tscroll 34s linear infinite;width:max-content}
+/* trust-bar stripe overlay removed */
+.trust-scroll{display:flex;animation:tscroll 50s linear infinite;width:max-content}
 .trust-scroll:hover{animation-play-state:paused}
 .trust-item{padding:11px 36px;font-size:9px;color:rgba(168,85,247,.52);letter-spacing:3px;text-transform:uppercase;white-space:nowrap;display:flex;align-items:center;gap:10px}
 .trust-item::before{content:'✦';font-size:7px;color:rgba(168,85,247,.28);flex-shrink:0}
@@ -605,36 +603,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .btn-back{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:11px;color:var(--dim);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;font-weight:600;padding:11px;cursor:pointer;flex:1;transition:.2s}
 .btn-back:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18)}
 
-/* ══ HOVER ZOOM ON ACTIVE IMAGE ══ */
-.card:hover .img-slider img.active{transform:scale(1.08);transition:transform .35s cubic-bezier(.2,.9,.4,1.1),filter .4s,opacity .3s}
+/* image zoom on hover removed — performance */
 
 /* ══ HOVER LIFT + SCALE + DEPTH SHADOW ══ */
-.card{background:rgba(10,5,18,.96);border:1px solid rgba(168,85,247,.1);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform .28s cubic-bezier(.34,1.2,.64,1),box-shadow .28s ease,border-color .28s;position:relative}
-.card:hover{transform:translateY(-8px) scale(1.012);border-color:rgba(168,85,247,.3);box-shadow:0 22px 55px rgba(0,0,0,.6),0 0 25px rgba(168,85,247,.07),0 0 1px rgba(168,85,247,.15)}
-.card:active{transform:translateY(-2px) scale(1.004)}
+.card{background:rgba(10,5,18,.96);border:1px solid rgba(168,85,247,.1);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;position:relative}
+.card:hover{;border-color:rgba(168,85,247,.25);box-shadow:0 14px 40px rgba(0,0,0,.5),0 0 18px rgba(168,85,247,.06)}
+.card:active{transform:translateY(-1px)}
 .card.hidden{display:none!important}
 
 /* ══ PATTERN INTERRUPTION — every 5th card ══ */
 .card:nth-child(5n+3){border-color:rgba(168,85,247,.11);background:rgba(168,85,247,.032)}
 
-/* ══ VOID CARD CORNERS ══ */
-.card::before{content:'';position:absolute;inset:0;border-radius:var(--r);pointer-events:none;z-index:3;background:linear-gradient(135deg,rgba(168,85,247,.11) 0 8px,transparent 8px) top right/30px 30px no-repeat,linear-gradient(225deg,rgba(168,85,247,.11) 0 8px,transparent 8px) top left/30px 30px no-repeat,linear-gradient(-45deg,rgba(88,28,135,.09) 0 8px,transparent 8px) bottom right/30px 30px no-repeat,linear-gradient(45deg,rgba(88,28,135,.09) 0 8px,transparent 8px) bottom left/30px 30px no-repeat;opacity:0;transition:opacity .35s}
-.card:hover::before{opacity:1}
-
-/* Warm edge on hover */
-.card::after{content:'';position:absolute;inset:0;border-radius:var(--r);pointer-events:none;z-index:4;background:linear-gradient(135deg,rgba(251,146,60,.035) 0%,transparent 40%,transparent 60%,rgba(251,191,36,.025) 100%);opacity:0;transition:opacity .3s}
-.card:hover::after{opacity:1}
+/* card corner overlays removed — performance */
 
 /* Image slider depth shadow on hover */
-.card:hover .img-slider{box-shadow:0 10px 35px rgba(0,0,0,.5),inset 0 1px 0 rgba(168,85,247,.06)}
+/* img-slider hover shadow removed */
 .img-slider{position:relative;overflow:hidden;aspect-ratio:3/4;background:#0a0016;transition:box-shadow .3s;border-radius:var(--r) var(--r) 0 0}
-.img-slider::after{content:'';position:absolute;inset:0;z-index:4;pointer-events:none;box-shadow:inset 0 0 22px rgba(88,28,135,.22),inset 0 0 1px rgba(168,85,247,.25);border-radius:inherit}
-.img-slider img{width:100%;height:100%;object-fit:cover;filter:brightness(.82) saturate(.72);transition:filter .4s,opacity .3s;position:absolute;top:0;left:0;opacity:0}
+/* img-slider inset glow removed */
+.img-slider img{width:100%;height:100%;object-fit:cover;filter:brightness(.88) saturate(.82);transition:filter .35s ease,opacity .25s ease;position:absolute;top:0;left:0;opacity:0}
 .img-slider img.active{opacity:1;position:relative}
-.img-slider img.lazy-blur{filter:brightness(.82) saturate(.72) blur(10px);transform:scale(1.04)}
-.img-slider img.lazy-loaded{transition:filter .55s,transform .55s}
-.card:hover .img-slider img.active{filter:brightness(.88) saturate(.88) sepia(.03)}
-
+.img-slider img.lazy-blur{filter:brightness(.75) blur(8px)}
+.img-slider img.lazy-loaded{transition:filter .4s}
+.card:hover .img-slider img.active{filter:brightness(.86) saturate(.82)}
 
 .slide-arr{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.5);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;z-index:5;transition:.18s;opacity:0}
 .img-slider:hover .slide-arr{opacity:1}
@@ -665,17 +655,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .fomo-txt{font-size:9px;color:rgba(168,85,247,.35);letter-spacing:.5px;font-style:italic;margin-top:auto}
 
 /* ══ HOVER LIFT ADD BUTTON ══ */
-.addbtn{background:rgba(109,40,217,.16);border:1px solid rgba(168,85,247,.25);border-radius:10px;color:rgba(216,180,254,.9);font-size:11px;font-weight:600;letter-spacing:.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;padding:10px 8px;cursor:pointer;transition:transform .22s cubic-bezier(.34,1.2,.64,1),background .22s,border-color .22s,box-shadow .22s;margin-top:8px;position:relative;overflow:hidden;text-align:center}
-.addbtn:hover{background:rgba(109,40,217,.3);border-color:rgba(168,85,247,.52);transform:translateY(-2px);box-shadow:0 8px 24px rgba(109,40,217,.25)}
+.addbtn{background:rgba(109,40,217,.16);border:1px solid rgba(168,85,247,.25);border-radius:10px;color:rgba(216,180,254,.9);font-size:11px;font-weight:600;letter-spacing:.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;padding:10px 8px;cursor:pointer;transition:background .2s ease,border-color .2s ease,box-shadow .2s ease;margin-top:8px;position:relative;overflow:hidden;text-align:center}
+.addbtn:hover{background:rgba(109,40,217,.28);border-color:rgba(168,85,247,.48);box-shadow:0 4px 16px rgba(109,40,217,.2)}
 .addbtn:active{transform:scale(.96)}
 
 /* ══ MICRO-REWARD PARTICLES ══ */
-.particle{position:fixed;pointer-events:none;z-index:9500;width:6px;height:6px;border-radius:50%;animation:particleFly .65s ease-out forwards}
-@keyframes particleFly{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:var(--tx,translate(30px,-80px)) scale(0)}}
+/* particle CSS removed */
 
 /* ══ SKELETON ══ */
 .skel-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:var(--r);overflow:hidden}
-.skel{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(168,85,247,.055) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:skel-sh 1.6s ease-in-out infinite}
+.skel{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(168,85,247,.05) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:skel-sh 2.2s ease-in-out infinite}
 @keyframes skel-sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .skel-img{aspect-ratio:3/4;border-radius:var(--r) var(--r) 0 0}
 .skel-body{padding:11px;display:flex;flex-direction:column;gap:7px}
@@ -689,7 +678,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* ══ CART SIDEBAR ══ */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.58);backdrop-filter:blur(5px);z-index:399;display:none;cursor:pointer}
 .ov.on{display:block}
-.cart-sb{position:fixed;top:0;right:-105%;width:360px;max-width:100vw;height:100%;background:rgba(8,6,16,.98);border-right:1px solid var(--b1);z-index:400;display:flex;flex-direction:column;transition:right .32s cubic-bezier(.4,0,.2,1)}
+.cart-sb{position:fixed;top:0;right:-105%;width:360px;max-width:100vw;height:100%;background:rgba(8,6,16,.98);border-right:1px solid var(--b1);z-index:400;display:flex;flex-direction:column;transition:right .28s ease}
 .cart-sb.on{right:0}
 .cart-hdr{padding:16px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .cart-title{font-family:Georgia,serif;font-size:15px;color:rgba(192,132,252,.9);letter-spacing:3px}
@@ -709,16 +698,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .cart-tot-l{font-size:11px;color:var(--mu);letter-spacing:1px;text-transform:uppercase}
 .cart-tot-v{font-family:Georgia,serif;font-size:18px;color:rgba(192,132,252,.9)}
 .btn-main{background:linear-gradient(135deg,#6d28d9,#9333ea);border:none;border-radius:11px;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;font-weight:600;padding:12px;cursor:pointer;transition:.22s;width:100%}
-.btn-main:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(109,40,217,.38)}
+.btn-main:hover{box-shadow:0 6px 22px rgba(109,40,217,.35)}
 .btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
 /* ══ MODALS — full screen cover ══ */
 .mod-ov{position:fixed;inset:0;width:100%;height:100%;background:rgba(0,0,0,.9);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);z-index:1000;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
 .mod-ov.on{display:flex}
-.mod{background:rgba(8,6,16,.98);border:1px solid rgba(168,85,247,.18);border-radius:20px;padding:28px;width:100%;max-width:520px;animation:pop .3s cubic-bezier(.34,1.4,.64,1);position:relative;margin:auto;flex-shrink:0}
+.mod{background:rgba(8,6,16,.98);border:1px solid rgba(168,85,247,.18);border-radius:20px;padding:28px;width:100%;max-width:520px;animation:pop .25s ease-out;position:relative;margin:auto;flex-shrink:0}
 .mod::-webkit-scrollbar{width:3px}
 .mod::-webkit-scrollbar-thumb{background:rgba(168,85,247,.3);border-radius:2px}
-@keyframes pop{from{opacity:0;transform:scale(.9) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes pop{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 .mod-title{font-family:Georgia,serif;font-size:16px;color:rgba(192,132,252,.9);letter-spacing:2px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
 .fl{margin-bottom:12px}
 .fl label{display:block;font-size:10px;font-weight:500;color:rgba(168,85,247,.75);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px}
@@ -749,7 +738,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .op-tot{display:flex;justify-content:space-between;align-items:center;padding-top:8px;margin-top:6px;border-top:1px solid rgba(168,85,247,.15)}
 .op-tl{font-family:Georgia,serif;font-size:11px;color:rgba(255,255,255,.55);letter-spacing:1px}
 .op-tv{font-family:Georgia,serif;font-size:17px;color:rgba(192,132,252,.95)}
-.inv{background:#fafaf8;color:#111;border-radius:14px;padding:26px;max-width:450px;width:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;animation:pop .32s cubic-bezier(.34,1.56,.64,1);max-height:92vh;overflow-y:auto}
+.inv{background:#fafaf8;color:#111;border-radius:14px;padding:26px;max-width:450px;width:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;animation:pop .25s ease-out;max-height:92vh;overflow-y:auto}
 .inv-brand{font-family:Georgia,serif;font-size:34px;font-weight:900;color:#111;letter-spacing:4px;text-align:center;margin-bottom:2px}
 .inv-sub{font-size:9px;color:#999;text-transform:uppercase;letter-spacing:3px;text-align:center;margin-bottom:18px}
 .inv-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:16px;background:#f5f5f3;border-radius:9px;padding:12px}
@@ -771,7 +760,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .track-status.delivered{background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2);color:rgba(74,222,128,.85)}
 .track-label{font-family:Georgia,serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
 .track-val{font-size:13px;font-weight:600}
-.mystery-mod{background:linear-gradient(145deg,rgba(8,6,16,.99),rgba(30,10,50,.98));border:1px solid rgba(168,85,247,.25);max-width:380px;text-align:center;padding:36px 28px;border-radius:20px;animation:pop .4s cubic-bezier(.34,1.56,.64,1)}
+.mystery-mod{background:linear-gradient(145deg,rgba(8,6,16,.99),rgba(30,10,50,.98));border:1px solid rgba(168,85,247,.25);max-width:380px;text-align:center;padding:36px 28px;border-radius:20px;animation:pop .28s ease-out}
 .mystery-brand{font-family:Georgia,serif;font-size:28px;font-weight:900;color:rgba(192,132,252,.6);letter-spacing:6px;margin-bottom:6px}
 .mystery-title{font-size:10px;color:var(--mu);letter-spacing:3px;text-transform:uppercase;margin-bottom:20px}
 .mystery-disc{font-family:Georgia,serif;font-size:52px;font-weight:900;color:rgba(192,132,252,.9);line-height:1;margin-bottom:6px}
@@ -815,7 +804,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   border-radius:12px;padding:15px 14px;position:relative;overflow:hidden;transition:.2s}
 .sc::before{content:'';position:absolute;inset:0;
   background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(168,85,247,.04),transparent 70%)}
-.sc:hover{border-color:rgba(168,85,247,.22);transform:translateY(-2px)}
+.sc:hover{border-color:rgba(168,85,247,.22)}
 .sv{font-family:Georgia,serif;font-size:22px;color:rgba(192,132,252,.92);
   margin-bottom:3px;letter-spacing:.5px}
 .sl{font-size:9px;color:rgba(255,255,255,.28);letter-spacing:2px;text-transform:uppercase}
@@ -881,8 +870,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* ══ BOTTOM NAV ══ */
 .bot-nav{position:fixed;bottom:0;right:0;left:0;z-index:300;background:rgba(5,5,5,.95);backdrop-filter:blur(22px);border-top:1px solid var(--b1);display:flex;align-items:center;justify-content:space-around;padding:8px 0}
-.bn-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--mu);font-size:10px;letter-spacing:.5px;padding:4px 12px;border-radius:9px;transition:.2s cubic-bezier(.34,1.2,.64,1);user-select:none;-webkit-tap-highlight-color:transparent}
-.bn-item:hover,.bn-item:active{color:rgba(192,132,252,.9);transform:translateY(-2px)}
+.bn-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--mu);font-size:10px;letter-spacing:.5px;padding:4px 12px;border-radius:9px;transition:color .18s ease,background .18s ease;user-select:none;-webkit-tap-highlight-color:transparent}
+.bn-item:hover,.bn-item:active{color:rgba(192,132,252,.9)}
 .bn-item svg{width:18px;height:18px}
 .bn-sep{width:1px;height:24px;background:var(--b1)}
 
@@ -900,14 +889,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .footer-copy{text-align:center;font-size:10px;color:rgba(255,255,255,.14);letter-spacing:2px;margin-top:22px;padding-top:16px;border-top:1px solid rgba(255,255,255,.05)}
 .spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(168,85,247,.3);border-top-color:rgba(168,85,247,.8);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle}
 @keyframes sp{to{transform:rotate(360deg)}}
-.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(168,85,247,.14);backdrop-filter:blur(18px);border:1px solid rgba(168,85,247,.22);border-radius:9px;color:rgba(255,255,255,.85);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;padding:8px 16px;z-index:9000;opacity:0;transition:.28s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;pointer-events:none;max-width:90vw;text-align:center}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(168,85,247,.14);backdrop-filter:blur(18px);border:1px solid rgba(168,85,247,.22);border-radius:9px;color:rgba(255,255,255,.85);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;padding:8px 16px;z-index:9000;opacity:0;transition:opacity .22s ease,transform .22s ease;white-space:nowrap;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .api-s{display:flex;align-items:center;gap:5px;font-size:10px;letter-spacing:1px}
 .api-d{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .api-d.ok{background:#22c55e;box-shadow:0 0 5px rgba(34,197,94,.5)}
 .api-d.err{background:#ef4444}
-.api-d.ld{background:#f59e0b;animation:blink 1s step-end infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.api-d.ld{background:#f59e0b}
 .rm-row{display:flex;align-items:center;gap:7px;margin:9px 0;cursor:pointer;user-select:none;font-size:12px;color:var(--dim)}
 .rm-row input{accent-color:var(--ac);width:13px;height:13px;cursor:pointer}
 
@@ -934,6 +922,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   #inv-mod{display:block!important;position:static!important;background:#fff!important;padding:0!important}
   .inv{box-shadow:none!important;max-height:none!important}
 }
+
+/* ── prefers-reduced-motion — إيقاف جميع الحركات للمستخدمين الحساسين ── */
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .trust-scroll{animation:none!important}
+  .skel{animation:none!important;background:rgba(168,85,247,.05)!important}
+}
 </style>
 </head>
 <body>
@@ -955,10 +950,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <defs>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@900&display=swap');
-            @keyframes wow-fl{0%,93%,100%{opacity:1}94%{opacity:.28}95%{opacity:1}97%{opacity:.48}98%{opacity:1}}
-            @keyframes wow-sh{0%,100%{opacity:.35}50%{opacity:.82}}
-            .wfl{animation:wow-fl 8s infinite}
-            .wsh{animation:wow-sh 3.5s ease-in-out infinite}
+            .wfl{opacity:1}
+            .wsh{opacity:0.55}
           </style>
 
           <!-- Neon glow filter — same as v2 -->
@@ -1674,13 +1667,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   </div>
 </div>
 
-<!-- VOID GLITCH ENTITY -->
-<div id="void-glitch"><canvas id="vg-canvas" width="120" height="80"></canvas></div>
-<div id="robot-doll">⬚</div>
+<!-- void-glitch and robot-doll removed -->
 
 <script>
 /* ══════════════════════════════════════════════════════════════
-   WOW STORE — Client JS v9.1 — Security + Stability Fixes
+   WOW STORE — Client JS v9.2 — Clean UI · No Glitch · Optimized
    ══════════════════════════════════════════════════════════════ */
 
 /* ── GLOBAL NAMESPACE (defined FIRST, before any event binding) ── */
@@ -2116,32 +2107,7 @@ var WOW = (function(){
     _pendProd=null;_selSz=null;
     _closeMod("size-mod");
     _toast("تمت الاضافة — مقاس "+sz);
-    _spawnParticles();
     try{if(navigator.vibrate)navigator.vibrate([12,8,8]);}catch(e){}
-  }
-
-  /* ── MICRO-REWARD PARTICLES ── */
-  function _spawnParticles(){
-    try{
-      var btn=document.getElementById("cbdg");if(!btn)return;
-      var rect=btn.getBoundingClientRect();
-      var cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
-      var colors=["#a855f7","#c084fc","#7c3aed","#f0abfc","#e879f9"];
-      for(var i=0;i<10;i++){
-        (function(idx){
-          var p=document.createElement("div");
-          p.className="particle";
-          var angle=Math.random()*Math.PI*2;
-          var dist=30+Math.random()*60;
-          var tx="translate("+(Math.cos(angle)*dist)+"px,"+(Math.sin(angle)*dist-60)+"px)";
-          p.style.cssText="left:"+cx+"px;top:"+cy+"px;background:"+colors[idx%colors.length]+";--tx:"+tx+";animation-delay:"+(idx*0.04)+"s;position:fixed;pointer-events:none;z-index:9500;width:6px;height:6px;border-radius:50%;animation:particleFly .65s ease-out forwards";
-          document.body.appendChild(p);
-          setTimeout(function(){try{if(p.parentNode)p.parentNode.removeChild(p);}catch(e){}},800+idx*40);
-        })(i);
-      }
-      var bdg=document.getElementById("cbdg");
-      if(bdg){bdg.style.transform="scale(1.6)";setTimeout(function(){bdg.style.transform="scale(1)";bdg.style.transition="transform .3s cubic-bezier(.34,1.56,.64,1)";},200);}
-    }catch(e){}
   }
 
   /* ── CHECKOUT ── */
@@ -2862,638 +2828,7 @@ var WOW = (function(){
      VISUAL EFFECTS ENGINES
   ══════════════════════════ */
 
-  /* ══════════════════════════════════════════════════════════════════
-     VOID GLITCH ENTITY — Dreamcore/Void style — CPU-friendly
-     • كائن قليتش يتنقل فورياً في المناطق الفارغة فقط
-     • Static noise + Chromatic Aberration + أرقام ثنائية
-     • لا يحجب أي عنصر تفاعلي — z-index تحت المحتوى
-  ══════════════════════════════════════════════════════════════════ */
-  function _initVoidGlitch(){
-    try{
-    var cvs=document.getElementById("vg-canvas");
-    var wrap=document.getElementById("void-glitch");
-    if(!cvs||!wrap)return;
-    var ctx=cvs.getContext("2d");
-    if(!ctx)return;
+  /* VOID GLITCH ENTITY removed — performance */
 
-    var W=120,H=80;
-    cvs.width=W;cvs.height=H;
-
-    // الأرقام الثنائية المتاحة
-    var binChars=["0","1","0101","1010","0011","1100","▓","░","▒"];
-
-    // رسم الكائن الرئيسي
-    function _drawGlitch(w,h){
-      ctx.clearRect(0,0,w,h);
-      // مركز مظلم — static noise
-      var steps=Math.floor(w*h*0.55);
-      for(var i=0;i<steps;i++){
-        var x=Math.random()*w;
-        var y=Math.random()*h;
-        var pw=1+Math.random()*4;
-        var ph=1+Math.random()*2;
-        var dark=Math.random()<0.68;
-        var v=dark?Math.floor(Math.random()*28):Math.floor(38+Math.random()*42);
-        var a=dark?0.72+Math.random()*0.28:0.22+Math.random()*0.28;
-        // Chromatic Aberration tint
-        var r=v,g=v,b=v;
-        var cr=Math.random();
-        if(cr<0.18){r=Math.min(255,v+60);b=Math.max(0,v-40);}
-        else if(cr<0.32){b=Math.min(255,v+80);r=Math.max(0,v-30);}
-        ctx.fillStyle="rgba("+r+","+g+","+b+","+a+")";
-        ctx.fillRect(Math.round(x),Math.round(y),Math.round(pw),Math.round(ph));
-      }
-      // خطوط أفقية scan-line
-      for(var s=0;s<Math.floor(h/3);s++){
-        var ly=Math.random()*h;
-        var lw=w*0.4+Math.random()*w*0.55;
-        var lx=Math.random()*(w-lw);
-        var la=0.08+Math.random()*0.18;
-        var lv=Math.random()<0.5?200:20;
-        ctx.fillStyle="rgba("+lv+","+lv+","+lv+","+la+")";
-        ctx.fillRect(Math.round(lx),Math.round(ly),Math.round(lw),1);
-      }
-      // أرقام ثنائية مبعثرة
-      ctx.font="bold "+(6+Math.floor(Math.random()*4))+"px monospace";
-      for(var b2=0;b2<5;b2++){
-        var bx=Math.random()*w*0.85;
-        var by=8+Math.random()*(h-8);
-        var bright=Math.random()<0.4?180:255;
-        ctx.fillStyle="rgba("+bright+","+bright+","+bright+","+(0.15+Math.random()*0.25)+")";
-        ctx.fillText(binChars[Math.floor(Math.random()*binChars.length)],Math.round(bx),Math.round(by));
-      }
-    }
-
-    // مناطق آمنة (تجنب منطقة المنتجات المركزية)
-    function _safeSectors(){
-      var vw=window.innerWidth,vh=window.innerHeight;
-      var hdrH=110,botH=75;
-      return [
-        // أركان
-        {x1:0,y1:hdrH,x2:vw*0.12,y2:vh*0.5},
-        {x1:vw*0.88,y1:hdrH,x2:vw,y2:vh*0.5},
-        {x1:0,y1:vh*0.55,x2:vw*0.1,y2:vh-botH},
-        {x1:vw*0.9,y1:vh*0.55,x2:vw,y2:vh-botH},
-        // هامش سفلي
-        {x1:vw*0.15,y1:vh*0.8,x2:vw*0.35,y2:vh-botH},
-        {x1:vw*0.65,y1:vh*0.8,x2:vw*0.85,y2:vh-botH},
-      ];
-    }
-
-    var _timer=null;
-
-    function _teleport(){
-      var secs=_safeSectors();
-      var s=secs[Math.floor(Math.random()*secs.length)];
-      // حجم عشوائي صغير
-      var nw=50+Math.floor(Math.random()*70);
-      var nh=30+Math.floor(Math.random()*45);
-      nw=Math.min(nw,Math.round(s.x2-s.x1));
-      nh=Math.min(nh,Math.round(s.y2-s.y1));
-      if(nw<20||nh<15)return;
-      var nx=s.x1+Math.max(0,Math.random()*(s.x2-s.x1-nw));
-      var ny=s.y1+Math.max(0,Math.random()*(s.y2-s.y1-nh));
-      // تحديث canvas + موضع
-      W=nw;H=nh;cvs.width=W;cvs.height=H;
-      wrap.style.left=Math.round(nx)+"px";
-      wrap.style.top=Math.round(ny)+"px";
-      _drawGlitch(W,H);
-    }
-
-    function _show(){
-      _teleport();
-      wrap.style.opacity="0.82";
-      
-      // يبقى ظاهراً 0.4 - 1.8 ثانية ثم يختفي فجأة
-      var stay=400+Math.random()*1400;
-      _timer=setTimeout(function(){
-        wrap.style.opacity="0";
-        
-        // انتظر 3-12 ثانية قبل ظهور التالي
-        _timer=setTimeout(_show,(3+Math.random()*9)*1000);
-      },stay);
-    }
-
-    // بدء فوري بعد أول RAF
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        wrap.style.opacity="0";
-        wrap.style.transition="opacity 0.08s";
-        setTimeout(_show,2000+Math.random()*3000);
-      });
-    });
-
-    // دمية الـ Robot تتحرك ببطء عمودياً
-    var doll=document.getElementById("robot-doll");
-    if(doll){
-      var _dy=0,_dd=1;
-      var _robotInterval=setInterval(function(){
-        _dy+=_dd;if(_dy>8||_dy<0)_dd=-_dd;
-        doll.style.transform="translateY("+_dy+"px)";
-      },120);
-      // تنظيف عند إخفاء الصفحة
-      document.addEventListener("visibilitychange",function(){
-        if(document.hidden){clearInterval(_robotInterval);_robotInterval=null;}
-        else if(!_robotInterval){_dy=0;_dd=1;_robotInterval=setInterval(function(){_dy+=_dd;if(_dy>8||_dy<0)_dd=-_dd;doll.style.transform="translateY("+_dy+"px)";},120);}
-      },{once:false});
-    }
-    }catch(e){console.warn("VoidGlitch error:",e);}
-  }
-
-  /* ═══════════════════════════════════════════════
-     EMBLA CAROUSEL — init after products rendered
-  ═══════════════════════════════════════════════ */
   var _embla=null;
   var _carouselInited=false;
-  function _initCarousel(){
-    // CSS scroll — لا نحتاج JS library
-    var vp=document.getElementById("embla-viewport");
-    if(!vp)return;
-    var prev=document.getElementById("embla-prev");
-    var next=document.getElementById("embla-next");
-    function _scroll(dir){
-      var w=window.innerWidth*0.75;
-      vp.scrollBy({left:dir==="next"?-w:w,behavior:"smooth"});
-    }
-    function _updBtns(){
-      if(!prev||!next)return;
-      var maxScroll=vp.scrollWidth-vp.clientWidth;
-      // Math.abs للتوافق مع Safari RTL حيث scrollLeft قد يكون سالب
-      var sl=Math.abs(vp.scrollLeft);
-      var atStart=sl<=2;
-      var atEnd=maxScroll-sl<=2;
-      prev.disabled=atStart;
-      next.disabled=atEnd;
-    }
-    // أزل القديم وأضف جديد (يمنع تراكم listeners على الأزرار)
-    if(prev){
-      var pN=prev.cloneNode(true);prev.parentNode.replaceChild(pN,prev);prev=pN;
-      prev.addEventListener("click",function(){_scroll("prev");});
-    }
-    if(next){
-      var nN=next.cloneNode(true);next.parentNode.replaceChild(nN,next);next=nN;
-      next.addEventListener("click",function(){_scroll("next");});
-    }
-    // أضف scroll listener مرة واحدة فقط
-    if(!_carouselInited){
-      vp.addEventListener("scroll",_updBtns,{passive:true});
-      _carouselInited=true;
-    }
-    _updBtns();
-    _initCardFadeIn();
-  }
-
-  /* ═══════════════════════════════════════════════
-     CARD FADE-IN — IntersectionObserver خفيف
-  ═══════════════════════════════════════════════ */
-  function _initCardFadeIn(){
-    if(!("IntersectionObserver" in window))return;
-    try{
-      var obs=new IntersectionObserver(function(entries){
-        entries.forEach(function(e){
-          if(e.isIntersecting){
-            var el=e.target;
-            el.style.opacity="0";
-            el.style.transform="translateY(18px)";
-            requestAnimationFrame(function(){
-              el.style.transition="opacity .4s ease,transform .4s ease";
-              el.style.opacity="1";
-              el.style.transform="translateY(0)";
-            });
-            obs.unobserve(el);
-          }
-        });
-      },{threshold:0.08,rootMargin:"0px 80px 0px 80px"});
-      document.querySelectorAll(".embla__slide").forEach(function(s){obs.observe(s);});
-    }catch(e){}
-  }
-
-  /* ═══════════════════════════════════════════════
-     CARD PARALLAX — mousemove خفيف على الصورة
-  ═══════════════════════════════════════════════ */
-  function _initParallax(){
-    try{
-      document.addEventListener("mousemove",function(e){
-        var card=e.target.closest(".card");if(!card)return;
-        var img=card.querySelector(".img-slider img.active");if(!img)return;
-        var rect=card.getBoundingClientRect();
-        var cx=(e.clientX-rect.left)/rect.width-0.5;
-        var cy=(e.clientY-rect.top)/rect.height-0.5;
-        var mx=cx*4,my=cy*4;// أقصى 4%
-        img.style.transform="scale(1.08) translate("+mx+"px,"+my+"px)";
-      },{passive:true});
-      document.addEventListener("mouseleave",function(e){
-        var card=e.target.closest(".card");if(!card)return;
-        var img=card.querySelector(".img-slider img.active");if(img){img.style.transform="";}
-      },{passive:true});
-    }catch(e){}
-  }
-
-  /* ═══════════════════════════════════════════════
-     HERO BACKGROUND — صورة أو فيديو ديناميكي
-  ═══════════════════════════════════════════════ */
-  function _applyHeroBackground(url){
-    try{
-      var hb=document.getElementById("hero-bg");if(!hb)return;
-      hb.querySelectorAll("img.hero-bg-media,video.hero-bg-media").forEach(function(el){el.remove();});
-      if(!url){var fb=document.getElementById("hero-fallback");if(fb)fb.style.display="";return;}
-      var fallback=document.getElementById("hero-fallback");
-      var isVideo=url.startsWith("data:video/")||/\.(mp4|webm|ogg)/i.test(url.split("?")[0]);
-      if(isVideo){
-        var vid=document.createElement("video");
-        vid.className="hero-bg-media";// contain — يعرض الفيديو كاملاً
-        vid.src=url;vid.autoplay=true;vid.loop=true;vid.muted=true;vid.playsInline=true;
-        vid.style.zIndex="1";
-        if(fallback)hb.insertBefore(vid,fallback);else hb.prepend(vid);
-      } else {
-        var img=document.createElement("img");
-        img.className="hero-bg-media is-img";// cover للصور
-        img.src=url;img.alt="";img.loading="eager";
-        img.style.zIndex="1";
-        if(fallback)hb.insertBefore(img,fallback);else hb.prepend(img);
-      }
-      if(fallback)fallback.style.display="none";
-    }catch(e){}
-  }
-
-  /* ═══════════════════════════════════════════════
-     CHECKOUT STEPPER LOGIC
-  ═══════════════════════════════════════════════ */
-  var _chkStep=1;
-  function _chkGoTo(n){
-    try{
-      for(var i=1;i<=4;i++){
-        var sEl=document.getElementById("chk-s"+i);
-        var siEl=document.getElementById("si-"+i);
-        if(sEl){sEl.classList.toggle("active",i===n);}
-        if(siEl){
-          siEl.classList.toggle("active",i===n);
-          siEl.classList.toggle("done",i<n);
-        }
-      }
-      _chkStep=n;
-      // عند الوصول لخطوة 4 — حدّث الملخص والأسعار
-      if(n===4){_updPreview();}
-    }catch(e){}
-  }
-  function _chkValidStep(n){
-    if(n===1){
-      var name=(document.getElementById("o-name")||{}).value||"";
-      var p1=(document.getElementById("o-p1")||{}).value||"";
-      var p2=(document.getElementById("o-p2")||{}).value||"";
-      if(!name.trim()){_toast("ادخل الاسم الكامل");return false;}
-      if(!p1.trim()){_toast("ادخل رقم الهاتف 1");return false;}
-      if(!p2.trim()){_toast("ادخل رقم الهاتف 2");return false;}
-      if(p1.trim()===p2.trim()){_toast("يجب ان يختلف رقما الهاتف");return false;}
-      var em=(document.getElementById("o-em")||{}).value||"";
-      if(em.trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.trim())){_toast("البريد الالكتروني غير صالح");return false;}
-      return true;
-    }
-    if(n===2){
-      var wilEl=document.getElementById("o-wilaya");
-      var com=(document.getElementById("o-commune")||{}).value||"";
-      if(!wilEl||!wilEl.value){_toast("اختر الولاية");return false;}
-      if(!com.trim()){_toast("اكتب اسم البلدية");return false;}
-      return true;
-    }
-    return true;// خطوات 3 و4 لا تحتاج تحقق إضافي
-  }
-  function _initStepper(){
-    try{
-      var n1=document.getElementById("chk-next-1");
-      var n2=document.getElementById("chk-next-2");
-      var n3=document.getElementById("chk-next-3");
-      var p2=document.getElementById("chk-prev-2");
-      var p3=document.getElementById("chk-prev-3");
-      var p4=document.getElementById("chk-prev-4");
-      var finalBtn=document.getElementById("chk-btn");
-      if(n1)n1.addEventListener("click",function(){if(_chkValidStep(1))_chkGoTo(2);});
-      if(n2)n2.addEventListener("click",function(){if(_chkValidStep(2))_chkGoTo(3);});
-      if(n3)n3.addEventListener("click",function(){_chkGoTo(4);});
-      if(p2)p2.addEventListener("click",function(){_chkGoTo(1);});
-      if(p3)p3.addEventListener("click",function(){_chkGoTo(2);});
-      if(p4)p4.addEventListener("click",function(){_chkGoTo(3);});
-      if(finalBtn)finalBtn.addEventListener("click",_submitOrder);
-    }catch(e){}
-  }
-
-  /* ── FLOW STATE SCROLL ── */
-  function _initScroll(){
-    window.addEventListener("scroll",function(){
-      try{
-        var el=document.getElementById("scroll-prog");if(!el)return;
-        var s=document.documentElement;
-        var p=(s.scrollTop||document.body.scrollTop)/(s.scrollHeight-s.clientHeight)||0;
-        el.style.transform="scaleX("+p+")";
-      }catch(e){}
-    },{passive:true});
-  }
-
-  /* ══════════════════════
-     EVENT BINDING — DOMContentLoaded
-  ══════════════════════ */
-  document.addEventListener("DOMContentLoaded",function(){
-    try{
-      // ── VISUAL EFFECTS ──
-      _initLazy();
-      _initVoidGlitch();
-      _initScroll();
-      _initStepper();
-      _initParallax();
-      _loadCart();
-      _trackVisit();
-      _showSkeletons();
-      _loadProds();
-      // _loadSettings أولاً (async) ثم _restoreDiscount بعد اكتمالها
-      _loadSettings(_restoreDiscount);
-      _updCart();
-      _showMystery();
-
-      // ── HEADER SCROLL GLOW ──
-      (function(){
-        var h=document.querySelector(".hdr");if(!h)return;
-        window.addEventListener("scroll",function(){
-          h.classList.toggle("scrolled",window.scrollY>44);
-        },{passive:true});
-      })();
-
-      // ── HEADER BUTTONS ──
-      var cartBtnHdr=document.getElementById("cart-btn-hdr");
-      if(cartBtnHdr){
-        cartBtnHdr.addEventListener("click",function(e){e.preventDefault();_openCart();});
-        cartBtnHdr.addEventListener("touchend",function(e){e.preventDefault();_openCart();});
-      }
-      var admBtnHdr=document.getElementById("adm-btn-hdr");
-      if(admBtnHdr){
-        admBtnHdr.addEventListener("click",function(e){e.preventDefault();_openAdminLogin();});
-        admBtnHdr.addEventListener("touchend",function(e){e.preventDefault();_openAdminLogin();});
-      }
-
-      // ── CART CLOSE ──
-      var cartXbtn=document.getElementById("cart-xbtn");
-      if(cartXbtn){cartXbtn.addEventListener("click",_closeCart);cartXbtn.addEventListener("touchend",function(e){e.preventDefault();_closeCart();});}
-      var ov=document.getElementById("ov");
-      if(ov){ov.addEventListener("click",_closeCart);ov.addEventListener("touchend",function(e){e.preventDefault();_closeCart();});}
-
-      // ── CHECKOUT ──
-      var checkoutBtn=document.getElementById("checkout-btn");
-      if(checkoutBtn)checkoutBtn.addEventListener("click",_openCheckout);
-      // chk-btn مُربوط داخل _initStepper — لا نربطه هنا مجدداً
-      var oWilaya=document.getElementById("o-wilaya");
-      if(oWilaya)oWilaya.addEventListener("change",_updPreview);
-      var oDel=document.getElementById("o-del");
-      if(oDel)oDel.addEventListener("change",_updPreview);
-
-      // ── CCP PAYMENT TOGGLE ──
-      function _toggleCcp(){
-        var isCcp=document.getElementById("pay-ccp")&&document.getElementById("pay-ccp").checked;
-        var det=document.getElementById("ccp-details");
-        var discRow=document.getElementById("op-ccp-disc-row");
-        if(det)det.style.display=isCcp?"block":"none";
-        if(discRow)discRow.style.display=isCcp?"flex":"none";
-        _updPreview();
-      }
-      var payCod=document.getElementById("pay-cod");
-      var payCcp=document.getElementById("pay-ccp");
-      if(payCod)payCod.addEventListener("change",_toggleCcp);
-      if(payCcp)payCcp.addEventListener("change",_toggleCcp);
-
-      // ── SEARCH ──
-      var searchInp=document.getElementById("search-inp");
-      if(searchInp){
-        searchInp.addEventListener("input",function(){_liveSearch(this.value);});
-        searchInp.addEventListener("keydown",function(e){if(e.key==="Escape"){this.value="";_liveSearch("");}});
-      }
-
-      // ── SORT ──
-      var ssEl=document.getElementById("ss");
-      if(ssEl)ssEl.addEventListener("change",_sortP);
-
-      // ── CATEGORY PILLS ──
-      var pillMap={
-        "pill-all":function(el){_flt("all",el);},
-        "pill-shirts":function(el){_flt("shirts",el);},
-        "pill-pants":function(el){_flt("pants",el);},
-        "pill-shorts":function(el){_flt("shorts",el);},
-        "pill-hats":function(el){_flt("hats",el);},
-        "pill-acc":function(el){_flt("accessories",el);},
-        "pill-other":function(el){_flt("other",el);},
-        "pill-new":function(el){_fltNew(el);},
-        "pill-top":function(el){_fltTop(el);}
-      };
-      Object.keys(pillMap).forEach(function(id){
-        var el=document.getElementById(id);
-        if(el){
-          el.addEventListener("click",function(){pillMap[id](el);});
-          el.addEventListener("touchend",function(e){e.preventDefault();pillMap[id](el);});
-        }
-      });
-
-      // ── BOTTOM NAV ──
-      var bnHome=document.getElementById("bn-home");
-      if(bnHome){bnHome.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"});});bnHome.addEventListener("touchend",function(e){e.preventDefault();window.scrollTo({top:0,behavior:"smooth"});});}
-      var bnCart=document.getElementById("bn-cart");
-      if(bnCart){bnCart.addEventListener("click",_openCart);bnCart.addEventListener("touchend",function(e){e.preventDefault();_openCart();});}
-      var bnTrack=document.getElementById("bn-track");
-      if(bnTrack){bnTrack.addEventListener("click",function(){_openMod("track-mod");});bnTrack.addEventListener("touchend",function(e){e.preventDefault();_openMod("track-mod");});}
-      var bnHelp=document.getElementById("bn-help");
-      if(bnHelp){bnHelp.addEventListener("click",function(){_openMod("faq-mod");});bnHelp.addEventListener("touchend",function(e){e.preventDefault();_openMod("faq-mod");});}
-
-      // ── FOOTER LINKS ──
-      var flTrack=document.getElementById("fl-track");if(flTrack)flTrack.addEventListener("click",function(){_openMod("track-mod");});
-      var flFaq=document.getElementById("fl-faq");if(flFaq)flFaq.addEventListener("click",function(){_openMod("faq-mod");});
-      var flPolicy=document.getElementById("fl-policy");if(flPolicy)flPolicy.addEventListener("click",function(){_openMod("policy-mod");});
-
-      // ── MODAL CLOSE BUTTONS ──
-      var modalClosePairs=[
-        ["login-xbtn","login-mod"],
-        ["size-xbtn","size-mod"],
-        ["prod-xbtn","prod-mod"],
-        ["checkout-xbtn","checkout-mod"],
-        ["inv-xbtn","inv-mod"],
-        ["track-xbtn","track-mod"],
-        ["faq-xbtn","faq-mod"],
-        ["policy-xbtn","policy-mod"]
-      ];
-      modalClosePairs.forEach(function(pair){
-        var btn=document.getElementById(pair[0]);
-        if(btn){btn.addEventListener("click",function(){_closeMod(pair[1]);});btn.addEventListener("touchend",function(e){e.preventDefault();_closeMod(pair[1]);});}
-      });
-      // Close modal on overlay click
-      document.querySelectorAll(".mod-ov").forEach(function(ov2){
-        ov2.addEventListener("click",function(e){
-          if(e.target===ov2)_closeMod(ov2.id);
-        });
-      });
-
-      // ── SIZE BUTTONS ──
-      document.querySelectorAll(".sz-btn").forEach(function(btn){
-        btn.addEventListener("click",function(){_pickSz(btn.getAttribute("data-sz"),btn);});
-      });
-      document.getElementById("mw")&&document.getElementById("mw").addEventListener("input",_clearSz);
-      document.getElementById("mh")&&document.getElementById("mh").addEventListener("input",_clearSz);
-      document.getElementById("mg")&&document.getElementById("mg").addEventListener("change",_clearSz);
-      var confirmAddBtn=document.getElementById("confirm-add-btn");
-      if(confirmAddBtn)confirmAddBtn.addEventListener("click",_confirmAdd);
-
-      // ── LOGIN ──
-      var loginPass=document.getElementById("login-pass");
-      if(loginPass)loginPass.addEventListener("keydown",function(e){if(e.key==="Enter")_doLogin();});
-      var loginBtn=document.getElementById("login-btn");
-      if(loginBtn)loginBtn.addEventListener("click",_doLogin);
-
-      // ── TRACK ──
-      var trackInp=document.getElementById("track-inp");
-      if(trackInp)trackInp.addEventListener("keydown",function(e){if(e.key==="Enter")_doTrack();});
-      var trackBtn=document.getElementById("track-btn");
-      if(trackBtn)trackBtn.addEventListener("click",_doTrack);
-
-      // ── HERO FILE PICKER ──
-      (function(){
-        var inp=document.getElementById("hero-file-inp");
-        var lbl=document.getElementById("hero-pick-lbl");
-        var txt=document.getElementById("hero-pick-txt");
-        var wrap=document.getElementById("hero-preview-wrap");
-        var prevImg=document.getElementById("hero-preview-img");
-        var prevVid=document.getElementById("hero-preview-vid");
-        var clearBtn=document.getElementById("hero-preview-clear");
-        var heroUrl=document.getElementById("s-hero");
-        if(!inp)return;
-        inp.addEventListener("change",function(){
-          var file=inp.files&&inp.files[0];
-          if(!file)return;
-          // حجم: أقصى 4MB
-          if(file.size>4*1024*1024){_toast("الملف كبير جداً — الحد 4MB");inp.value="";return;}
-          var reader=new FileReader();
-          reader.onload=function(e){
-            var dataUrl=e.target.result;
-            // ضع الـ dataURL في حقل الرابط
-            if(heroUrl)heroUrl.value=dataUrl;
-            // عرض preview
-            wrap.style.display="block";
-            var isVid=file.type.startsWith("video/");
-            if(isVid){
-              prevImg.style.display="none";
-              prevVid.style.display="block";
-              prevVid.src=dataUrl;prevVid.play().catch(function(){});
-            } else {
-              prevVid.style.display="none";
-              prevImg.style.display="block";
-              prevImg.src=dataUrl;
-            }
-            txt.textContent=file.name;
-            _applyHeroBackground(dataUrl);
-          };
-          reader.readAsDataURL(file);
-        });
-        if(clearBtn)clearBtn.addEventListener("click",function(){
-          inp.value="";
-          if(heroUrl)heroUrl.value="";
-          wrap.style.display="none";
-          prevImg.src="";prevVid.src="";
-          txt.textContent="اضغط لاختيار صورة أو فيديو من المعرض";
-          _applyHeroBackground("");
-        });
-        // hover style
-        if(lbl){
-          lbl.addEventListener("mouseenter",function(){lbl.style.borderColor="rgba(168,85,247,.6)";lbl.style.background="rgba(168,85,247,.13)";});
-          lbl.addEventListener("mouseleave",function(){lbl.style.borderColor="rgba(168,85,247,.3)";lbl.style.background="rgba(168,85,247,.08)";});
-        }
-      })();
-
-      // ── ADMIN ──
-      var admCloseBtn=document.getElementById("adm-close-btn");
-      if(admCloseBtn)admCloseBtn.addEventListener("click",_closeAdm);
-      document.querySelectorAll(".anav").forEach(function(nav){
-        nav.addEventListener("click",function(){_aTab(nav.getAttribute("data-tab"),nav);});
-      });
-      var gotoAddprod=document.getElementById("goto-addprod");
-      if(gotoAddprod)gotoAddprod.addEventListener("click",function(){_aTab("addprod",null);});
-      var saveBtn=document.getElementById("save-btn");
-      if(saveBtn)saveBtn.addEventListener("click",_saveProd);
-      var cancelEditBtn=document.getElementById("cancel-edit-btn");
-      if(cancelEditBtn)cancelEditBtn.addEventListener("click",_cancelEdit);
-      var saveSettingsBtn=document.getElementById("save-settings-btn");
-      if(saveSettingsBtn)saveSettingsBtn.addEventListener("click",_saveSettings);
-      var ordersRefreshBtn=document.getElementById("orders-refresh-btn");
-      if(ordersRefreshBtn)ordersRefreshBtn.addEventListener("click",_loadOrders);
-      var ordersClearBtn=document.getElementById("orders-clear-btn");
-      if(ordersClearBtn)ordersClearBtn.addEventListener("click",_clearOrders);
-      var pushBtn=document.getElementById("push-btn");
-      if(pushBtn)pushBtn.addEventListener("click",_requestPush);
-
-      // Admin price/disc calc
-      var pPrice=document.getElementById("p-price");if(pPrice)pPrice.addEventListener("input",_calcDisc);
-      var pDisc=document.getElementById("p-disc");if(pDisc)pDisc.addEventListener("input",_calcDisc);
-
-      // Drop zone
-      var dropZone=document.getElementById("drop-zone");
-      if(dropZone){
-        dropZone.addEventListener("click",function(){var fi=document.getElementById("p-img-file");if(fi)fi.click();});
-        dropZone.addEventListener("dragover",function(e){e.preventDefault();dropZone.classList.add("drag");});
-        dropZone.addEventListener("dragleave",function(){dropZone.classList.remove("drag");});
-        dropZone.addEventListener("drop",_handleDrop);
-      }
-      var pImgFile=document.getElementById("p-img-file");
-      if(pImgFile)pImgFile.addEventListener("change",function(){_handleImgs(this);});
-
-      // ── AUTO LOGIN ──
-      if(_restoreSession()&&_adminToken){
-        fetch("/api/auth-verify",{method:"POST",headers:{"Content-Type":"application/json","X-Admin-Key":_adminToken}})
-        .then(function(r){return r.json();})
-        .then(function(d){if(d.ok)_showAdm();else _clearSession();})
-        .catch(function(){_clearSession();});
-      }
-    }catch(e){console.error("WOW init error:",e);}
-  });
-
-  /* ── PUBLIC API (backward compat) ── */
-  return {
-    openCart:_openCart,
-    closeCart:_closeCart,
-    openMod:_openMod,
-    closeMod:_closeMod,
-    openAdminLogin:_openAdminLogin,
-    openProd:_openProd,
-    openSizeMod:_openSizeMod,
-    openCheckout:_openCheckout,
-    liveSearch:_liveSearch,
-    flt:_flt,
-    fltNew:_fltNew,
-    fltTop:_fltTop,
-    sortP:_sortP,
-    pickSz:_pickSz,
-    clearSz:_clearSz,
-    confirmAdd:_confirmAdd,
-    doLogin:_doLogin,
-    doTrack:_doTrack,
-    closeAdm:_closeAdm,
-    aTab:_aTab,
-    loadOrders:_loadOrders,
-    _loadKvStats:_loadKvStats,
-    clearOrders:_clearOrders,
-    confOrd:function(id,confirmed){_api("/api/orders",{method:"PATCH",body:JSON.stringify({id:id,confirmed:confirmed})}).then(function(){_loadOrders();_toast(confirmed?"تم التاكيد":"تم الالغاء");}).catch(function(){_toast("خطا");});},
-    updOrderStatus:function(id,status){_api("/api/orders",{method:"PATCH",body:JSON.stringify({id:id,status:status})}).then(function(){_toast("تم تحديث الحالة");}).catch(function(){_toast("خطا");});},
-    saveProd:_saveProd,
-    cancelEdit:_cancelEdit,
-    editProd:_editProd,
-    delProd:_delProd,
-    updateQty:_updateQty,
-    handleDrop:_handleDrop,
-    handleImgs:_handleImgs,
-    delImg:function(i){_prodImgs.splice(i,1);_renderPreviews();},
-    calcDisc:_calcDisc,
-    saveSettings:_saveSettings,
-    requestPush:_requestPush,
-    updPreview:_updPreview,
-    submitOrder:_submitOrder,
-    sPrev:function(id,e){if(e)e.stopPropagation();var sl=document.getElementById("sl-"+id);if(!sl)return;var l=sl.querySelectorAll("img").length;var c=0;sl.querySelectorAll("img").forEach(function(img,i){if(img.classList.contains("active"))c=i;});var idx=(c-1+l)%l;var imgs=sl.querySelectorAll("img"),dots=sl.querySelectorAll(".slide-dot");imgs.forEach(function(img,i){if(i===idx){if(img.getAttribute("data-src")){img.src=img.getAttribute("data-src");img.removeAttribute("data-src");img.classList.add("lazy-loaded");}img.classList.add("active");}else img.classList.remove("active");});dots.forEach(function(d,i){d.classList.toggle("on",i===idx);});},
-    sNext:function(id,e){if(e)e.stopPropagation();var sl=document.getElementById("sl-"+id);if(!sl)return;var l=sl.querySelectorAll("img").length;var c=0;sl.querySelectorAll("img").forEach(function(img,i){if(img.classList.contains("active"))c=i;});var idx=(c+1)%l;var imgs=sl.querySelectorAll("img"),dots=sl.querySelectorAll(".slide-dot");imgs.forEach(function(img,i){if(i===idx){if(img.getAttribute("data-src")){img.src=img.getAttribute("data-src");img.removeAttribute("data-src");img.classList.add("lazy-loaded");}img.classList.add("active");}else img.classList.remove("active");});dots.forEach(function(d,i){d.classList.toggle("on",i===idx);});},
-    sTo:function(id,i,e){if(e)e.stopPropagation();var sl=document.getElementById("sl-"+id);if(!sl)return;var imgs=sl.querySelectorAll("img"),dots=sl.querySelectorAll(".slide-dot");imgs.forEach(function(img,j){if(j===i){if(img.getAttribute("data-src")){img.src=img.getAttribute("data-src");img.removeAttribute("data-src");img.classList.add("lazy-loaded");}img.classList.add("active");}else img.classList.remove("active");});dots.forEach(function(d,j){d.classList.toggle("on",j===i);});},
-    pmImg:function(src,el){var mi=document.getElementById("pm-main-img");if(!mi)return;mi.classList.remove("lazy-loaded");mi.classList.add("lazy-blur");var t=new Image();t.onload=function(){mi.src=src;mi.classList.remove("lazy-blur");mi.classList.add("lazy-loaded");};t.src=src;document.querySelectorAll(".gal-thumb").forEach(function(x){x.classList.remove("on");});if(el)el.classList.add("on");}
-  };
-})();
-</script>
-</body>
-</html>`;
-}
