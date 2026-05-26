@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// WOW STORE — Cloudflare Worker — v9.0 (Fixed + Dream Core + CCP)
+// WOW STORE — Cloudflare Worker — v9.1 (Security + Stability Fixes)
 // KV Binding : env.DATABASE
 // ═══════════════════════════════════════════════════════════════
 
@@ -45,6 +45,10 @@ function R(body,status=200,extra={},_req=null){
 async function kvGet(env,key,def=null){
   try{const v=await env.DATABASE.get(key,{cacheTtl:60});return v?JSON.parse(v):def;}catch{return def;}
 }
+// بدون cache للعمليات الحساسة (مثل التحقق من المخزون)
+async function kvGetFresh(env,key,def=null){
+  try{const v=await env.DATABASE.get(key);return v?JSON.parse(v):def;}catch{return def;}
+}
 async function kvSet(env,key,val,opts={}){await env.DATABASE.put(key,JSON.stringify(val),opts);}
 
 async function isAdmin(req,env){
@@ -74,6 +78,8 @@ async function sendPush(env,title,body){
   try{
     const sub=await kvGet(env,"push_subscription",null);
     if(!sub?.endpoint)return;
+    // تحقق أن الـ endpoint رابط HTTPS صالح وليس "local" أو قيمة وهمية
+    if(!sub.endpoint.startsWith("https://"))return;
     await fetch(sub.endpoint,{method:"POST",headers:{"Content-Type":"application/json","TTL":"86400"},body:JSON.stringify({title,body})}).catch(()=>{});
   }catch{}
 }
@@ -105,6 +111,12 @@ export default {
 
     if(path==="/api/auth-verify"&&method==="POST")return R({ok:await isAdmin(request,env)});
 
+    if(path==="/api/logout"&&method==="POST"){
+      const k=request.headers.get("X-Admin-Key")||"";
+      if(k){try{await env.DATABASE.delete("admin_token:"+k);}catch{}}
+      return R({ok:true});
+    }
+
     if(path==="/api/push-subscribe"&&method==="POST"){
       if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
       await kvSet(env,"push_subscription",await request.json());
@@ -118,11 +130,14 @@ export default {
         const body=await request.json(),prods=await kvGet(env,"products",[]);
         const _rp=+body.price||0,_rd=+body.discount||0;
         const _rq=body.quantity!==undefined&&body.quantity!==null?+body.quantity:null;
+        const VALID_CATS=["shirts","pants","shorts","hats","accessories","other"];
+        const _safeImgs=Array.isArray(body.images)?body.images.slice(0,4).filter(u=>typeof u==="string"&&u.length<500000).map(u=>u.trim()):[];
         const p={id:Date.now(),name:(body.name||"").substring(0,120),
-          price:Math.max(0,isNaN(_rp)?0:_rp),
-          discount:Math.min(90,Math.max(0,isNaN(_rd)?0:_rd)),
-          cat:body.cat||"other",desc:(body.desc||"").substring(0,600),
-          images:Array.isArray(body.images)?body.images.slice(0,4):[],
+          price:Math.max(0,isNaN(_rp)?0:Math.round(_rp)),
+          discount:Math.min(90,Math.max(0,isNaN(_rd)?0:Math.round(_rd))),
+          cat:VALID_CATS.includes(body.cat)?body.cat:"other",
+          desc:(body.desc||"").substring(0,600),
+          images:_safeImgs,
           stock:body.stock!==false,
           quantity:_rq!==null?(Math.max(0,Math.floor(isNaN(_rq)?0:_rq))):null,
           salesCount:0,createdAt:Date.now()};
@@ -135,9 +150,12 @@ export default {
         const _allowed=["name","price","discount","desc","images","stock","quantity","cat"];
         const _upd={};
         _allowed.forEach(f=>{if(body[f]!==undefined)_upd[f]=body[f];});
-        if(_upd.price!==undefined)_upd.price=Math.max(0,isNaN(+_upd.price)?0:+_upd.price);
-        if(_upd.discount!==undefined)_upd.discount=Math.min(90,Math.max(0,isNaN(+_upd.discount)?0:+_upd.discount));
+        if(_upd.price!==undefined)_upd.price=Math.max(0,isNaN(+_upd.price)?0:Math.round(+_upd.price));
+        if(_upd.discount!==undefined)_upd.discount=Math.min(90,Math.max(0,isNaN(+_upd.discount)?0:Math.round(+_upd.discount)));
         if(_upd.quantity!==undefined&&_upd.quantity!==null)_upd.quantity=Math.max(0,Math.floor(isNaN(+_upd.quantity)?0:+_upd.quantity));
+        if(_upd.images!==undefined)_upd.images=Array.isArray(_upd.images)?_upd.images.slice(0,4).filter(u=>typeof u==="string"&&u.length<500000).map(u=>u.trim()):[];
+        const VALID_CATS2=["shirts","pants","shorts","hats","accessories","other"];
+        if(_upd.cat!==undefined&&!VALID_CATS2.includes(_upd.cat))_upd.cat="other";
         prods[i]={...prods[i],..._upd};await kvSet(env,"products",prods);return R(prods[i]);
       }
       if(method==="DELETE"){
@@ -150,10 +168,27 @@ export default {
 
     if(path==="/api/orders"){
       if(method==="POST"){
+        /* ── حماية من spam الطلبيات ── */
+        const orderFp="ofp:"+getFP(request);
+        const orderRl=await kvGet(env,orderFp,{c:0,t:0});
+        const now=Date.now();
+        if(orderRl.t&&now-orderRl.t<60000&&orderRl.c>=5)
+          return R({error:"الرجاء الانتظار قبل إرسال طلبية أخرى"},429);
+
         const body=await request.json();
         if(!body.name||!body.phone1||!body.phone2||!body.wilaya||!body.commune||!body.items?.length)
           return R({error:"Missing fields"},400);
         if(body.phone1===body.phone2)return R({error:"Phones must differ"},400);
+        /* ── التحقق من صيغة الهاتف ── */
+        const phoneRx=/^0[567]\d{8}$/;
+        if(!phoneRx.test(body.phone1.replace(/\s/g,""))||!phoneRx.test(body.phone2.replace(/\s/g,"")))
+          return R({error:"رقم الهاتف غير صالح"},400);
+        /* ── التحقق من عدد المنتجات ── */
+        if(body.items.length>20)return R({error:"عدد المنتجات كبير جداً"},400);
+
+        /* ── تسجيل محاولة الطلب ── */
+        const newC=now-orderRl.t>60000?1:(orderRl.c||0)+1;
+        await env.DATABASE.put(orderFp,JSON.stringify({c:newC,t:now}),{expirationTtl:120});
 
         /* ── جدول رسوم الشحن (نسخة الخادم) ── */
         const SF={
@@ -180,14 +215,16 @@ export default {
         };
 
         /* ── جلب المنتجات والإعدادات ── */
-        const [prodsData,settings]=await Promise.all([kvGet(env,"products",[]),kvGet(env,"settings",{})]);
+        const [prodsData,settings]=await Promise.all([kvGetFresh(env,"products",[]),kvGet(env,"settings",{})]);
 
         /* ── التحقق من المخزون (أول فحص) ── */
         for(const item of body.items){
+          const itemQty=Math.max(1,Math.min(99,parseInt(item.qty)||1));
+          if(isNaN(itemQty))return R({error:"كمية غير صالحة"},400);
           const prod=prodsData.find(p=>p.id===item.id);
           if(!prod)return R({error:"المنتج غير موجود: "+item.id},400);
           if(prod.quantity!==null&&prod.quantity!==undefined){
-            if((item.qty||1)>prod.quantity)
+            if(itemQty>prod.quantity)
               return R({error:"الكمية غير متوفرة للمنتج "+prod.name},400);
           }
         }
@@ -196,7 +233,7 @@ export default {
         let rawSubOriginal=0,subWithProductDisc=0;
         for(const item of body.items){
           const prod=prodsData.find(p=>p.id===item.id);
-          const qty=item.qty||1;
+          const qty=Math.max(1,Math.min(99,parseInt(item.qty)||1));
           rawSubOriginal+=prod.price*qty;
           const disc=prod.discount&&prod.discount>0?Math.min(prod.discount,90):0;
           const effPrice=disc>0?Math.round(prod.price*(1-disc/100)):prod.price;
@@ -233,14 +270,31 @@ export default {
         const total=finalSub+fee-ccpDisc;
 
         /* ── إنشاء الطلب ── */
+        // تخزين المنتجات بالأسعار المتحقق منها من الخادم
+        const verifiedItems=body.items.map(function(item){
+          const prod=prodsData.find(p=>p.id===item.id);
+          const disc=prod.discount&&prod.discount>0?Math.min(prod.discount,90):0;
+          const serverPrice=disc>0?Math.round(prod.price*(1-disc/100)):prod.price;
+          return{
+            id:item.id,
+            name:(prod.name||"").substring(0,120),
+            price:serverPrice,// سعر محقق من الخادم
+            qty:Math.max(1,Math.min(99,parseInt(item.qty)||1)),
+            size:(item.size||"").substring(0,10),
+            img:(item.img||"").substring(0,500)
+          };
+        });
         const orders=await kvGet(env,"orders",[]);
         const o={
           id:"WOW-"+Date.now().toString().slice(-7),date:new Date().toISOString(),
           confirmed:false,status:"processing",
-          name:body.name,phone1:body.phone1,phone2:body.phone2,email:body.email||"",
-          wilaya:body.wilaya,commune:body.commune,dlbl:body.dlbl||"",
-          ccpRef:body.ccpRef||"",payMethod,
-          items:body.items,
+          name:(body.name||"").substring(0,100),
+          phone1:(body.phone1||"").replace(/\s/g,"").substring(0,15),
+          phone2:(body.phone2||"").replace(/\s/g,"").substring(0,15),
+          email:(body.email||"").substring(0,100),
+          wilaya:body.wilaya,commune:(body.commune||"").substring(0,80),dlbl:body.dlbl||"",
+          ccpRef:(body.ccpRef||"").substring(0,50),payMethod,
+          items:verifiedItems,
           originalSub:rawSubOriginal,finalSub,total,discAmt,fee,returnFee,ccpDisc,
           appliedDiscountMethod:discountMethodFinal,
           globalDiscount:appliedGlobalDisc
@@ -248,12 +302,20 @@ export default {
         orders.unshift(o);await kvSet(env,"orders",orders.slice(0,500));
 
         /* ── تحديث الكمية مع double-check (race condition mitigation) ── */
-        const prodsRefresh=await kvGet(env,"products",[]);
+        const prodsRefresh=await kvGetFresh(env,"products",[]);
         let changed=false;
         for(const item of body.items){
           const pi=prodsRefresh.findIndex(p=>p.id===item.id);
           if(pi>=0&&prodsRefresh[pi].quantity!==null&&prodsRefresh[pi].quantity!==undefined){
-            prodsRefresh[pi].quantity=Math.max(0,prodsRefresh[pi].quantity-(item.qty||1));
+            const needed=Math.max(1,Math.min(99,parseInt(item.qty)||1));
+            // التحقق الثاني — تأكد أن الكمية لا تزال كافية بعد إعادة جلب البيانات
+            if(prodsRefresh[pi].quantity<needed){
+              // المخزون نفد بين الفحصين — أرسل تحذيراً لكن لا نحذف الطلب
+              // (سلوك متساهل: الطلب يُسجَّل والأدمن يتعامل معه)
+              prodsRefresh[pi].quantity=0;
+            } else {
+              prodsRefresh[pi].quantity=prodsRefresh[pi].quantity-needed;
+            }
             changed=true;
           }
         }
@@ -331,9 +393,10 @@ export default {
       const[visits,orders,prods]=await Promise.all([kvGet(env,"visits",[]),kvGet(env,"orders",[]),kvGet(env,"products",[])]);
       const uniq=new Set(visits.map(v=>v.vid)).size;
       const conf=orders.filter(o=>o.confirmed).length;
-      const rev=orders.filter(o=>o.status!=="returned").reduce((a,o)=>a+(o.finalSub||o.sub||o.total||0),0);
+      const rev=orders.filter(o=>o.confirmed&&o.status!=="returned").reduce((a,o)=>a+(o.finalSub||o.sub||o.total||0),0);
       const returnedOrders=orders.filter(o=>o.status==="returned");
-      const totalReturnCost=returnedOrders.reduce((a,o)=>a+(o.returnFee||400),0);
+      // كل طلبية مرتجعة = خسارة 400 دج رسوم إرجاع ثابتة فقط
+      const totalReturnCost=returnedOrders.length*400;
       const totalReturnedSub=returnedOrders.reduce((a,o)=>a+(o.finalSub||o.sub||0),0);
       const netRevenue=rev-totalReturnCost;
       const devMap={},hourMap={},visMap={};
@@ -350,7 +413,16 @@ export default {
     if(path==="/api/settings"){
       if(method==="GET")return R(await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"wowastore15@gmail.com",instagram:"wow.7a"}));
       if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
-      await kvSet(env,"settings",await request.json());return R({ok:true});
+      const rawS=await request.json();
+      const safeS={
+        storeName:(rawS.storeName||"").substring(0,80)||"WOW Store",
+        whatsapp:(rawS.whatsapp||"").replace(/[^0-9+]/g,"").substring(0,20),
+        email:(rawS.email||"").substring(0,100),
+        instagram:(rawS.instagram||"").substring(0,60),
+        hero_background:(rawS.hero_background||"").substring(0,2000),
+        admin_discount:Math.max(0,Math.min(90,parseInt(rawS.admin_discount||0)||0))
+      };
+      await kvSet(env,"settings",safeS);return R({ok:true});
     }
 
     /* ── KV STATS — تقدير المساحة المستخدمة ── */
@@ -1608,7 +1680,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 <script>
 /* ══════════════════════════════════════════════════════════════
-   WOW STORE — Client JS v8.0 — All bugs fixed + Dream Core VFX
+   WOW STORE — Client JS v9.1 — Security + Stability Fixes
    ══════════════════════════════════════════════════════════════ */
 
 /* ── GLOBAL NAMESPACE (defined FIRST, before any event binding) ── */
@@ -2257,7 +2329,14 @@ var WOW = (function(){
     _aTab("analytics",firstNav);
     _startClock();_loadAnalytics();_loadAdmProds();_checkPushStatus();
   }
-  function _closeAdm(){_clearSession();_adminToken="";var adm=document.getElementById("adm");if(adm)adm.classList.remove("on");}
+  function _closeAdm(){
+    // حذف التوكن من KV عند تسجيل الخروج
+    if(_adminToken){
+      _api("/api/logout",{method:"POST"}).catch(function(){});
+    }
+    _clearSession();_adminToken="";
+    var adm=document.getElementById("adm");if(adm)adm.classList.remove("on");
+  }
 
   /* ── PUSH ── */
   function _checkPushStatus(){
@@ -2284,9 +2363,11 @@ var WOW = (function(){
   }
 
   /* ── ADMIN TABS ── */
+  var _clockInterval=null;
   function _startClock(){
+    if(_clockInterval)return;// منع تشغيل أكثر من مرة
     function t(){var el=document.getElementById("adm-clock");if(el)el.textContent=new Date().toLocaleTimeString("ar-DZ");}
-    t();setInterval(t,1000);
+    t();_clockInterval=setInterval(t,1000);
   }
   function _aTab(name,el){
     document.querySelectorAll(".asec").forEach(function(s){s.classList.remove("on");});
@@ -2598,13 +2679,13 @@ var WOW = (function(){
   }
 
   /* ── SETTINGS ── */
-  function _loadSettings(){
+  function _loadSettings(onDone){
     _api("/api/settings").then(function(r){return r.json();}).then(function(s){
       var sn=document.getElementById("s-name"),sw=document.getElementById("s-wa"),se=document.getElementById("s-em"),si=document.getElementById("s-ig"),sh=document.getElementById("s-hero"),sd=document.getElementById("s-admin-disc");
       var hdr=document.getElementById("store-name-hdr");
       if(sn)sn.value=s.storeName||"";if(sw)sw.value=s.whatsapp||"";if(se)se.value=s.email||"";if(si)si.value=s.instagram||"";if(sh)sh.value=s.hero_background||"";
       if(sd)sd.value=s.admin_discount||0;
-      // تطبيق تخفيض الأدمن إذا لم يكن هناك تخفيض mystery نشط
+      // تحديث cache تخفيض الأدمن
       _adminDiscountCache=s.admin_discount&&s.admin_discount>0?parseInt(s.admin_discount)||0:0;
       if(s.admin_discount&&s.admin_discount>0&&_globalDiscount===0){
         _globalDiscount=s.admin_discount;
@@ -2612,7 +2693,9 @@ var WOW = (function(){
       if(hdr&&s.storeName)hdr.textContent=s.storeName;
       _updateMeta(s.storeName||"WOW Store","تسوق احدث صيحات الموضة");
       if(s.hero_background)_applyHeroBackground(s.hero_background);
-    }).catch(function(){});
+      // تشغيل callback بعد اكتمال التحميل
+      if(typeof onDone==="function")onDone();
+    }).catch(function(){if(typeof onDone==="function")onDone();});
   }
   function _saveSettings(){
     var btn=document.getElementById("save-settings-btn");if(btn){btn.disabled=true;btn.innerHTML="<span class='spin'></span>";}
@@ -2904,10 +2987,15 @@ var WOW = (function(){
     var doll=document.getElementById("robot-doll");
     if(doll){
       var _dy=0,_dd=1;
-      setInterval(function(){
+      var _robotInterval=setInterval(function(){
         _dy+=_dd;if(_dy>8||_dy<0)_dd=-_dd;
         doll.style.transform="translateY("+_dy+"px)";
       },120);
+      // تنظيف عند إخفاء الصفحة
+      document.addEventListener("visibilitychange",function(){
+        if(document.hidden){clearInterval(_robotInterval);_robotInterval=null;}
+        else if(!_robotInterval){_dy=0;_dd=1;_robotInterval=setInterval(function(){_dy+=_dd;if(_dy>8||_dy<0)_dd=-_dd;doll.style.transform="translateY("+_dy+"px)";},120);}
+      },{once:false});
     }
     }catch(e){console.warn("VoidGlitch error:",e);}
   }
@@ -2916,6 +3004,7 @@ var WOW = (function(){
      EMBLA CAROUSEL — init after products rendered
   ═══════════════════════════════════════════════ */
   var _embla=null;
+  var _carouselInited=false;
   function _initCarousel(){
     // CSS scroll — لا نحتاج JS library
     var vp=document.getElementById("embla-viewport");
@@ -2929,12 +3018,14 @@ var WOW = (function(){
     function _updBtns(){
       if(!prev||!next)return;
       var maxScroll=vp.scrollWidth-vp.clientWidth;
-      var atStart=vp.scrollLeft<=2;
-      var atEnd=maxScroll-vp.scrollLeft<=2;
+      // Math.abs للتوافق مع Safari RTL حيث scrollLeft قد يكون سالب
+      var sl=Math.abs(vp.scrollLeft);
+      var atStart=sl<=2;
+      var atEnd=maxScroll-sl<=2;
       prev.disabled=atStart;
       next.disabled=atEnd;
     }
-    // أزل القديم وأضف جديد
+    // أزل القديم وأضف جديد (يمنع تراكم listeners على الأزرار)
     if(prev){
       var pN=prev.cloneNode(true);prev.parentNode.replaceChild(pN,prev);prev=pN;
       prev.addEventListener("click",function(){_scroll("prev");});
@@ -2943,7 +3034,11 @@ var WOW = (function(){
       var nN=next.cloneNode(true);next.parentNode.replaceChild(nN,next);next=nN;
       next.addEventListener("click",function(){_scroll("next");});
     }
-    vp.addEventListener("scroll",_updBtns,{passive:true});
+    // أضف scroll listener مرة واحدة فقط
+    if(!_carouselInited){
+      vp.addEventListener("scroll",_updBtns,{passive:true});
+      _carouselInited=true;
+    }
     _updBtns();
     _initCardFadeIn();
   }
@@ -3109,8 +3204,8 @@ var WOW = (function(){
       _trackVisit();
       _showSkeletons();
       _loadProds();
-      _loadSettings(); // يُحدّث _adminDiscountCache أولاً
-      _restoreDiscount(); // ثم يستعيد الخصم مع cache محدّث
+      // _loadSettings أولاً (async) ثم _restoreDiscount بعد اكتمالها
+      _loadSettings(_restoreDiscount);
       _updCart();
       _showMystery();
 
@@ -3305,11 +3400,6 @@ var WOW = (function(){
           lbl.addEventListener("mouseleave",function(){lbl.style.borderColor="rgba(168,85,247,.3)";lbl.style.background="rgba(168,85,247,.08)";});
         }
       })();
-      var mystSkip=document.getElementById("mystery-skip-btn");
-      if(mystSkip)mystSkip.addEventListener("click",function(){
-        try{localStorage.setItem("wow_myst_ts",Date.now().toString());}catch(e){}
-        _closeMod("mystery-mod");
-      });
 
       // ── ADMIN ──
       var admCloseBtn=document.getElementById("adm-close-btn");
