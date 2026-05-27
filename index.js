@@ -4222,6 +4222,7 @@ var WOW = (function(){
 </script>
 </body>
 </html>`;
+} // ← buildHTML closes here
 
 function _escSrv(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
@@ -4291,5 +4292,4 @@ function buildShippingLabel(o,s,fmt){
 ${o.payMethod!=="ccp"?`<div class="amt"><span>💵 مبلغ التحصيل</span><strong>${(o.total||0).toLocaleString()} دج</strong></div>`:`<div class="prepaid">✓ مدفوع مسبقاً — CCP</div>`}
 <div class="notes">ملاحظات: _________________</div>
 </div></body></html>`;
-}
 }
