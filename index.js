@@ -2876,12 +2876,9 @@ var WOW = (function(){
           +"<div style='font-size:11px;color:var(--dim);margin-top:6px'>📈 معدل التحويل: <span style='color:rgba(74,222,128,.8)'>"+(d.uniqueVisitors?((d.confirmedOrders/d.uniqueVisitors)*100).toFixed(1):0)+"%</span></div>";
       }
       // ── API Status ───────────────────────────────────────────────
-      var ad=document.getElementById("api-d"),al=document.getElementById("api-l");
-      if(ad){ad.className="api-d";ad.style.background="#22c55e";}
-      if(al)al.textContent="Connected";
+      _setApiSt(true);
     }).catch(function(){
-      var ad=document.getElementById("api-d"),al=document.getElementById("api-l");
-      if(ad){ad.style.background="#ef4444";}if(al)al.textContent="Error";
+      _setApiSt(false);
     });
   }
     function _loadAdmProds(){
