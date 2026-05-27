@@ -2422,7 +2422,7 @@ var WOW = (function(){
   function _loadProds(){
     _showSkeletons();
     _api("/api/products").then(function(r){return r.json();}).then(function(data){
-      _setApiSt(true);_prods=Array.isArray(data)&&data.length?data:[];_renderGrid();
+      _prods=Array.isArray(data)&&data.length?data:[];_setApiSt(true);_renderGrid();
     }).catch(function(){_setApiSt(false);_prods=[];_renderGrid();});
   }
 
