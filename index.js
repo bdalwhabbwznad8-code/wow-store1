@@ -16,6 +16,7 @@ const MAX_ATT  = 5;
 
 // ── قائمة النطاقات المسموح بها لـ CORS — عدّلها يدوياً حسب نطاقك ──
 const ALLOWED_ORIGINS = [
+  "https://wow-store1.bdalwhabbwznad8.workers.dev",
   "https://znad8.workers.dev",
   // "https://your-custom-domain.com",
   // "http://localhost:8788",
