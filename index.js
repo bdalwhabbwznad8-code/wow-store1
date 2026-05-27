@@ -361,7 +361,7 @@ export default {
           if(ci>=0){
             const cp=coupons[ci];
             if((!cp.expiresAt||Date.now()<=new Date(cp.expiresAt).getTime())&&(!cp.maxUses||cp.usedCount<cp.maxUses)){
-              if(cp.discType==="percent")couponDisc=Math.round(total*(cp.discVal/100));
+              if(cp.discType==="percent")couponDisc=Math.min(Math.round(total*(cp.discVal/100)),total);
               else couponDisc=Math.min(cp.discVal,total);
               couponCode=cp.code;
               coupons[ci].usedCount=(coupons[ci].usedCount||0)+1;
@@ -523,7 +523,7 @@ export default {
           visitors:Object.entries(visMap).sort((a,b)=>b[1].count-a[1].count).slice(0,100).map(([vid,d])=>({vid,...d}))});
       }
     }
-        if(path==="/api/settings"){
+    if(path==="/api/settings"){
       if(method==="GET")return R(await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"wowastore15@gmail.com",instagram:"wow.7a"}));
       if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
       const rawS=await request.json();
@@ -1720,7 +1720,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
         <div class="op-row"><span class="op-l">المنتجات</span><span class="op-v" id="op-sub">0 دج</span></div>
         <div style="display:flex;gap:6px;margin-bottom:8px">
           <input class="inp" id="o-coupon" type="text" placeholder="كود الخصم (اختياري)" style="text-transform:uppercase;font-size:11px;flex:1">
-          <button class="aact e" style="font-size:11px;white-space:nowrap" onclick="WOW._applyCoupon()">تطبيق</button>
+          <button class="aact e" id="coupon-apply-btn" style="font-size:11px;white-space:nowrap">تطبيق</button>
         </div>
         <div class="op-row" id="op-coupon-row" style="display:none"><span class="op-l" style="color:rgba(74,222,128,.7)" id="op-coupon-lbl">كوبون</span><span class="op-v" style="color:rgba(74,222,128,.8)" id="op-coupon-val"></span></div>
         <div class="op-row" id="op-disc-row" style="display:none"><span class="op-l" style="color:rgba(74,222,128,.7)">خصم العرض</span><span class="op-v" style="color:rgba(74,222,128,.8)" id="op-disc"></span></div>
@@ -3738,28 +3738,7 @@ var WOW = (function(){
     },{passive:true});
   }
 
-  /* ══════════════════════
-     EVENT BINDING — DOMContentLoaded
-  ══════════════════════ */
-  document.addEventListener("DOMContentLoaded",function(){
-    try{
-      // ── VISUAL EFFECTS ──
-      _initLazy();
-      _initVoidGlitch();
-      _initScroll();
-      _initStepper();
-      _initParallax();
-      _loadCart();
-      _trackVisit();
-      _showSkeletons();
-      _loadProds();
-      // _loadSettings أولاً (async) ثم _restoreDiscount بعد اكتمالها
-      _loadSettings(_restoreDiscount);
-      _updCart();
-      _showMystery();
-
-    
-  // ══ COUPONS ══════════════════════════════════════════════════════
+  // ══ ADMIN FUNCTIONS (IIFE scope — moved from DOMContentLoaded) ═══
   function _loadCoupons(){
     _api("/api/coupons").then(function(r){return r.json();}).then(function(coupons){
       var c=document.getElementById("coupons-c");if(!c)return;
@@ -3826,7 +3805,7 @@ var WOW = (function(){
         if(row)row.style.display="flex";
         if(lbl)lbl.textContent="كوبون ("+d.code+")";
         if(val)val.textContent="- "+_fmt(d.discAmt)+" دج";
-        _updCartTotals();
+        _updCart();
         _toast(d.msg||"✅ تم تطبيق الخصم");
       }).catch(function(){_toast("خطأ في التحقق");});
   }
@@ -3919,11 +3898,31 @@ var WOW = (function(){
     }).catch(function(){_toast("خطأ في الحذف");});
   }
 
-  // ══ _updCartTotals patch for coupon ═════════════════════════════
-  var _origUpdCartTotals=null;
 
+  /* ══════════════════════
+     EVENT BINDING — DOMContentLoaded
+  ══════════════════════ */
+  document.addEventListener("DOMContentLoaded",function(){
+    try{
+      // ── VISUAL EFFECTS ──
+      _initLazy();
+      _initVoidGlitch();
+      _initScroll();
+      _initStepper();
+      _initParallax();
+      _loadCart();
+      _trackVisit();
+      _showSkeletons();
+      _loadProds();
+      // _loadSettings أولاً (async) ثم _restoreDiscount بعد اكتمالها
+      _loadSettings(_restoreDiscount);
+      _updCart();
+      _showMystery();
 
-    // ── HEADER SCROLL GLOW ──
+      var couponApplyBtn=document.getElementById("coupon-apply-btn");
+      if(couponApplyBtn)couponApplyBtn.addEventListener("click",_applyCoupon);
+
+      // ── HEADER SCROLL GLOW ──
       (function(){
         var h=document.querySelector(".hdr");if(!h)return;
         window.addEventListener("scroll",function(){
