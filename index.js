@@ -273,8 +273,9 @@ export default {
 
         /* ── التحقق من المخزون (أول فحص) ── */
         for(const item of body.items){
-          const itemQty=Math.max(1,Math.min(99,parseInt(item.qty)||1));
-          if(isNaN(itemQty))return R({error:"كمية غير صالحة"},400);
+          const _rawQty=parseInt(item.qty);
+          if(isNaN(_rawQty))return R({error:"كمية غير صالحة"},400);
+          const itemQty=Math.max(1,Math.min(99,_rawQty||1));
           const prod=prodsData.find(p=>p.id===item.id);
           if(!prod)return R({error:"المنتج غير موجود: "+item.id},400);
           if(prod.quantity!==null&&prod.quantity!==undefined){
@@ -608,7 +609,7 @@ export default {
         if(coupons.find(c=>c.code===code))return R({error:"الكود موجود مسبقاً"},400);
         const discType=b.discType==="fixed"?"fixed":"percent";
         let discVal=Math.max(0,parseFloat(b.discVal)||0);
-        if(discType==="percent")discVal=Math.min(11,discVal);
+        if(discType==="percent")discVal=Math.min(100,discVal);
         else discVal=Math.min(500,discVal);
         const c={id:Date.now(),code,discType,discVal,maxUses:b.maxUses?parseInt(b.maxUses)||0:0,
           usedCount:0,expiresAt:b.expiresAt||null,active:true,createdAt:new Date().toISOString()};
@@ -3202,13 +3203,11 @@ var WOW = (function(){
   function _exportCSV(){
     if(!_ordersCache.length){_toast("لا توجد طلبيات");return;}
     var BOM="﻿";
-    var hdr="رقم الطلبية,التاريخ,الاسم,الهاتف 1,الهاتف 2,الولاية,البلدية,نوع التوصيل,طريقة الدفع,الحالة,مؤكدة,المجموع (دج),رسوم التوصيل,خصم,كوبون,المنتجات
-";
+    var hdr="رقم الطلبية,التاريخ,الاسم,الهاتف 1,الهاتف 2,الولاية,البلدية,نوع التوصيل,طريقة الدفع,الحالة,مؤكدة,المجموع (دج),رسوم التوصيل,خصم,كوبون,المنتجات\n";
     var rows=_ordersCache.map(function(o){
       var items=(o.items||[]).map(function(it){return (it.name||"")+" x"+it.qty;}).join(" | ");
       return [o.id,o.date?o.date.slice(0,10):"",o.name||"",o.phone1||"",o.phone2||"",o.wilaya||"",o.commune||"",o.dlbl||"Stop Desk",o.payMethod==="ccp"?"CCP":"COD",o.status||"",o.confirmed?"نعم":"لا",o.total||0,o.fee||0,o.discAmt||0,o.couponCode||"",items].map(function(v){return '"'+(String(v)||"").replace(/"/g,'""')+'"';}).join(",");
-    }).join("
-");
+    }).join("\n");
     var blob=new Blob([BOM+hdr+rows],{type:"text/csv;charset=utf-8"});
     var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="orders_"+new Date().toISOString().slice(0,10)+".csv";a.click();
     _toast("تم تصدير "+_ordersCache.length+" طلبية");
@@ -3900,7 +3899,16 @@ var WOW = (function(){
   /* ══════════════════════
      EVENT BINDING — DOMContentLoaded
   ══════════════════════ */
-  document.addEventListener("DOMContentLoaded",function(){
+  function _toggleCcp(){
+    var isCcp=document.getElementById("pay-ccp")&&document.getElementById("pay-ccp").checked;
+    var det=document.getElementById("ccp-details");
+    var discRow=document.getElementById("op-ccp-disc-row");
+    if(det)det.style.display=isCcp?"block":"none";
+    if(discRow)discRow.style.display=isCcp?"flex":"none";
+    _updPreview();
+  }
+
+    document.addEventListener("DOMContentLoaded",function(){
     try{
       // ── VISUAL EFFECTS ──
       _initLazy();
@@ -3956,14 +3964,6 @@ var WOW = (function(){
       if(oDel)oDel.addEventListener("change",_updPreview);
 
       // ── CCP PAYMENT TOGGLE ──
-      function _toggleCcp(){
-        var isCcp=document.getElementById("pay-ccp")&&document.getElementById("pay-ccp").checked;
-        var det=document.getElementById("ccp-details");
-        var discRow=document.getElementById("op-ccp-disc-row");
-        if(det)det.style.display=isCcp?"block":"none";
-        if(discRow)discRow.style.display=isCcp?"flex":"none";
-        _updPreview();
-      }
       var payCod=document.getElementById("pay-cod");
       var payCcp=document.getElementById("pay-ccp");
       if(payCod)payCod.addEventListener("change",_toggleCcp);
