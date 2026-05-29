@@ -191,7 +191,6 @@ ${o.payMethod!=="ccp"?`<div class="amt"><span>💵 مبلغ التحصيل</span
 <div class="notes">ملاحظات: _________________</div>
 </div></body></html>`;
 }
-}
 
 
 export default {
