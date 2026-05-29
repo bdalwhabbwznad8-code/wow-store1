@@ -1152,8 +1152,7 @@ ${img?`<meta property="og:image" content="${img}">`:``}
           ${s.img?`<img src="${_escSrv(s.img)}" style="width:100%;height:200px;object-fit:cover">`:``}
           <div style="padding:18px">
             <h2 style="font-family:Georgia,serif;font-size:18px;color:rgba(192,132,252,.95);margin-bottom:10px">${_escSrv(s.title||"")}</h2>
-            <p style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.8">${_escSrv(s.body||"").replace(/
-/g,"<br>")}</p>
+            <p style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.8">${_escSrv(s.body||"").replace(/\n/g,"<br>")}</p>
           </div>
         </div>`).join("");
       return RR(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
