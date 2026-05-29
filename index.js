@@ -3693,7 +3693,7 @@ var WOW = (function(){
     _aTab("addprod",null);
   }
   function _delProd(id){
-    var doArchive=confirm("أرشفة هذا المنتج؟\n(OK = أرشفة، إلغاء = حذف نهائي)");
+    var doArchive=confirm("أرشفة هذا المنتج؟\\n(OK = أرشفة، إلغاء = حذف نهائي)");
     var url=doArchive?"/api/products?id="+id+"&archive=1":"/api/products?id="+id;
     _api(url,{method:"DELETE"}).then(function(){
       _loadAdmProds();_toast(doArchive?"✅ تمت الأرشفة":"🗑 تم الحذف النهائي");
@@ -3952,13 +3952,11 @@ var WOW = (function(){
   function _exportCSV(){
     if(!_ordersCache.length){_toast("لا توجد طلبيات");return;}
     var BOM="﻿";
-    var hdr="رقم الطلبية,التاريخ,الاسم,الهاتف 1,الهاتف 2,الولاية,البلدية,نوع التوصيل,طريقة الدفع,الحالة,مؤكدة,المجموع (دج),رسوم التوصيل,خصم,كوبون,المنتجات
-";
+    var hdr="رقم الطلبية,التاريخ,الاسم,الهاتف 1,الهاتف 2,الولاية,البلدية,نوع التوصيل,طريقة الدفع,الحالة,مؤكدة,المجموع (دج),رسوم التوصيل,خصم,كوبون,المنتجات\\n";
     var rows=_ordersCache.map(function(o){
       var items=(o.items||[]).map(function(it){return (it.name||"")+" x"+it.qty;}).join(" | ");
       return [o.id,o.date?o.date.slice(0,10):"",o.name||"",o.phone1||"",o.phone2||"",o.wilaya||"",o.commune||"",o.dlbl||"Stop Desk",o.payMethod==="ccp"?"CCP":"COD",o.status||"",o.confirmed?"نعم":"لا",o.total||0,o.fee||0,o.discAmt||0,o.couponCode||"",items].map(function(v){return '"'+(String(v)||"").replace(/"/g,'""')+'"';}).join(",");
-    }).join("
-");
+    }).join("\\n");
     var blob=new Blob([BOM+hdr+rows],{type:"text/csv;charset=utf-8"});
     var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="orders_"+new Date().toISOString().slice(0,10)+".csv";a.click();
     _toast("تم تصدير "+_ordersCache.length+" طلبية");
@@ -4849,16 +4847,14 @@ var WOW = (function(){
         +list.slice(0,100).map(function(u){
           return "<div style='display:flex;justify-content:space-between;align-items:center;padding:8px 13px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px'>"
             +"<div><div style='color:var(--dim)'>"+_esc(u.name||"")+"</div><div style='color:var(--mu);font-size:10px'>"+_esc(u.phone||"")+"</div></div>"
-            +"<div class='loyalty-pts-badge' onclick='WOW._viewLoyaltyDetail(""+_esc(u.phone)+"")' style='cursor:pointer'>⭐ نقاط</div>"
+            +"<div class='loyalty-pts-badge' onclick='WOW._viewLoyaltyDetail(\\""+_esc(u.phone)+"\\")' style='cursor:pointer'>⭐ نقاط</div>"
             +"</div>";
         }).join("")+"</div>";
     }).catch(function(){});
   }
   function _viewLoyaltyDetail(phone){
     _api("/api/loyalty?phone="+encodeURIComponent(phone)).then(function(r){return r.json();}).then(function(d){
-      alert("📞 "+phone+"
-⭐ النقاط: "+(d.points||0)+"
-المكافأة: "+Math.floor((d.points||0)/10)+" دج خصم");
+      alert("📞 "+phone+"\\n⭐ النقاط: "+(d.points||0)+"\\nالمكافأة: "+Math.floor((d.points||0)/10)+" دج خصم");
     }).catch(function(){});
   }
 
@@ -5049,8 +5045,10 @@ var WOW = (function(){
       +"<img src='"+_esc(upsellProd.images[0])+"' style='width:48px;height:58px;object-fit:cover;border-radius:7px;flex-shrink:0'>"
       +"<div style='flex:1'><div style='font-size:11px;color:var(--dim);margin-bottom:4px'>"+_esc(upsellProd.name||"")+"</div>"
       +"<div style='font-family:Georgia,serif;color:rgba(192,132,252,.9);font-size:13px;margin-bottom:7px'>"+_fmt(upsellProd.price||0)+" دج</div>"
-      +"<button class='btn-main' style='padding:6px 12px;font-size:10px' onclick='WOW._openProdById('+upsellProd.id+');document.getElementById("upsell-pop").style.display="none"'>+ أضف للسلة</button>"
+      +"<button class='btn-main' id='upsell-add-btn' style='padding:6px 12px;font-size:10px'>+ أضف للسلة</button>"
       +"</div></div>";
+    var upBtn=document.getElementById("upsell-add-btn");
+    if(upBtn)upBtn.onclick=function(){_openProdById(upsellProd.id);pop.style.display="none";};
     pop.style.display="block";
     _upsellTimer=setTimeout(function(){pop.style.display="none";},5000);
   }
@@ -5122,7 +5120,7 @@ var WOW = (function(){
       +'<h3>'+prod.name+'</h3>'
       +'<img src="'+_buildQR(link)+'" width="200" height="200">'
       +'<input value="'+link+'" readonly onclick="this.select()">'
-      +'<br><button onclick="navigator.clipboard.writeText(\''+link+'\').then(()=>alert(\'تم النسخ!\'))">نسخ الرابط</button>'
+      +'<br><button onclick="navigator.clipboard.writeText(\\''+link+'\\').then(()=>alert(\\'تم النسخ!\\'))">نسخ الرابط</button>'
       +'</body></html>');
   }
   function _copyProdLink(prod){
@@ -5317,11 +5315,11 @@ var WOW = (function(){
       var faqTxt=s.faq||"";
       var html="";
       if(faqTxt){
-        var pairs=faqTxt.split(/\n\n+/);
+        var pairs=faqTxt.split(/\\n\\n+/);
         html=pairs.map(function(p){
-          var lines=p.split(/\n/);
-          var q=lines[0].replace(/^[سق]:?\s*/,"").trim();
-          var a=lines.slice(1).join(" ").replace(/^[جاJA]:?\s*/,"").trim();
+          var lines=p.split(/\\n/);
+          var q=lines[0].replace(/^[سق]:?\\s*/,"").trim();
+          var a=lines.slice(1).join(" ").replace(/^[جاJA]:?\\s*/,"").trim();
           if(!q)return "";
           return "<details class='faq-item'><summary class='faq-q'>"+_esc(q)+" <span style='font-size:10px'>›</span></summary><div class='faq-a'>"+_esc(a)+"</div></details>";
         }).filter(Boolean).join("");
@@ -5334,14 +5332,16 @@ var WOW = (function(){
   function _showRefundPolicy(){
     _api("/api/settings").then(function(r){return r.json();}).then(function(s){
       var pol=s.refundPolicy||s.refund||"";
-      var body="<div style='font-size:12px;color:var(--dim);line-height:1.8;padding:6px'>"+_esc(pol||"لا توجد سياسة إرجاع محددة بعد.").replace(/\n/g,"<br>")+"</div>";
+      var body="<div style='font-size:12px;color:var(--dim);line-height:1.8;padding:6px'>"+_esc(pol||"لا توجد سياسة إرجاع محددة بعد.").replace(/\\n/g,"<br>")+"</div>";
       _genericModal("🔄 سياسة الإرجاع",body);
     }).catch(function(){});
   }
   function _genericModal(title,body){
     var mo=document.createElement("div");mo.className="mod-ov";mo.style.zIndex="1100";
     mo.innerHTML="<div class='mod'><div class='mod-title'>"+title
-      +"<button class='xbtn' onclick='this.closest(\".mod-ov\").remove()'>✕</button></div>"+body+"</div>";
+      +"<button class='xbtn' data-generic-close='1'>✕</button></div>"+body+"</div>";
+    var closeBtn=mo.querySelector("[data-generic-close]");
+    if(closeBtn)closeBtn.addEventListener("click",function(){mo.remove();});
     document.body.appendChild(mo);mo.style.display="flex";
   }
 
