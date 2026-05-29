@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// WOW STORE — Cloudflare Worker — v11.0 (Full Release)
+// WOW STORE — Cloudflare Worker — v11.0 — wow-store1.bdalwhabbwznad8.workers.dev
 // KV Binding : env.DATABASE
 // ═══════════════════════════════════════════════════════════════
 
@@ -9,16 +9,14 @@ async function hashPass(str){
 }
 
 // كلمة المرور محذوفة — الهاش كافٍ
-// SHA-256("12345678A@") — verified correct
+// SHA-256("12345678A@") — Admin password hash — verified
 const ADMIN_PASS_HASH = "881b9563ffff9349eb3ad4efeb71c7355d7878644e385d71d26b846f3ddd06a6";
 const BLOCK_MS = 8*3600000;
 const MAX_ATT  = 5;
 
 // ── قائمة النطاقات المسموح بها لـ CORS — عدّلها يدوياً حسب نطاقك ──
 const ALLOWED_ORIGINS = [
-  "https://znad8.workers.dev",
-  // "https://your-custom-domain.com",
-  // "http://localhost:8788",
+  "https://wow-store1.bdalwhabbwznad8.workers.dev"
 ];
 
 function _getCorsHeaders(req){
@@ -124,6 +122,78 @@ function parseUserAgent(ua){
   }
   return{device,brand,model,tier,os,browser};
 }
+function _escSrv(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+function encodeCode128(text){
+  const BARS=["11011001100","11001101100","11001100110","10010011000","10010001100","10001001100","10011001000","10011000100","10001100100","11001001000","11001000100","11000100100","10110011100","10011011100","10011001110","10111001100","10011101100","10011100110","11001110010","11001011100","11001001110","11011100100","11001110100","11101101110","11101001100","11100101100","11100100110","11101100100","11100110100","11100110010","11011011000","11011000110","11000110110","10100011000","10001011000","10001000110","10110001000","10001101000","10001100010","11010001000","11000101000","11000100010","10110111000","10110001110","10001101110","10111011000","10111000110","10001110110","11101110110","11010001110","11000101110","11011101000","11011100010","11101011000","11101000110","11100010110","11101101000","11101100010","11100011010","11101111010","11001000010","11110001010","10100110000","10100001100","10010110000","10010000110","10000101100","10000100110","10110010000","10110000100","10011010000","10011000010","10000110100","10000110010","11000010010","11001010000","11110111010","11000010100","10001111010","10100111100","10010111100","11110100010","11110010010","11011111010","11111011010","11001111010","10100011110","10001011110","10010001111","10000101111","11011110100","11011110010","11110100100","11110010100","11110101000","11110101100","11100111010","11110111100","11010111100","11110101110","11011010000","11011010110"];
+  const BVALS={" ":0,"!":1,'"':2,"#":3,"$":4,"%":5,"&":6,"'":7,"(":8,")":9,"*":10,"+":11,",":12,"-":13,".":14,"/":15,"0":16,"1":17,"2":18,"3":19,"4":20,"5":21,"6":22,"7":23,"8":24,"9":25,":":26,";":27,"<":28,"=":29,">":30,"?":31,"@":32,"A":33,"B":34,"C":35,"D":36,"E":37,"F":38,"G":39,"H":40,"I":41,"J":42,"K":43,"L":44,"M":45,"N":46,"O":47,"P":48,"Q":49,"R":50,"S":51,"T":52,"U":53,"V":54,"W":55,"X":56,"Y":57,"Z":58,"[":59,"\\\\":60,"]":61,"^":62,"_":63,"`":64,"a":65,"b":66,"c":67,"d":68,"e":69,"f":70,"g":71,"h":72,"i":73,"j":74,"k":75,"l":76,"m":77,"n":78,"o":79,"p":80,"q":81,"r":82,"s":83,"t":84,"u":85,"v":86,"w":87,"x":88,"y":89,"z":90};
+  const START_B=104;let vals=[START_B];let sum=START_B;
+  for(let i=0;i<text.length;i++){const v=BVALS[text[i]];if(v!==undefined){vals.push(v);sum+=v*(vals.length-1);}}
+  vals.push(sum%103);vals.push(106);
+  let bits="";vals.forEach(v=>{bits+=BARS[v]||"";});bits+="11";
+  const W=bits.length*2+20,H=60;
+  let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="white"/>`;
+  let x=10;for(let i=0;i<bits.length;i++){if(bits[i]==="1")svg+=`<rect x="${x}" y="4" width="2" height="${H-14}" fill="black"/>`;x+=2;}
+  svg+=`<text x="${W/2}" y="${H-2}" text-anchor="middle" font-size="9" font-family="monospace">${text}</text></svg>`;
+  return svg;
+}
+
+function buildInvoiceHTML(o,s){
+  const sn=_escSrv(s.storeName||"WOW STORE"),wa=_escSrv(s.whatsapp||"");
+  const ST={processing:"قيد المعالجة",shipped:"تم الشحن",delivered:"تم التوصيل",returned:"مُرتجعة"};
+  const SC={processing:"#f59e0b",shipped:"#3b82f6",delivered:"#22c55e",returned:"#ef4444"};
+  const stTxt=ST[o.status]||o.status||"";const stC=SC[o.status]||"#a855f7";
+  const iH=(o.items||[]).map(it=>`<tr><td style="padding:6px;border-bottom:1px solid #eee">${it.img?`<img src="${_escSrv(it.img)}" style="width:42px;height:52px;object-fit:cover;border-radius:4px">`:""}</td><td style="padding:6px;border-bottom:1px solid #eee;font-size:12px">${_escSrv(it.name||"")}${it.size?` <small style="color:#888">[${_escSrv(it.size)}]</small>`:""}</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:center;font-size:12px">${it.qty||1}</td><td style="padding:6px;border-bottom:1px solid #eee;font-size:12px;white-space:nowrap">${((it.price||0)*(it.qty||1)).toLocaleString()} دج</td></tr>`).join("");
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>فاتورة — ${o.id}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;padding:16px;color:#111}.wrap{max-width:580px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1)}.hdr{background:#0a0016;color:#fff;padding:22px;text-align:center}.brand{font-family:Georgia,serif;font-size:34px;font-weight:900;letter-spacing:6px;color:#c084fc}.sub{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:3px;margin-top:2px}.oid{font-size:12px;color:rgba(255,255,255,.5);margin-top:10px}.dt{font-size:11px;color:rgba(255,255,255,.3)}.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-top:8px;background:${stC}22;color:${stC}}.body{padding:18px}.row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}.col{flex:1;min-width:160px;background:#fafafa;border-radius:8px;padding:12px}.col h4{font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:4px}.col p{font-size:11px;color:#444;line-height:1.9}table{width:100%;border-collapse:collapse;margin-bottom:14px}thead th{padding:7px 6px;font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;text-align:right;background:#fafafa}thead th:last-child{text-align:left}.totbox{background:#fafafa;border-radius:8px;padding:12px 14px}.tr{display:flex;justify-content:space-between;font-size:12px;color:#555;padding:2px 0}.tr.final{font-size:15px;font-weight:700;color:#111;border-top:2px solid #e0e0e0;margin-top:6px;padding-top:8px}.no-print{text-align:center;margin-bottom:14px;display:flex;gap:6px;justify-content:center}.ft{text-align:center;padding:14px;color:#aaa;font-size:10px;border-top:1px solid #eee}@media print{.no-print{display:none}body{background:#fff;padding:0}.wrap{box-shadow:none;border-radius:0}}</style></head>
+<body>
+<div class="no-print"><button onclick="window.print()" style="background:#6d28d9;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:12px;cursor:pointer">🖨 طباعة</button><button onclick="window.close()" style="background:#eee;color:#333;border:none;border-radius:7px;padding:8px 18px;font-size:12px;cursor:pointer">✕ إغلاق</button></div>
+<div class="wrap">
+<div class="hdr"><div class="brand">${sn}</div><div class="sub">INVOICE · فاتورة</div><div class="oid">${_escSrv(o.id)}</div><div class="dt">${new Date(o.date).toLocaleString("ar-DZ")}</div><div class="badge">${stTxt}</div></div>
+<div class="body">
+<div class="row">
+<div class="col"><h4>بيانات العميل</h4><p><strong>${_escSrv(o.name||"")}</strong></p><p>📞 ${_escSrv(o.phone1||"")} / ${_escSrv(o.phone2||"")}</p>${o.email?`<p>✉ ${_escSrv(o.email)}</p>`:""}</div>
+<div class="col"><h4>التوصيل</h4><p>📍 ${_escSrv(o.wilaya||"")} / ${_escSrv(o.commune||"")}</p><p>${_escSrv(o.dlbl||"Stop Desk")}</p><p>💳 ${o.payMethod==="ccp"?"CCP مسبق":"الدفع عند الاستلام"}</p>${o.confirmed?`<p style="color:#22c55e">✓ مؤكدة</p>`:`<p style="color:#f59e0b">⏳ بانتظار التأكيد</p>`}</div>
+</div>
+<table><thead><tr><th>صورة</th><th>المنتج</th><th style="text-align:center">الكمية</th><th style="text-align:left">المبلغ</th></tr></thead><tbody>${iH}</tbody></table>
+<div class="totbox">
+<div class="tr"><span>المنتجات</span><span>${(o.originalSub||o.finalSub||0).toLocaleString()} دج</span></div>
+${o.discAmt>0?`<div class="tr" style="color:#22c55e"><span>خصم العرض</span><span>- ${o.discAmt.toLocaleString()} دج</span></div>`:""}
+${o.couponCode?`<div class="tr" style="color:#22c55e"><span>كوبون (${_escSrv(o.couponCode)})</span><span>- ${(o.couponDisc||0).toLocaleString()} دج</span></div>`:""}
+<div class="tr"><span>رسوم التوصيل</span><span>${(o.fee||0).toLocaleString()} دج</span></div>
+${o.ccpDisc>0?`<div class="tr" style="color:#22c55e"><span>خصم CCP</span><span>- ${o.ccpDisc} دج</span></div>`:""}
+<div class="tr final"><span>المجموع الكلي</span><span>${(o.total||0).toLocaleString()} دج</span></div>
+</div>
+${o.note?`<div style="margin-top:12px;background:#fff9e6;border:1px solid #fcd34d;border-radius:6px;padding:9px 11px;font-size:11px;color:#92400e"><strong>ملاحظة:</strong> ${_escSrv(o.note)}</div>`:""}
+</div>
+<div class="ft">${sn} · ${wa}</div>
+</div></body></html>`;
+}
+
+function buildShippingLabel(o,s,fmt){
+  const sn=_escSrv(s.storeName||"WOW STORE"),wa=_escSrv(s.whatsapp||"");
+  const fmtN={yalidine:"Yalidine",zr:"Zr Express",maystro:"Maystro"}[fmt]||"Yalidine";
+  const iL=(o.items||[]).map(it=>`${it.name||""}${it.size?" ["+it.size+"]":""} x${it.qty||1}`).join("، ");
+  const bc=encodeCode128(o.id||"WOW");
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>بوليصة — ${_escSrv(o.id)}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#111;padding:14px}.label{width:148mm;min-height:105mm;border:2px solid #222;border-radius:6px;padding:12px}.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #222;padding-bottom:8px;margin-bottom:8px}.brand{font-family:Georgia,serif;font-size:20px;font-weight:900;letter-spacing:4px}.fmt-tag{background:#222;color:#fff;font-size:9px;padding:2px 7px;border-radius:3px;letter-spacing:1px}.bc{text-align:center;margin:6px 0;overflow:hidden}.row{display:flex;gap:10px;margin-bottom:8px}.box{flex:1;border:1px solid #ddd;border-radius:4px;padding:8px}.box h4{font-size:8px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:3px}.box p{font-size:11px;line-height:1.8}.items{background:#f9f9f9;border-radius:4px;padding:7px;font-size:10px;color:#555;margin-bottom:8px}.amt{background:#f0f0f0;border-radius:4px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.amt span{font-size:10px;color:#555}.amt strong{font-size:18px;font-weight:900}.prepaid{background:#111;color:#fff;text-align:center;padding:7px;border-radius:4px;font-size:13px;font-weight:700;letter-spacing:2px;margin-bottom:8px}.notes{border:1px dashed #ccc;border-radius:4px;padding:8px;min-height:28px;font-size:10px;color:#bbb}.no-print{text-align:center;margin-bottom:12px;display:flex;gap:6px;justify-content:center}@media print{.no-print{display:none}body{padding:0}}</style></head>
+<body>
+<div class="no-print"><button onclick="window.print()" style="background:#111;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:12px">🖨 طباعة</button><select onchange="window.location.href='/shipping-label?id=${o.id}&fmt='+this.value" style="border:1px solid #ccc;border-radius:6px;padding:7px;font-size:11px;cursor:pointer"><option value="yalidine"${fmt==="yalidine"?" selected":""}>Yalidine</option><option value="zr"${fmt==="zr"?" selected":""}>Zr Express</option><option value="maystro"${fmt==="maystro"?" selected":""}>Maystro</option></select></div>
+<div class="label">
+<div class="hdr"><div><div class="brand">${sn}</div><div style="font-size:10px;color:#555;margin-top:2px">📞 ${wa}</div></div><div style="text-align:left"><div class="fmt-tag">${fmtN}</div><div style="font-size:11px;font-weight:700;margin-top:4px">${_escSrv(o.id)}</div><div style="font-size:9px;color:#777">${new Date(o.date).toLocaleDateString("ar-DZ")}</div></div></div>
+<div class="bc">${bc}</div>
+<div class="row">
+<div class="box"><h4>المُرسِل</h4><p><strong>${sn}</strong></p><p>📞 ${wa}</p></div>
+<div class="box"><h4>المُستلِم</h4><p><strong>${_escSrv(o.name||"")}</strong></p><p>📞 ${_escSrv(o.phone1||"")} / ${_escSrv(o.phone2||"")}</p><p>📍 ${_escSrv(o.wilaya||"")} — ${_escSrv(o.commune||"")}</p><p style="font-size:9px;color:#777">${_escSrv(o.dlbl||"Stop Desk")}</p></div>
+</div>
+<div class="items">📦 ${_escSrv(iL)}</div>
+${o.payMethod!=="ccp"?`<div class="amt"><span>💵 مبلغ التحصيل</span><strong>${(o.total||0).toLocaleString()} دج</strong></div>`:`<div class="prepaid">✓ مدفوع مسبقاً — CCP</div>`}
+<div class="notes">ملاحظات: _________________</div>
+</div></body></html>`;
+}
+}
+
+
 export default {
   async fetch(request,env){
     const url=new URL(request.url);
@@ -168,8 +238,8 @@ export default {
         const [prods,flashSales]=await Promise.all([kvGet(env,"products",[]),kvGet(env,"flash_sales",[])]);
         const now=Date.now();
         const activeFlash=flashSales.filter(f=>f.active&&new Date(f.startAt).getTime()<=now&&new Date(f.endAt).getTime()>now);
-        const now2=Date.now();
-        const visibleProds=prods.filter(p=>!p.showAt||new Date(p.showAt).getTime()<=now2);
+        const prodNow=Date.now();
+        const visibleProds=prods.filter(p=>!p.showAt||new Date(p.showAt).getTime()<=prodNow);
         const prodsWithFlash=visibleProds.map(p=>{
           const fs=activeFlash.find(f=>String(f.productId)===String(p.id));
           if(fs)return{...p,flashDisc:fs.discVal,flashEndAt:fs.endAt};
@@ -741,7 +811,8 @@ export default {
       }
       const existing=refs.find(r=>r.phone===phone);
       const refLink=(existing?existing.hash:hash);
-      return R(`<html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>رابط الإحالة</title></head><body style="font-family:sans-serif;text-align:center;padding:40px;background:#0a0016;color:#e0d0ff"><h2 style="color:#c084fc">رابط الإحالة الخاص بك</h2><p style="color:#888;margin-bottom:20px">أرسل هذا الرابط لأصدقائك وأحصل على خصم 5%</p><div style="background:#1a0a2e;border:1px solid #6d28d9;border-radius:10px;padding:16px;font-size:14px;letter-spacing:1px;color:#c084fc;word-break:break-all">${url.origin}/?ref=${refLink}</div><button onclick="navigator.clipboard.writeText('${url.origin}/?ref=${refLink}').then(()=>alert('تم النسخ!'))" style="margin-top:20px;background:#6d28d9;color:#fff;border:none;border-radius:8px;padding:10px 24px;cursor:pointer;font-size:14px">نسخ الرابط</button></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
+      const _refFullLink=url.origin+"/?ref="+refLink;
+      return R(`<html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>رابط الإحالة</title></head><body style="font-family:sans-serif;text-align:center;padding:40px;background:#0a0016;color:#e0d0ff"><h2 style="color:#c084fc">رابط الإحالة الخاص بك</h2><p style="color:#888;margin-bottom:20px">أرسل هذا الرابط لأصدقائك وأحصل على خصم 5%</p><div id="rl" style="background:#1a0a2e;border:1px solid #6d28d9;border-radius:10px;padding:16px;font-size:14px;letter-spacing:1px;color:#c084fc;word-break:break-all">${_refFullLink}</div><button onclick="var l=document.getElementById('rl').textContent;navigator.clipboard.writeText(l).then(function(){alert('تم النسخ!')})" style="margin-top:20px;background:#6d28d9;color:#fff;border:none;border-radius:8px;padding:10px 24px;cursor:pointer;font-size:14px">نسخ الرابط</button></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
     }
 
     // ══ REVIEWS ══════════════════════════════════════════════════════
@@ -2317,7 +2388,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div style="display:flex;align-items:center;gap:8px">
       <div class="api-s" id="adm-api-s"><div class="api-d ld" id="adm-api-d"></div><span id="adm-api-l" style="color:var(--mu);font-size:10px">Cloudflare KV</span></div>
       <span style="font-size:11px;color:var(--mu)" id="adm-clock"></span>
-      <button class="xbtn" id="adm-close-btn" style="width:auto;padding:6px 12px;font-size:11px">&#8592; خروج</button>
+      <div id="adm-hdr-actions" style="display:flex;gap:5px;align-items:center"><a href="/api-docs" target="_blank" class="aact" style="font-size:9px;text-decoration:none;padding:4px 8px" title="API Docs">📋</a><button onclick="WOW._toggleFullscreen()" class="aact" style="font-size:11px;padding:4px 7px" title="F11">⛶</button></div><button class="xbtn" id="adm-close-btn" style="width:auto;padding:6px 12px;font-size:11px">&#8592; خروج</button>
     </div>
   </div>
   <div class="adm-body">
@@ -2708,7 +2779,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 <script>
 /* ══════════════════════════════════════════════════════════════
-   WOW STORE — Client JS v11.0 — Full Release
+   WOW STORE — Client JS v11.0 — Stable Production Build
    ══════════════════════════════════════════════════════════════ */
 
 /* ── GLOBAL NAMESPACE (defined FIRST, before any event binding) ── */
@@ -3368,9 +3439,13 @@ var WOW = (function(){
     _startClock();_loadAnalytics();_loadAdmProds();_checkPushStatus();
   }
   function _closeAdm(){
-    // حذف التوكن من KV عند تسجيل الخروج
     if(_adminToken){
       _api("/api/logout",{method:"POST"}).catch(function(){});
+    }
+    // تنظيف flash timers عند إغلاق اللوحة
+    if(_flashTimers&&_flashTimers.length){
+      _flashTimers.forEach(function(t){clearInterval(t);});
+      _flashTimers=[];
     }
     _clearSession();_adminToken="";
     var adm=document.getElementById("adm");if(adm)adm.classList.remove("on");
@@ -3676,7 +3751,7 @@ var WOW = (function(){
     if(!name){_toast("ادخل اسم المنتج");return;}
     if(!price){_toast("ادخل السعر");return;}
     var btn=document.getElementById("save-btn");if(btn){btn.disabled=true;btn.innerHTML="<span class='spin'></span>";}
-    var extras=_b3ExtraFields?_b3ExtraFields():{};
+    var extras=_b3ExtraFields();
     var body={name:name,price:+price,discount:disc,cat:cat,desc:desc,quantity:qty,images:_prodImgs.map(function(x){return x.url;}),sizes:extras.sizes||[],colors:extras.colors||[],alertQty:extras.alertQty||0,showAt:extras.showAt||null};
     var method=editId?"PUT":"POST";if(editId)body.id=+editId;
     _api("/api/products",{method:method,body:JSON.stringify(body)})
@@ -4947,6 +5022,10 @@ var WOW = (function(){
 
   // ══ UPSELL ═══════════════════════════════════════════════════════
   var _upsellTimer=null;
+  function _openProdById(id){
+    var p=_prods.find(function(x){return String(x.id)===String(id);});
+    if(p)_openProdMod(p);
+  }
   function _showUpsell(addedProd){
     clearTimeout(_upsellTimer);
     var pop=document.getElementById("upsell-pop");
@@ -4961,7 +5040,7 @@ var WOW = (function(){
       +"<img src='"+_esc(upsellProd.images[0])+"' style='width:48px;height:58px;object-fit:cover;border-radius:7px;flex-shrink:0'>"
       +"<div style='flex:1'><div style='font-size:11px;color:var(--dim);margin-bottom:4px'>"+_esc(upsellProd.name||"")+"</div>"
       +"<div style='font-family:Georgia,serif;color:rgba(192,132,252,.9);font-size:13px;margin-bottom:7px'>"+_fmt(upsellProd.price||0)+" دج</div>"
-      +"<button class='btn-main' style='padding:6px 12px;font-size:10px' onclick='WOW._addToCart('+upsellProd.id+');document.getElementById("upsell-pop").style.display="none"'>+ أضف للسلة</button>"
+      +"<button class='btn-main' style='padding:6px 12px;font-size:10px' onclick='WOW._openProdById('+upsellProd.id+');document.getElementById("upsell-pop").style.display="none"'>+ أضف للسلة</button>"
       +"</div></div>";
     pop.style.display="block";
     _upsellTimer=setTimeout(function(){pop.style.display="none";},5000);
@@ -4969,6 +5048,9 @@ var WOW = (function(){
 
   // ══ SALES COUNTER ════════════════════════════════════════════════
   function _loadSalesCounter(){
+    // Use KV-cached count to avoid admin auth requirement
+    // Only show if admin token present (analytics needs auth)
+    if(!_adminToken)return;
     _api("/api/analytics").then(function(r){return r.json();}).then(function(d){
       if(!d.confirmedOrders)return;
       var el=document.getElementById("sales-counter-bar");
@@ -5311,7 +5393,6 @@ var WOW = (function(){
     var sfaq=document.getElementById("s-faq");if(sfaq&&s.faq)sfaq.value=s.faq;
     var sref=document.getElementById("s-refund");if(sref&&s.refundPolicy)sref.value=s.refundPolicy;
     var slang=document.getElementById("s-lang");if(slang&&s.lang)slang.value=s.lang;
-    var tbs=[s.trustItems||[]];
     ["tb1","tb2","tb3","tb4"].forEach(function(id,i){
       var el=document.getElementById(id);if(el&&s.trustItems&&s.trustItems[i])el.value=s.trustItems[i];
     });
@@ -5337,7 +5418,7 @@ var WOW = (function(){
     var html=items.filter(Boolean).map(function(it){
       return "<div class='trust-item'>"+_esc(it)+"</div>";
     }).join("<div class='trust-dot'>·</div>");
-    if(html)tb.innerHTML=html+tb.innerHTML;
+    if(html)tb.innerHTML=html;
   }
 
 
@@ -5660,80 +5741,361 @@ var WOW = (function(){
     _showRefundPolicy:_showRefundPolicy,
     _toggleFullscreen:_toggleFullscreen,
     _saveSettingsFull:_saveSettingsFull,
-    _b3ExtraFields:_b3ExtraFields
+    _b3ExtraFields:_b3ExtraFields,
+    _openProdById:_openProdById
   };
 })();
 </script>
 </body>
 </html>`;
+      if(s.trustBadges){
+        var bd=s.trustBadges;
+        var badgeKeyMap={"badge-ssl":"ssl","badge-cod":"cod","badge-return":"ret","badge-quality":"quality","badge-fast":"fast"};
+        Object.keys(badgeKeyMap).forEach(function(id){
+          var el=document.getElementById(id);
+          if(el)el.checked=bd[badgeKeyMap[id]]||false;
+        });
+      });
+    }
+    // Trust Bar: update live items
+    _renderTrustBar(s.trustItems);
+    _renderTrustBadges(s);
+    if(s.lang)_setLang(s.lang);
+  }
+  function _renderTrustBar(items){
+    if(!items||!items.length)return;
+    var tb=document.querySelector(".trust-scroll");
+    if(!tb)return;
+    var html=items.filter(Boolean).map(function(it){
+      return "<div class='trust-item'>"+_esc(it)+"</div>";
+    }).join("<div class='trust-dot'>·</div>");
+    if(html)tb.innerHTML=html;
+  }
 
-function _escSrv(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
-function encodeCode128(text){
-  const BARS=["11011001100","11001101100","11001100110","10010011000","10010001100","10001001100","10011001000","10011000100","10001100100","11001001000","11001000100","11000100100","10110011100","10011011100","10011001110","10111001100","10011101100","10011100110","11001110010","11001011100","11001001110","11011100100","11001110100","11101101110","11101001100","11100101100","11100100110","11101100100","11100110100","11100110010","11011011000","11011000110","11000110110","10100011000","10001011000","10001000110","10110001000","10001101000","10001100010","11010001000","11000101000","11000100010","10110111000","10110001110","10001101110","10111011000","10111000110","10001110110","11101110110","11010001110","11000101110","11011101000","11011100010","11101011000","11101000110","11100010110","11101101000","11101100010","11100011010","11101111010","11001000010","11110001010","10100110000","10100001100","10010110000","10010000110","10000101100","10000100110","10110010000","10110000100","10011010000","10011000010","10000110100","10000110010","11000010010","11001010000","11110111010","11000010100","10001111010","10100111100","10010111100","11110100010","11110010010","11011111010","11111011010","11001111010","10100011110","10001011110","10010001111","10000101111","11011110100","11011110010","11110100100","11110010100","11110101000","11110101100","11100111010","11110111100","11010111100","11110101110","11011010000","11011010110"];
-  const BVALS={" ":0,"!":1,'"':2,"#":3,"$":4,"%":5,"&":6,"'":7,"(":8,")":9,"*":10,"+":11,",":12,"-":13,".":14,"/":15,"0":16,"1":17,"2":18,"3":19,"4":20,"5":21,"6":22,"7":23,"8":24,"9":25,":":26,";":27,"<":28,"=":29,">":30,"?":31,"@":32,"A":33,"B":34,"C":35,"D":36,"E":37,"F":38,"G":39,"H":40,"I":41,"J":42,"K":43,"L":44,"M":45,"N":46,"O":47,"P":48,"Q":49,"R":50,"S":51,"T":52,"U":53,"V":54,"W":55,"X":56,"Y":57,"Z":58,"[":59,"\\\\":60,"]":61,"^":62,"_":63,"`":64,"a":65,"b":66,"c":67,"d":68,"e":69,"f":70,"g":71,"h":72,"i":73,"j":74,"k":75,"l":76,"m":77,"n":78,"o":79,"p":80,"q":81,"r":82,"s":83,"t":84,"u":85,"v":86,"w":87,"x":88,"y":89,"z":90};
-  const START_B=104;let vals=[START_B];let sum=START_B;
-  for(let i=0;i<text.length;i++){const v=BVALS[text[i]];if(v!==undefined){vals.push(v);sum+=v*(vals.length-1);}}
-  vals.push(sum%103);vals.push(106);
-  let bits="";vals.forEach(v=>{bits+=BARS[v]||"";});bits+="11";
-  const W=bits.length*2+20,H=60;
-  let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="white"/>`;
-  let x=10;for(let i=0;i<bits.length;i++){if(bits[i]==="1")svg+=`<rect x="${x}" y="4" width="2" height="${H-14}" fill="black"/>`;x+=2;}
-  svg+=`<text x="${W/2}" y="${H-2}" text-anchor="middle" font-size="9" font-family="monospace">${text}</text></svg>`;
-  return svg;
-}
+    // ── HEADER SCROLL GLOW ──
+      (function(){
+        var h=document.querySelector(".hdr");if(!h)return;
+        window.addEventListener("scroll",function(){
+          h.classList.toggle("scrolled",window.scrollY>44);
+        },{passive:true});
+      })();
 
-function buildInvoiceHTML(o,s){
-  const sn=_escSrv(s.storeName||"WOW STORE"),wa=_escSrv(s.whatsapp||"");
-  const ST={processing:"قيد المعالجة",shipped:"تم الشحن",delivered:"تم التوصيل",returned:"مُرتجعة"};
-  const SC={processing:"#f59e0b",shipped:"#3b82f6",delivered:"#22c55e",returned:"#ef4444"};
-  const stTxt=ST[o.status]||o.status||"";const stC=SC[o.status]||"#a855f7";
-  const iH=(o.items||[]).map(it=>`<tr><td style="padding:6px;border-bottom:1px solid #eee">${it.img?`<img src="${_escSrv(it.img)}" style="width:42px;height:52px;object-fit:cover;border-radius:4px">`:""}</td><td style="padding:6px;border-bottom:1px solid #eee;font-size:12px">${_escSrv(it.name||"")}${it.size?` <small style="color:#888">[${_escSrv(it.size)}]</small>`:""}</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:center;font-size:12px">${it.qty||1}</td><td style="padding:6px;border-bottom:1px solid #eee;font-size:12px;white-space:nowrap">${((it.price||0)*(it.qty||1)).toLocaleString()} دج</td></tr>`).join("");
-  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>فاتورة — ${o.id}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;padding:16px;color:#111}.wrap{max-width:580px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1)}.hdr{background:#0a0016;color:#fff;padding:22px;text-align:center}.brand{font-family:Georgia,serif;font-size:34px;font-weight:900;letter-spacing:6px;color:#c084fc}.sub{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:3px;margin-top:2px}.oid{font-size:12px;color:rgba(255,255,255,.5);margin-top:10px}.dt{font-size:11px;color:rgba(255,255,255,.3)}.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-top:8px;background:${stC}22;color:${stC}}.body{padding:18px}.row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}.col{flex:1;min-width:160px;background:#fafafa;border-radius:8px;padding:12px}.col h4{font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:4px}.col p{font-size:11px;color:#444;line-height:1.9}table{width:100%;border-collapse:collapse;margin-bottom:14px}thead th{padding:7px 6px;font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;text-align:right;background:#fafafa}thead th:last-child{text-align:left}.totbox{background:#fafafa;border-radius:8px;padding:12px 14px}.tr{display:flex;justify-content:space-between;font-size:12px;color:#555;padding:2px 0}.tr.final{font-size:15px;font-weight:700;color:#111;border-top:2px solid #e0e0e0;margin-top:6px;padding-top:8px}.no-print{text-align:center;margin-bottom:14px;display:flex;gap:6px;justify-content:center}.ft{text-align:center;padding:14px;color:#aaa;font-size:10px;border-top:1px solid #eee}@media print{.no-print{display:none}body{background:#fff;padding:0}.wrap{box-shadow:none;border-radius:0}}</style></head>
-<body>
-<div class="no-print"><button onclick="window.print()" style="background:#6d28d9;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:12px;cursor:pointer">🖨 طباعة</button><button onclick="window.close()" style="background:#eee;color:#333;border:none;border-radius:7px;padding:8px 18px;font-size:12px;cursor:pointer">✕ إغلاق</button></div>
-<div class="wrap">
-<div class="hdr"><div class="brand">${sn}</div><div class="sub">INVOICE · فاتورة</div><div class="oid">${_escSrv(o.id)}</div><div class="dt">${new Date(o.date).toLocaleString("ar-DZ")}</div><div class="badge">${stTxt}</div></div>
-<div class="body">
-<div class="row">
-<div class="col"><h4>بيانات العميل</h4><p><strong>${_escSrv(o.name||"")}</strong></p><p>📞 ${_escSrv(o.phone1||"")} / ${_escSrv(o.phone2||"")}</p>${o.email?`<p>✉ ${_escSrv(o.email)}</p>`:""}</div>
-<div class="col"><h4>التوصيل</h4><p>📍 ${_escSrv(o.wilaya||"")} / ${_escSrv(o.commune||"")}</p><p>${_escSrv(o.dlbl||"Stop Desk")}</p><p>💳 ${o.payMethod==="ccp"?"CCP مسبق":"الدفع عند الاستلام"}</p>${o.confirmed?`<p style="color:#22c55e">✓ مؤكدة</p>`:`<p style="color:#f59e0b">⏳ بانتظار التأكيد</p>`}</div>
-</div>
-<table><thead><tr><th>صورة</th><th>المنتج</th><th style="text-align:center">الكمية</th><th style="text-align:left">المبلغ</th></tr></thead><tbody>${iH}</tbody></table>
-<div class="totbox">
-<div class="tr"><span>المنتجات</span><span>${(o.originalSub||o.finalSub||0).toLocaleString()} دج</span></div>
-${o.discAmt>0?`<div class="tr" style="color:#22c55e"><span>خصم العرض</span><span>- ${o.discAmt.toLocaleString()} دج</span></div>`:""}
-${o.couponCode?`<div class="tr" style="color:#22c55e"><span>كوبون (${_escSrv(o.couponCode)})</span><span>- ${(o.couponDisc||0).toLocaleString()} دج</span></div>`:""}
-<div class="tr"><span>رسوم التوصيل</span><span>${(o.fee||0).toLocaleString()} دج</span></div>
-${o.ccpDisc>0?`<div class="tr" style="color:#22c55e"><span>خصم CCP</span><span>- ${o.ccpDisc} دج</span></div>`:""}
-<div class="tr final"><span>المجموع الكلي</span><span>${(o.total||0).toLocaleString()} دج</span></div>
-</div>
-${o.note?`<div style="margin-top:12px;background:#fff9e6;border:1px solid #fcd34d;border-radius:6px;padding:9px 11px;font-size:11px;color:#92400e"><strong>ملاحظة:</strong> ${_escSrv(o.note)}</div>`:""}
-</div>
-<div class="ft">${sn} · ${wa}</div>
-</div></body></html>`;
-}
+      // ── HEADER BUTTONS ──
+      var cartBtnHdr=document.getElementById("cart-btn-hdr");
+      if(cartBtnHdr){
+        cartBtnHdr.addEventListener("click",function(e){e.preventDefault();_openCart();});
+        cartBtnHdr.addEventListener("touchend",function(e){e.preventDefault();_openCart();});
+      }
+      var admBtnHdr=document.getElementById("adm-btn-hdr");
+      if(admBtnHdr){
+        admBtnHdr.addEventListener("click",function(e){e.preventDefault();_openAdminLogin();});
+        admBtnHdr.addEventListener("touchend",function(e){e.preventDefault();_openAdminLogin();});
+      }
 
-function buildShippingLabel(o,s,fmt){
-  const sn=_escSrv(s.storeName||"WOW STORE"),wa=_escSrv(s.whatsapp||"");
-  const fmtN={yalidine:"Yalidine",zr:"Zr Express",maystro:"Maystro"}[fmt]||"Yalidine";
-  const iL=(o.items||[]).map(it=>`${it.name||""}${it.size?" ["+it.size+"]":""} x${it.qty||1}`).join("، ");
-  const bc=encodeCode128(o.id||"WOW");
-  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>بوليصة — ${_escSrv(o.id)}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#111;padding:14px}.label{width:148mm;min-height:105mm;border:2px solid #222;border-radius:6px;padding:12px}.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #222;padding-bottom:8px;margin-bottom:8px}.brand{font-family:Georgia,serif;font-size:20px;font-weight:900;letter-spacing:4px}.fmt-tag{background:#222;color:#fff;font-size:9px;padding:2px 7px;border-radius:3px;letter-spacing:1px}.bc{text-align:center;margin:6px 0;overflow:hidden}.row{display:flex;gap:10px;margin-bottom:8px}.box{flex:1;border:1px solid #ddd;border-radius:4px;padding:8px}.box h4{font-size:8px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:3px}.box p{font-size:11px;line-height:1.8}.items{background:#f9f9f9;border-radius:4px;padding:7px;font-size:10px;color:#555;margin-bottom:8px}.amt{background:#f0f0f0;border-radius:4px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.amt span{font-size:10px;color:#555}.amt strong{font-size:18px;font-weight:900}.prepaid{background:#111;color:#fff;text-align:center;padding:7px;border-radius:4px;font-size:13px;font-weight:700;letter-spacing:2px;margin-bottom:8px}.notes{border:1px dashed #ccc;border-radius:4px;padding:8px;min-height:28px;font-size:10px;color:#bbb}.no-print{text-align:center;margin-bottom:12px;display:flex;gap:6px;justify-content:center}@media print{.no-print{display:none}body{padding:0}}</style></head>
-<body>
-<div class="no-print"><button onclick="window.print()" style="background:#111;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:12px">🖨 طباعة</button><select onchange="window.location.href='/shipping-label?id=${o.id}&fmt='+this.value" style="border:1px solid #ccc;border-radius:6px;padding:7px;font-size:11px;cursor:pointer"><option value="yalidine"${fmt==="yalidine"?" selected":""}>Yalidine</option><option value="zr"${fmt==="zr"?" selected":""}>Zr Express</option><option value="maystro"${fmt==="maystro"?" selected":""}>Maystro</option></select></div>
-<div class="label">
-<div class="hdr"><div><div class="brand">${sn}</div><div style="font-size:10px;color:#555;margin-top:2px">📞 ${wa}</div></div><div style="text-align:left"><div class="fmt-tag">${fmtN}</div><div style="font-size:11px;font-weight:700;margin-top:4px">${_escSrv(o.id)}</div><div style="font-size:9px;color:#777">${new Date(o.date).toLocaleDateString("ar-DZ")}</div></div></div>
-<div class="bc">${bc}</div>
-<div class="row">
-<div class="box"><h4>المُرسِل</h4><p><strong>${sn}</strong></p><p>📞 ${wa}</p></div>
-<div class="box"><h4>المُستلِم</h4><p><strong>${_escSrv(o.name||"")}</strong></p><p>📞 ${_escSrv(o.phone1||"")} / ${_escSrv(o.phone2||"")}</p><p>📍 ${_escSrv(o.wilaya||"")} — ${_escSrv(o.commune||"")}</p><p style="font-size:9px;color:#777">${_escSrv(o.dlbl||"Stop Desk")}</p></div>
-</div>
-<div class="items">📦 ${_escSrv(iL)}</div>
-${o.payMethod!=="ccp"?`<div class="amt"><span>💵 مبلغ التحصيل</span><strong>${(o.total||0).toLocaleString()} دج</strong></div>`:`<div class="prepaid">✓ مدفوع مسبقاً — CCP</div>`}
-<div class="notes">ملاحظات: _________________</div>
-</div></body></html>`;
-}
-}
+      // ── CART CLOSE ──
+      var cartXbtn=document.getElementById("cart-xbtn");
+      if(cartXbtn){cartXbtn.addEventListener("click",_closeCart);cartXbtn.addEventListener("touchend",function(e){e.preventDefault();_closeCart();});}
+      var ov=document.getElementById("ov");
+      if(ov){ov.addEventListener("click",_closeCart);ov.addEventListener("touchend",function(e){e.preventDefault();_closeCart();});}
+
+      // ── CHECKOUT ──
+      var checkoutBtn=document.getElementById("checkout-btn");
+      if(checkoutBtn)checkoutBtn.addEventListener("click",_openCheckout);
+      // chk-btn مُربوط داخل _initStepper — لا نربطه هنا مجدداً
+      var oWilaya=document.getElementById("o-wilaya");
+      if(oWilaya)oWilaya.addEventListener("change",_updPreview);
+      var oDel=document.getElementById("o-del");
+      if(oDel)oDel.addEventListener("change",_updPreview);
+
+      // ── CCP PAYMENT TOGGLE ──
+      function _toggleCcp(){
+        var isCcp=document.getElementById("pay-ccp")&&document.getElementById("pay-ccp").checked;
+        var det=document.getElementById("ccp-details");
+        var discRow=document.getElementById("op-ccp-disc-row");
+        if(det)det.style.display=isCcp?"block":"none";
+        if(discRow)discRow.style.display=isCcp?"flex":"none";
+        _updPreview();
+      }
+      var payCod=document.getElementById("pay-cod");
+      var payCcp=document.getElementById("pay-ccp");
+      if(payCod)payCod.addEventListener("change",_toggleCcp);
+      if(payCcp)payCcp.addEventListener("change",_toggleCcp);
+
+      // ── SEARCH ──
+      var searchInp=document.getElementById("search-inp");
+      if(searchInp){
+        searchInp.addEventListener("input",function(){_liveSearch(this.value);});
+        searchInp.addEventListener("keydown",function(e){if(e.key==="Escape"){this.value="";_liveSearch("");}});
+      }
+
+      // ── SORT ──
+      var ssEl=document.getElementById("ss");
+      if(ssEl)ssEl.addEventListener("change",_sortP);
+
+      // ── CATEGORY PILLS ──
+      var pillMap={
+        "pill-all":function(el){_flt("all",el);},
+        "pill-shirts":function(el){_flt("shirts",el);},
+        "pill-pants":function(el){_flt("pants",el);},
+        "pill-shorts":function(el){_flt("shorts",el);},
+        "pill-hats":function(el){_flt("hats",el);},
+        "pill-acc":function(el){_flt("accessories",el);},
+        "pill-other":function(el){_flt("other",el);},
+        "pill-new":function(el){_fltNew(el);},
+        "pill-top":function(el){_fltTop(el);}
+      };
+      Object.keys(pillMap).forEach(function(id){
+        var el=document.getElementById(id);
+        if(el){
+          el.addEventListener("click",function(){pillMap[id](el);});
+          el.addEventListener("touchend",function(e){e.preventDefault();pillMap[id](el);});
+        }
+      });
+
+      // ── BOTTOM NAV ──
+      var bnHome=document.getElementById("bn-home");
+      if(bnHome){bnHome.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"});});bnHome.addEventListener("touchend",function(e){e.preventDefault();window.scrollTo({top:0,behavior:"smooth"});});}
+      var bnCart=document.getElementById("bn-cart");
+      if(bnCart){bnCart.addEventListener("click",_openCart);bnCart.addEventListener("touchend",function(e){e.preventDefault();_openCart();});}
+      var bnTrack=document.getElementById("bn-track");
+      if(bnTrack){bnTrack.addEventListener("click",function(){_openMod("track-mod");});bnTrack.addEventListener("touchend",function(e){e.preventDefault();_openMod("track-mod");});}
+      var bnHelp=document.getElementById("bn-help");
+      if(bnHelp){bnHelp.addEventListener("click",function(){_openMod("faq-mod");});bnHelp.addEventListener("touchend",function(e){e.preventDefault();_openMod("faq-mod");});}
+
+      // ── FOOTER LINKS ──
+      var flTrack=document.getElementById("fl-track");if(flTrack)flTrack.addEventListener("click",function(){_openMod("track-mod");});
+      var flFaq=document.getElementById("fl-faq");if(flFaq)flFaq.addEventListener("click",function(){_openMod("faq-mod");});
+      var flPolicy=document.getElementById("fl-policy");if(flPolicy)flPolicy.addEventListener("click",function(){_openMod("policy-mod");});
+
+      // ── MODAL CLOSE BUTTONS ──
+      var modalClosePairs=[
+        ["login-xbtn","login-mod"],
+        ["size-xbtn","size-mod"],
+        ["prod-xbtn","prod-mod"],
+        ["checkout-xbtn","checkout-mod"],
+        ["inv-xbtn","inv-mod"],
+        ["track-xbtn","track-mod"],
+        ["faq-xbtn","faq-mod"],
+        ["policy-xbtn","policy-mod"]
+      ];
+      modalClosePairs.forEach(function(pair){
+        var btn=document.getElementById(pair[0]);
+        if(btn){btn.addEventListener("click",function(){_closeMod(pair[1]);});btn.addEventListener("touchend",function(e){e.preventDefault();_closeMod(pair[1]);});}
+      });
+      // Close modal on overlay click
+      document.querySelectorAll(".mod-ov").forEach(function(ov2){
+        ov2.addEventListener("click",function(e){
+          if(e.target===ov2)_closeMod(ov2.id);
+        });
+      });
+
+      // ── SIZE BUTTONS ──
+      document.querySelectorAll(".sz-btn").forEach(function(btn){
+        btn.addEventListener("click",function(){_pickSz(btn.getAttribute("data-sz"),btn);});
+      });
+      document.getElementById("mw")&&document.getElementById("mw").addEventListener("input",_clearSz);
+      document.getElementById("mh")&&document.getElementById("mh").addEventListener("input",_clearSz);
+      document.getElementById("mg")&&document.getElementById("mg").addEventListener("change",_clearSz);
+      var confirmAddBtn=document.getElementById("confirm-add-btn");
+      if(confirmAddBtn)confirmAddBtn.addEventListener("click",_confirmAdd);
+
+      // ── LOGIN ──
+      var loginPass=document.getElementById("login-pass");
+      if(loginPass)loginPass.addEventListener("keydown",function(e){if(e.key==="Enter")_doLogin();});
+      var loginBtn=document.getElementById("login-btn");
+      if(loginBtn)loginBtn.addEventListener("click",_doLogin);
+
+      // ── TRACK ──
+      var trackInp=document.getElementById("track-inp");
+      if(trackInp)trackInp.addEventListener("keydown",function(e){if(e.key==="Enter")_doTrack();});
+      var trackBtn=document.getElementById("track-btn");
+      if(trackBtn)trackBtn.addEventListener("click",_doTrack);
+
+      // ── HERO FILE PICKER ──
+      (function(){
+        var inp=document.getElementById("hero-file-inp");
+        var lbl=document.getElementById("hero-pick-lbl");
+        var txt=document.getElementById("hero-pick-txt");
+        var wrap=document.getElementById("hero-preview-wrap");
+        var prevImg=document.getElementById("hero-preview-img");
+        var prevVid=document.getElementById("hero-preview-vid");
+        var clearBtn=document.getElementById("hero-preview-clear");
+        var heroUrl=document.getElementById("s-hero");
+        if(!inp)return;
+        inp.addEventListener("change",function(){
+          var file=inp.files&&inp.files[0];
+          if(!file)return;
+          // حجم: أقصى 4MB
+          if(file.size>4*1024*1024){_toast("الملف كبير جداً — الحد 4MB");inp.value="";return;}
+          var reader=new FileReader();
+          reader.onload=function(e){
+            var dataUrl=e.target.result;
+            // ضع الـ dataURL في حقل الرابط
+            if(heroUrl)heroUrl.value=dataUrl;
+            // عرض preview
+            wrap.style.display="block";
+            var isVid=file.type.startsWith("video/");
+            if(isVid){
+              prevImg.style.display="none";
+              prevVid.style.display="block";
+              prevVid.src=dataUrl;prevVid.play().catch(function(){});
+            } else {
+              prevVid.style.display="none";
+              prevImg.style.display="block";
+              prevImg.src=dataUrl;
+            }
+            txt.textContent=file.name;
+            _applyHeroBackground(dataUrl);
+          };
+          reader.readAsDataURL(file);
+        });
+        if(clearBtn)clearBtn.addEventListener("click",function(){
+          inp.value="";
+          if(heroUrl)heroUrl.value="";
+          wrap.style.display="none";
+          prevImg.src="";prevVid.src="";
+          txt.textContent="اضغط لاختيار صورة أو فيديو من المعرض";
+          _applyHeroBackground("");
+        });
+        // hover style
+        if(lbl){
+          lbl.addEventListener("mouseenter",function(){lbl.style.borderColor="rgba(168,85,247,.6)";lbl.style.background="rgba(168,85,247,.13)";});
+          lbl.addEventListener("mouseleave",function(){lbl.style.borderColor="rgba(168,85,247,.3)";lbl.style.background="rgba(168,85,247,.08)";});
+        }
+      })();
+
+      // ── ADMIN ──
+      var admCloseBtn=document.getElementById("adm-close-btn");
+      if(admCloseBtn)admCloseBtn.addEventListener("click",_closeAdm);
+      var rvXbtn=document.getElementById("review-xbtn");
+      if(rvXbtn)rvXbtn.addEventListener("click",function(){_closeMod("review-mod");});
+      document.querySelectorAll(".anav").forEach(function(nav){
+        nav.addEventListener("click",function(){_aTab(nav.getAttribute("data-tab"),nav);});
+      });
+      var gotoAddprod=document.getElementById("goto-addprod");
+      if(gotoAddprod)gotoAddprod.addEventListener("click",function(){_aTab("addprod",null);});
+      var saveBtn=document.getElementById("save-btn");
+      if(saveBtn)saveBtn.addEventListener("click",_saveProd);
+      var cancelEditBtn=document.getElementById("cancel-edit-btn");
+      if(cancelEditBtn)cancelEditBtn.addEventListener("click",_cancelEdit);
+      var saveSettingsBtn=document.getElementById("save-settings-btn");
+      if(saveSettingsBtn)saveSettingsBtn.addEventListener("click",_saveSettingsFull);
+      var ordersRefreshBtn=document.getElementById("orders-refresh-btn");
+      if(ordersRefreshBtn)ordersRefreshBtn.addEventListener("click",_loadOrders);
+      var ordersClearBtn=document.getElementById("orders-clear-btn");
+      if(ordersClearBtn)ordersClearBtn.addEventListener("click",_clearOrders);
+      var pushBtn=document.getElementById("push-btn");
+      if(pushBtn)pushBtn.addEventListener("click",_requestPush);
+
+      // Admin price/disc calc
+      var pPrice=document.getElementById("p-price");if(pPrice)pPrice.addEventListener("input",_calcDisc);
+      var pDisc=document.getElementById("p-disc");if(pDisc)pDisc.addEventListener("input",_calcDisc);
+
+      // Drop zone
+      var dropZone=document.getElementById("drop-zone");
+      if(dropZone){
+        dropZone.addEventListener("click",function(){var fi=document.getElementById("p-img-file");if(fi)fi.click();});
+        dropZone.addEventListener("dragover",function(e){e.preventDefault();dropZone.classList.add("drag");});
+        dropZone.addEventListener("dragleave",function(){dropZone.classList.remove("drag");});
+        dropZone.addEventListener("drop",_handleDrop);
+      }
+      var pImgFile=document.getElementById("p-img-file");
+      if(pImgFile)pImgFile.addEventListener("change",function(){_handleImgs(this);});
+
+      // ── AUTO LOGIN ──
+      if(_restoreSession()&&_adminToken){
+        fetch("/api/auth-verify",{method:"POST",headers:{"Content-Type":"application/json","X-Admin-Key":_adminToken}})
+        .then(function(r){return r.json();})
+        .then(function(d){if(d.ok)_showAdm();else _clearSession();})
+        .catch(function(){_clearSession();});
+      }
+    }catch(e){console.error("WOW init error:",e);}
+  });
+
+  /* ── PUBLIC API (backward compat) ── */
+  return {
+    openCart:_openCart,
+    closeCart:_closeCart,
+    openMod:_openMod,
+    closeMod:_closeMod,
+    openAdminLogin:_openAdminLogin,
+    openProd:_openProd,
+    openSizeMod:_openSizeMod,
+    openCheckout:_openCheckout,
+    liveSearch:_liveSearch,
+    flt:_flt,
+    fltNew:_fltNew,
+    fltTop:_fltTop,
+    sortP:_sortP,
+    pickSz:_pickSz,
+    clearSz:_clearSz,
+    confirmAdd:_confirmAdd,
+    doLogin:_doLogin,
+    doTrack:_doTrack,
+    closeAdm:_closeAdm,
+    aTab:_aTab,
+    loadOrders:_loadOrders,
+    _loadKvStats:_loadKvStats,
+    clearOrders:_clearOrders,
+    confOrd:function(id,confirmed){_api("/api/orders",{method:"PATCH",body:JSON.stringify({id:id,confirmed:confirmed})}).then(function(){_loadOrders();_toast(confirmed?"تم التاكيد":"تم الالغاء");}).catch(function(){_toast("خطا");});},
+    updOrderStatus:function(id,status){_api("/api/orders",{method:"PATCH",body:JSON.stringify({id:id,status:status})}).then(function(){_toast("تم تحديث الحالة");}).catch(function(){_toast("خطا");});},
+    saveProd:_saveProd,
+    cancelEdit:_cancelEdit,
+    editProd:_editProd,
+    delProd:_delProd,
+    updateQty:_updateQty,
+    handleDrop:_handleDrop,
+    handleImgs:_handleImgs,
+    delImg:function(i){_prodImgs.splice(i,1);_renderPreviews();},
+    calcDisc:_calcDisc,
+    saveSettings:_saveSettings,
+    requestPush:_requestPush,
+    updPreview:_updPreview,
+    submitOrder:_submitOrder,
+    sPrev:function(id,e){if(e)e.stopPropagation();var sl=document.getElementById("sl-"+id);if(!sl)return;var l=sl.querySelectorAll("img").length;var c=0;sl.querySelectorAll("img").forEach(function(img,i){if(img.classList.contains("active"))c=i;});var idx=(c-1+l)%l;var imgs=sl.querySelectorAll("img"),dots=sl.querySelectorAll(".slide-dot");imgs.forEach(function(img,i){if(i===idx){if(img.getAttribute("data-src")){img.src=img.getAttribute("data-src");img.removeAttribute("data-src");img.classList.add("lazy-loaded");}img.classList.add("active");}else img.classList.remove("active");});dots.forEach(function(d,i){d.classList.toggle("on",i===idx);});},
+    sNext:function(id,e){if(e)e.stopPropagation();var sl=document.getElementById("sl-"+id);if(!sl)return;var l=sl.querySelectorAll("img").length;var c=0;sl.querySelectorAll("img").forEach(function(img,i){if(img.classList.contains("active"))c=i;});var idx=(c+1)%l;var imgs=sl.querySelectorAll("img"),dots=sl.querySelectorAll(".slide-dot");imgs.forEach(function(img,i){if(i===idx){if(img.getAttribute("data-src")){img.src=img.getAttribute("data-src");img.removeAttribute("data-src");img.classList.add("lazy-loaded");}img.classList.add("active");}else img.classList.remove("active");});dots.forEach(function(d,i){d.classList.toggle("on",i===idx);});},
+    sTo:function(id,i,e){if(e)e.stopPropagation();var sl=document.getElementById("sl-"+id);if(!sl)return;var imgs=sl.querySelectorAll("img"),dots=sl.querySelectorAll(".slide-dot");imgs.forEach(function(img,j){if(j===i){if(img.getAttribute("data-src")){img.src=img.getAttribute("data-src");img.removeAttribute("data-src");img.classList.add("lazy-loaded");}img.classList.add("active");}else img.classList.remove("active");});dots.forEach(function(d,j){d.classList.toggle("on",j===i);});},
+    pmImg:function(src,el){var mi=document.getElementById("pm-main-img");if(!mi)return;mi.classList.remove("lazy-loaded");mi.classList.add("lazy-blur");var t=new Image();t.onload=function(){mi.src=src;mi.classList.remove("lazy-blur");mi.classList.add("lazy-loaded");};t.src=src;document.querySelectorAll(".gal-thumb").forEach(function(x){x.classList.remove("on");});if(el)el.classList.add("on");},
+    _loadAnalytics:_loadAnalytics,
+    _loadOrders:_loadOrders,
+    _loadCoupons:_loadCoupons,
+    _loadArchive:_loadArchive,
+    _loadStockHistory:_loadStockHistory,
+    _loadActivity:_loadActivity,
+    _loadVisitors:_loadVisitors,
+    _createCoupon:_createCoupon,
+    _applyCoupon:_applyCoupon,
+    _addStock:_addStock,
+    _filterOrders:_filterOrders,
+    _groupOrders:_groupOrders,
+    _exportCSV:_exportCSV,
+    _loadFlashSales:_loadFlashSales,
+    _createFlashSale:_createFlashSale,
+    _loadBundles:_loadBundles,
+    _createBundle:_createBundle,
+    _loadWaitlist:_loadWaitlist,
+    _loadLoyalty:_loadLoyalty,
+    _viewLoyaltyDetail:_viewLoyaltyDetail,
+    _loadReferrals:_loadReferrals,
+    _loadReviews:_loadReviews,
+    _loadTestimonials:_loadTestimonials,
+    _createTestimonial:_createTestimonial,
+    _submitReview:_submitReview,
+    _openReviewMod:_openReviewMod,
+    _useExitCoupon:_useExitCoupon,
+    _loadStories:_loadStories,
+    _createStory:_createStory,
+    _showQR:_showQR,
+    _copyProdLink:_copyProdLink,
+    _showFAQ:_showFAQ,
+    _showRefundPolicy:_showRefundPolicy,
+    _toggleFullscreen:_toggleFullscreen,
+    _saveSettingsFull:_saveSettingsFull,
+    _b3ExtraFields:_b3ExtraFields,
+    _openProdById:_openProdById
+  };
+})();
+</script>
+</body>
+</html>`;
