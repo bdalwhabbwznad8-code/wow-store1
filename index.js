@@ -8,8 +8,7 @@ async function hashPass(str){
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
 }
 
-// كلمة المرور محذوفة — الهاش كافٍ
-// SHA-256("12345678A@") — Admin password hash — verified
+// Admin password hash only; keep the raw password out of source control.
 const ADMIN_PASS_HASH = "881b9563ffff9349eb3ad4efeb71c7355d7878644e385d71d26b846f3ddd06a6";
 const BLOCK_MS = 8*3600000;
 const MAX_ATT  = 5;
@@ -198,38 +197,41 @@ export default {
     const url=new URL(request.url);
     const path=url.pathname;
     const method=request.method;
+    const RR=(body,status=200,extra={})=>R(body,status,extra,request);
     if(method==="OPTIONS")return new Response(null,{headers:_getCorsHeaders(request)});
+
+    if(path==="/sw.js"&&method==="GET")return RR(`self.addEventListener("push",function(e){var d={title:"WOW Store",body:""};try{d=e.data?e.data.json():d;}catch(_){}e.waitUntil(self.registration.showNotification(d.title||"WOW Store",{body:d.body||""}));});self.addEventListener("notificationclick",function(e){e.notification.close();e.waitUntil(clients.openWindow("/"));});`,200,{"Content-Type":"application/javascript;charset=utf-8","Cache-Control":"public,max-age=3600"});
 
     if(path==="/api/auth"&&method==="POST"){
       const fp=getFP(request);
       const rl=await chkRL(env,fp);
-      if(rl.blocked)return R({ok:false,stall:true});
-      let body;try{body=await request.json();}catch{return R({ok:false},400);}
+      if(rl.blocked)return RR({ok:false,stall:true});
+      let body;try{body=await request.json();}catch{return RR({ok:false},400);}
       const ih=await hashPass(body.password||"");
       if(ih===ADMIN_PASS_HASH){
         await clrRL(env,fp);
         const token=crypto.randomUUID();
         await env.DATABASE.put("admin_token:"+token,"1",{expirationTtl:3600});
-        return R({ok:true,token});
+        return RR({ok:true,token});
       }
       const after=await incRL(env,fp);
       await sendPush(env,"محاولة دخول خاطئة","محاولة "+((MAX_ATT-(after.remaining||0)))+" من "+MAX_ATT);
-      if(after.blocked)return R({ok:false,stall:true});
-      return R({ok:false,remaining:after.remaining},401);
+      if(after.blocked)return RR({ok:false,stall:true});
+      return RR({ok:false,remaining:after.remaining},401);
     }
 
-    if(path==="/api/auth-verify"&&method==="POST")return R({ok:await isAdmin(request,env)});
+    if(path==="/api/auth-verify"&&method==="POST")return RR({ok:await isAdmin(request,env)});
 
     if(path==="/api/logout"&&method==="POST"){
       const k=request.headers.get("X-Admin-Key")||"";
       if(k){try{await env.DATABASE.delete("admin_token:"+k);}catch{}}
-      return R({ok:true});
+      return RR({ok:true});
     }
 
     if(path==="/api/push-subscribe"&&method==="POST"){
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
       await kvSet(env,"push_subscription",await request.json());
-      return R({ok:true});
+      return RR({ok:true});
     }
 
     if(path==="/api/products"){
@@ -244,9 +246,9 @@ export default {
           if(fs)return{...p,flashDisc:fs.discVal,flashEndAt:fs.endAt};
           return p;
         });
-        return R(prodsWithFlash,200,{"Cache-Control":"public,max-age=15"});
+        return RR(prodsWithFlash,200,{"Cache-Control":"public,max-age=15"});
       }
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
       if(method==="POST"){
         const body=await request.json(),prods=await kvGet(env,"products",[]);
         const _rp=+body.price||0,_rd=+body.discount||0;
@@ -266,12 +268,12 @@ export default {
           alertQty:Math.max(0,parseInt(body.alertQty)||0),
           showAt:body.showAt?new Date(body.showAt).toISOString():null,
           salesCount:0,createdAt:Date.now()};
-        prods.push(p);await kvSet(env,"products",prods);return R(p);
+        prods.push(p);await kvSet(env,"products",prods);return RR(p);
       }
       if(method==="PUT"){
         const body=await request.json(),prods=await kvGet(env,"products",[]);
         const i=prods.findIndex(p=>p.id===body.id);
-        if(i<0)return R({error:"Not found"},404);
+        if(i<0)return RR({error:"Not found"},404);
         const _allowed=["name","price","discount","desc","images","stock","quantity","cat","sizes","colors","alertQty","showAt","nameEn","nameFr","descEn","descFr"];
         const _upd={};
         _allowed.forEach(f=>{if(body[f]!==undefined)_upd[f]=body[f];});
@@ -286,14 +288,14 @@ export default {
         if(_upd.images!==undefined)_upd.images=Array.isArray(_upd.images)?_upd.images.slice(0,4).filter(u=>typeof u==="string"&&u.length<500000).map(u=>u.trim()):[];
         const VALID_CATS2=["shirts","pants","shorts","hats","accessories","other"];
         if(_upd.cat!==undefined&&!VALID_CATS2.includes(_upd.cat))_upd.cat="other";
-        prods[i]={...prods[i],..._upd};await kvSet(env,"products",prods);return R(prods[i]);
+        prods[i]={...prods[i],..._upd};await kvSet(env,"products",prods);return RR(prods[i]);
       }
       if(method==="DELETE"){
         const id=+url.searchParams.get("id");
         const archive=url.searchParams.get("archive")==="1";
         let prods=await kvGet(env,"products",[]);
         const pi=prods.findIndex(p=>p.id===id);
-        if(pi<0)return R({error:"Not found"},404);
+        if(pi<0)return RR({error:"Not found"},404);
         if(archive){
           const arch=await kvGet(env,"archived_products",[]);
           const p=prods.splice(pi,1)[0];p.archivedAt=new Date().toISOString();
@@ -305,7 +307,7 @@ export default {
           await kvSet(env,"products",prods);
           await logActivity(env,"product_delete","حذف منتج ID: "+id);
         }
-        return R({ok:true});
+        return RR({ok:true});
       }
     }
 
@@ -316,18 +318,18 @@ export default {
         const orderRl=await kvGet(env,orderFp,{c:0,t:0});
         const now=Date.now();
         if(orderRl.t&&now-orderRl.t<60000&&orderRl.c>=5)
-          return R({error:"الرجاء الانتظار قبل إرسال طلبية أخرى"},429);
+          return RR({error:"الرجاء الانتظار قبل إرسال طلبية أخرى"},429);
 
         const body=await request.json();
         if(!body.name||!body.phone1||!body.phone2||!body.wilaya||!body.commune||!body.items?.length)
-          return R({error:"Missing fields"},400);
-        if(body.phone1===body.phone2)return R({error:"Phones must differ"},400);
+          return RR({error:"Missing fields"},400);
+        if(body.phone1===body.phone2)return RR({error:"Phones must differ"},400);
         /* ── التحقق من صيغة الهاتف ── */
         const phoneRx=/^0[567]\d{8}$/;
         if(!phoneRx.test(body.phone1.replace(/\s/g,""))||!phoneRx.test(body.phone2.replace(/\s/g,"")))
-          return R({error:"رقم الهاتف غير صالح"},400);
+          return RR({error:"رقم الهاتف غير صالح"},400);
         /* ── التحقق من عدد المنتجات ── */
-        if(body.items.length>20)return R({error:"عدد المنتجات كبير جداً"},400);
+        if(body.items.length>20)return RR({error:"عدد المنتجات كبير جداً"},400);
 
         /* ── تسجيل محاولة الطلب ── */
         const newC=now-orderRl.t>60000?1:(orderRl.c||0)+1;
@@ -363,12 +365,12 @@ export default {
         /* ── التحقق من المخزون (أول فحص) ── */
         for(const item of body.items){
           const itemQty=Math.max(1,Math.min(99,parseInt(item.qty)||1));
-          if(isNaN(itemQty))return R({error:"كمية غير صالحة"},400);
+          if(isNaN(itemQty))return RR({error:"كمية غير صالحة"},400);
           const prod=prodsData.find(p=>p.id===item.id);
-          if(!prod)return R({error:"المنتج غير موجود: "+item.id},400);
+          if(!prod)return RR({error:"المنتج غير موجود: "+item.id},400);
           if(prod.quantity!==null&&prod.quantity!==undefined){
             if(itemQty>prod.quantity)
-              return R({error:"الكمية غير متوفرة للمنتج "+prod.name},400);
+              return RR({error:"الكمية غير متوفرة للمنتج "+prod.name},400);
           }
         }
 
@@ -427,7 +429,6 @@ export default {
             img:(item.img||"").substring(0,500)
           };
         });
-        const orders=await kvGet(env,"orders",[]);
         const o={
           id:"WOW-"+Date.now().toString().slice(-7),date:new Date().toISOString(),
           confirmed:false,status:"processing",
@@ -442,6 +443,32 @@ export default {
           appliedDiscountMethod:discountMethodFinal,
           globalDiscount:appliedGlobalDisc
         };
+
+        /* ── تحديث الكمية مع double-check قبل حفظ الطلبية ── */
+        const prodsRefresh=await kvGetFresh(env,"products",[]);
+        let changed=false;
+        for(const item of body.items){
+          const pi=prodsRefresh.findIndex(p=>p.id===item.id);
+          if(pi>=0&&prodsRefresh[pi].quantity!==null&&prodsRefresh[pi].quantity!==undefined){
+            const needed=Math.max(1,Math.min(99,parseInt(item.qty)||1));
+            if(prodsRefresh[pi].quantity<needed){
+              return RR({error:"الكمية لم تعد متوفرة للمنتج "+(prodsRefresh[pi].name||item.id)},409);
+            }
+            prodsRefresh[pi].quantity=prodsRefresh[pi].quantity-needed;
+            changed=true;
+          }
+        }
+        if(changed){
+          await kvSet(env,"products",prodsRefresh);
+          const stockHist=await kvGet(env,"stock_history",[]);
+          for(const item of body.items){
+            const p2=prodsRefresh.find(p=>p.id===item.id);
+            if(p2&&p2.quantity!==null){
+              stockHist.unshift({t:new Date().toISOString(),productId:p2.id,productName:p2.name||"",type:"sale",qty:-(parseInt(item.qty)||1),balanceAfter:p2.quantity,orderId:o.id});
+            }
+          }
+          await kvSet(env,"stock_history",stockHist.slice(0,1000));
+        }
 
         // ── خصم الإحالة ──
         let refDisc=0;
@@ -489,45 +516,15 @@ export default {
         }catch{}
         allOrders.unshift(o);await kvSet(env,"orders",allOrders.slice(0,500));
 
-        /* ── تحديث الكمية مع double-check (race condition mitigation) ── */
-        const prodsRefresh=await kvGetFresh(env,"products",[]);
-        let changed=false;
-        for(const item of body.items){
-          const pi=prodsRefresh.findIndex(p=>p.id===item.id);
-          if(pi>=0&&prodsRefresh[pi].quantity!==null&&prodsRefresh[pi].quantity!==undefined){
-            const needed=Math.max(1,Math.min(99,parseInt(item.qty)||1));
-            // التحقق الثاني — تأكد أن الكمية لا تزال كافية بعد إعادة جلب البيانات
-            if(prodsRefresh[pi].quantity<needed){
-              // المخزون نفد بين الفحصين — أرسل تحذيراً لكن لا نحذف الطلب
-              // (سلوك متساهل: الطلب يُسجَّل والأدمن يتعامل معه)
-              prodsRefresh[pi].quantity=0;
-            } else {
-              prodsRefresh[pi].quantity=prodsRefresh[pi].quantity-needed;
-            }
-            changed=true;
-          }
-        }
-        if(changed){
-          await kvSet(env,"products",prodsRefresh);
-          const stockHist=await kvGet(env,"stock_history",[]);
-          for(const item of body.items){
-            const p2=prodsRefresh.find(p=>p.id===item.id);
-            if(p2&&p2.quantity!==null){
-              stockHist.unshift({t:new Date().toISOString(),productId:p2.id,productName:p2.name||"",type:"sale",qty:-(parseInt(item.qty)||1),balanceAfter:p2.quantity,orderId:o.id});
-            }
-          }
-          await kvSet(env,"stock_history",stockHist.slice(0,1000));
-        }
-
         if(o.repeated)await sendPush(env,"⚠ طلبية مكررة","هاتف: "+o.phone1+" | "+o.wilaya);else await sendPush(env,"طلبية جديدة ✅","من: "+o.name+" | "+o.wilaya+" | "+o.total.toLocaleString()+" دج");
-        return R({ok:true,orderId:o.id,total:o.total,finalSub,fee,discAmt,ccpDisc,couponDisc,globalDiscount:appliedGlobalDisc});
+        return RR({ok:true,orderId:o.id,total:o.total,finalSub,fee,discAmt,ccpDisc,couponDisc,globalDiscount:appliedGlobalDisc});
       }
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
-      if(method==="GET")return R(await kvGet(env,"orders",[]));
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
+      if(method==="GET")return RR(await kvGet(env,"orders",[]));
       if(method==="PATCH"){
         const body=await request.json(),orders=await kvGet(env,"orders",[]);
         const i=orders.findIndex(o=>o.id===body.id);
-        if(i<0)return R({error:"Not found"},404);
+        if(i<0)return RR({error:"Not found"},404);
         const hist=orders[i].history||[];
         const ts=new Date().toISOString().replace("T"," ").slice(0,16);
         if(body.confirmed!==undefined){
@@ -543,13 +540,13 @@ export default {
         }
         if(body.note!==undefined){orders[i].note=(body.note||"").substring(0,300);}
         orders[i].history=hist.slice(0,30);
-        await kvSet(env,"orders",orders);return R(orders[i]);
+        await kvSet(env,"orders",orders);return RR(orders[i]);
       }
       if(method==="DELETE"){
         const delId=url.searchParams.get("id");
         if(delId){let orders=await kvGet(env,"orders",[]);orders=orders.filter(o=>o.id!==delId);await kvSet(env,"orders",orders);}
         else{await kvSet(env,"orders",[]);}
-        return R({ok:true});
+        return RR({ok:true});
       }
     }
 
@@ -557,8 +554,8 @@ export default {
       const{orderId,phone}=await request.json().catch(()=>({}));
       const orders=await kvGet(env,"orders",[]);
       const o=orders.find(x=>x.id===orderId||(phone&&x.phone1===phone));
-      if(!o)return R({ok:false,msg:"لم يتم العثور على هذه الطلبية"});
-      return R({ok:true,id:o.id,status:o.status||"processing",confirmed:o.confirmed,date:o.date,wilaya:o.wilaya,name:o.name});
+      if(!o)return RR({ok:false,msg:"لم يتم العثور على هذه الطلبية"});
+      return RR({ok:true,id:o.id,status:o.status||"processing",confirmed:o.confirmed,date:o.date,wilaya:o.wilaya,name:o.name});
     }
 
     if(path==="/api/analytics"){
@@ -570,9 +567,9 @@ export default {
           model:parsed.model,tier:parsed.tier,os:parsed.os,browser:parsed.browser,
           duration:body2.duration||0,source:body2.source||"Direct",bounced:body2.bounced||false};
         const visits=await kvGet(env,"visits",[]);visits.push(ve);
-        await kvSet(env,"visits",visits.slice(-2000));return R({ok:true});
+        await kvSet(env,"visits",visits.slice(-2000));return RR({ok:true});
       }
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
       if(method==="DELETE"){
         const range=url.searchParams.get("range")||"all";
         const visits=await kvGet(env,"visits",[]);
@@ -583,7 +580,7 @@ export default {
         const deleted=visits.length-kept.length;
         await kvSet(env,"visits",kept);
         await logActivity(env,"visits_cleanup","حذف "+deleted+" سجل زيارة ("+range+")");
-        return R({ok:true,deleted,remaining:kept.length});
+        return RR({ok:true,deleted,remaining:kept.length});
       }
       if(method==="GET"){
         const[visits,orders,prods]=await Promise.all([kvGet(env,"visits",[]),kvGet(env,"orders",[]),kvGet(env,"products",[])]);
@@ -627,7 +624,7 @@ export default {
         const dailySales={};
         for(let i=0;i<14;i++){const d=new Date(n-i*86400000).toISOString().slice(0,10);dailySales[d]={orders:0,revenue:0};}
         orders.filter(o=>o.confirmed).forEach(o=>{const k=o.date?o.date.slice(0,10):"";if(dailySales[k]){dailySales[k].orders++;dailySales[k].revenue+=(o.finalSub||o.total||0);}});
-        return R({totalVisits:visits.length,uniqueVisitors:uniq,totalOrders:orders.length,confirmedOrders:conf,
+        return RR({totalVisits:visits.length,uniqueVisitors:uniq,totalOrders:orders.length,confirmedOrders:conf,
           revenue:rev,netRevenue,totalReturnCost,returnedCount:returnedOrders.length,productCount:prods.length,
           devMap,brandMap,tierMap,osMap,hourMap,bounceRate,confirmRate,avgOrderVal,
           revThisWeek:rTW,revLastWeek:rLW,revThisMonth:rTM,revLastMonth:rLM,
@@ -637,8 +634,8 @@ export default {
       }
     }
         if(path==="/api/settings"){
-      if(method==="GET")return R(await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"wowastore15@gmail.com",instagram:"wow.7a"}));
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      if(method==="GET")return RR(await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"wowastore15@gmail.com",instagram:"wow.7a"}));
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
       const rawS=await request.json();
       const safeS={
         storeName:(rawS.storeName||"").substring(0,80)||"WOW Store",
@@ -654,12 +651,12 @@ export default {
         trustItems:Array.isArray(rawS.trustItems)?rawS.trustItems.slice(0,8).map(function(x){return(x||"").substring(0,100);}): [],
         trustBadges:rawS.trustBadges||{}
       };
-      await kvSet(env,"settings",safeS);return R({ok:true});
+      await kvSet(env,"settings",safeS);return RR({ok:true});
     }
 
     /* ── KV STATS — تقدير المساحة المستخدمة ── */
     if(path==="/api/kv-stats"&&method==="GET"){
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
       const KV_MAX_BYTES=1*1024*1024*1024; // 1 GB — حد الخطة المجانية
       const MAIN_KEYS=["products","orders","visits","settings","push_subscription"];
       let totalBytes=0;
@@ -690,15 +687,15 @@ export default {
       // totalMB = 1024 MB (حد الخطة المجانية)
       const pctUsed=Math.min(100,(totalBytes/KV_MAX_BYTES)*100);
       const pctFree=100-pctUsed;
-      return R({ok:true,usedBytes:totalBytes,usedMB:+usedMB.toFixed(3),totalMB:1024,pctUsed:+pctUsed.toFixed(2),pctFree:+pctFree.toFixed(2),keyDetails});
+      return RR({ok:true,usedBytes:totalBytes,usedMB:+usedMB.toFixed(3),totalMB:1024,pctUsed:+pctUsed.toFixed(2),pctFree:+pctFree.toFixed(2),keyDetails});
     }
 
 
 
     // ══ FLASH SALES ══════════════════════════════════════════════════
     if(path==="/api/flash-sales"){
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
-      if(method==="GET")return R(await kvGet(env,"flash_sales",[]));
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
+      if(method==="GET")return RR(await kvGet(env,"flash_sales",[]));
       if(method==="POST"){
         const b=await request.json().catch(()=>({}));
         const fs=await kvGet(env,"flash_sales",[]);
@@ -709,20 +706,20 @@ export default {
           active:true,createdAt:new Date().toISOString()};
         fs.push(f);await kvSet(env,"flash_sales",fs);
         await logActivity(env,"flash_sale_create","Flash Sale: "+b.productId+" — "+discVal+"%");
-        return R(f);
+        return RR(f);
       }
       if(method==="DELETE"){
         const fid=+url.searchParams.get("id");
         let fs=await kvGet(env,"flash_sales",[]);
         fs=fs.filter(f=>f.id!==fid);
-        await kvSet(env,"flash_sales",fs);return R({ok:true});
+        await kvSet(env,"flash_sales",fs);return RR({ok:true});
       }
     }
 
     // ══ BUNDLES ═══════════════════════════════════════════════════════
     if(path==="/api/bundles"){
-      if(method==="GET")return R(await kvGet(env,"bundles",[]));
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      if(method==="GET")return RR(await kvGet(env,"bundles",[]));
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
       if(method==="POST"){
         const b=await request.json().catch(()=>({}));
         const bundles=await kvGet(env,"bundles",[]);
@@ -732,21 +729,21 @@ export default {
           discVal,active:true,createdAt:new Date().toISOString()};
         bundles.push(bundle);await kvSet(env,"bundles",bundles);
         await logActivity(env,"bundle_create","Bundle: "+bundle.name);
-        return R(bundle);
+        return RR(bundle);
       }
       if(method==="PATCH"){
         const b=await request.json().catch(()=>({}));
         const bundles=await kvGet(env,"bundles",[]);
         const i=bundles.findIndex(x=>x.id===b.id||x.id===+b.id);
-        if(i<0)return R({error:"Not found"},404);
+        if(i<0)return RR({error:"Not found"},404);
         if(b.active!==undefined)bundles[i].active=b.active;
-        await kvSet(env,"bundles",bundles);return R(bundles[i]);
+        await kvSet(env,"bundles",bundles);return RR(bundles[i]);
       }
       if(method==="DELETE"){
         const bid=+url.searchParams.get("id");
         let bundles=await kvGet(env,"bundles",[]);
         bundles=bundles.filter(b=>b.id!==bid);
-        await kvSet(env,"bundles",bundles);return R({ok:true});
+        await kvSet(env,"bundles",bundles);return RR({ok:true});
       }
     }
 
@@ -754,51 +751,51 @@ export default {
     if(path==="/api/waitlist"){
       if(method==="POST"){
         const b=await request.json().catch(()=>({}));
-        if(!b.phone||!b.productId)return R({error:"Missing fields"},400);
+        if(!b.phone||!b.productId)return RR({error:"Missing fields"},400);
         const phone=(b.phone||"").replace(/\s/g,"").substring(0,15);
-        if(!/^0[567]\d{8}$/.test(phone))return R({error:"هاتف غير صالح"},400);
+        if(!/^0[567]\d{8}$/.test(phone))return RR({error:"هاتف غير صالح"},400);
         const wl=await kvGet(env,"waitlist",[]);
         const exists=wl.find(w=>w.phone===phone&&w.productId===b.productId);
-        if(exists)return R({ok:true,msg:"أنت مسجل بالفعل"});
+        if(exists)return RR({ok:true,msg:"أنت مسجل بالفعل"});
         wl.push({phone,productId:b.productId,productName:(b.productName||"").substring(0,80),t:new Date().toISOString()});
         await kvSet(env,"waitlist",wl.slice(0,500));
-        return R({ok:true,msg:"✅ سيتم تنبيهك حين يتوفر المنتج"});
+        return RR({ok:true,msg:"✅ سيتم تنبيهك حين يتوفر المنتج"});
       }
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
-      if(method==="GET")return R(await kvGet(env,"waitlist",[]));
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
+      if(method==="GET")return RR(await kvGet(env,"waitlist",[]));
       if(method==="DELETE"){
         const pid=url.searchParams.get("productId");
         let wl=await kvGet(env,"waitlist",[]);
         if(pid)wl=wl.filter(w=>w.productId!==pid&&w.productId!==+pid);
         else wl=[];
-        await kvSet(env,"waitlist",wl);return R({ok:true});
+        await kvSet(env,"waitlist",wl);return RR({ok:true});
       }
     }
 
     // ══ LOYALTY POINTS ════════════════════════════════════════════════
     if(path==="/api/loyalty"){
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
       if(method==="GET"){
         const phone=url.searchParams.get("phone");
         if(phone){
           const pts=await kvGet(env,"lp:"+phone,{points:0,history:[]});
-          return R(pts);
+          return RR(pts);
         }
-        return R(await kvGet(env,"loyalty_index",[]));
+        return RR(await kvGet(env,"loyalty_index",[]));
       }
     }
 
     // ══ REFERRALS ════════════════════════════════════════════════════
     if(path==="/api/referrals"){
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
-      if(method==="GET")return R(await kvGet(env,"referrals",[]));
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
+      if(method==="GET")return RR(await kvGet(env,"referrals",[]));
     }
     if(path==="/api/ref"&&method==="GET"){
       const hash=url.searchParams.get("hash");
-      if(!hash)return R({ok:false});
+      if(!hash)return RR({ok:false});
       const refs=await kvGet(env,"referrals",[]);
       const ref=refs.find(r=>r.hash===hash);
-      return R(ref?{ok:true,...ref}:{ok:false});
+      return RR(ref?{ok:true,...ref}:{ok:false});
     }
     if(path==="/refer"){
       const phone=url.searchParams.get("p")||"";
@@ -811,7 +808,7 @@ export default {
       const existing=refs.find(r=>r.phone===phone);
       const refLink=(existing?existing.hash:hash);
       const _refFullLink=url.origin+"/?ref="+refLink;
-      return R(`<html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>رابط الإحالة</title></head><body style="font-family:sans-serif;text-align:center;padding:40px;background:#0a0016;color:#e0d0ff"><h2 style="color:#c084fc">رابط الإحالة الخاص بك</h2><p style="color:#888;margin-bottom:20px">أرسل هذا الرابط لأصدقائك وأحصل على خصم 5%</p><div id="rl" style="background:#1a0a2e;border:1px solid #6d28d9;border-radius:10px;padding:16px;font-size:14px;letter-spacing:1px;color:#c084fc;word-break:break-all">${_refFullLink}</div><button onclick="var l=document.getElementById('rl').textContent;navigator.clipboard.writeText(l).then(function(){alert('تم النسخ!')})" style="margin-top:20px;background:#6d28d9;color:#fff;border:none;border-radius:8px;padding:10px 24px;cursor:pointer;font-size:14px">نسخ الرابط</button></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
+      return RR(`<html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>رابط الإحالة</title></head><body style="font-family:sans-serif;text-align:center;padding:40px;background:#0a0016;color:#e0d0ff"><h2 style="color:#c084fc">رابط الإحالة الخاص بك</h2><p style="color:#888;margin-bottom:20px">أرسل هذا الرابط لأصدقائك وأحصل على خصم 5%</p><div id="rl" style="background:#1a0a2e;border:1px solid #6d28d9;border-radius:10px;padding:16px;font-size:14px;letter-spacing:1px;color:#c084fc;word-break:break-all">${_refFullLink}</div><button onclick="var l=document.getElementById('rl').textContent;navigator.clipboard.writeText(l).then(function(){alert('تم النسخ!')})" style="margin-top:20px;background:#6d28d9;color:#fff;border:none;border-radius:8px;padding:10px 24px;cursor:pointer;font-size:14px">نسخ الرابط</button></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
     }
 
     // ══ REVIEWS ══════════════════════════════════════════════════════
@@ -819,56 +816,56 @@ export default {
       if(method==="GET"){
         const pid=url.searchParams.get("productId");
         const reviews=await kvGet(env,"reviews",[]);
-        return R(pid?reviews.filter(r=>String(r.productId)===String(pid)):reviews);
+        return RR(pid?reviews.filter(r=>String(r.productId)===String(pid)):reviews);
       }
       if(method==="POST"){
         const b=await request.json().catch(()=>({}));
-        if(!b.productId||!b.rating||!b.name)return R({error:"Missing fields"},400);
+        if(!b.productId||!b.rating||!b.name)return RR({error:"Missing fields"},400);
         const reviews=await kvGet(env,"reviews",[]);
         // منع السبام: هاتف واحد لكل منتج
         if(b.phone&&reviews.find(r=>r.phone===b.phone&&String(r.productId)===String(b.productId)))
-          return R({error:"لقد قيّمت هذا المنتج مسبقاً"},400);
+          return RR({error:"لقد قيّمت هذا المنتج مسبقاً"},400);
         const rev={id:Date.now(),productId:b.productId,
           name:(b.name||"").substring(0,60),phone:(b.phone||"").substring(0,15),
           rating:Math.max(1,Math.min(5,parseInt(b.rating)||5)),
           body:(b.body||"").substring(0,300),
           t:new Date().toISOString(),approved:false};
         reviews.push(rev);await kvSet(env,"reviews",reviews.slice(0,2000));
-        return R({ok:true,msg:"✅ تم إرسال تقييمك وسيظهر بعد المراجعة"});
+        return RR({ok:true,msg:"✅ تم إرسال تقييمك وسيظهر بعد المراجعة"});
       }
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
       if(method==="PATCH"){
         const b=await request.json().catch(()=>({}));
         const reviews=await kvGet(env,"reviews",[]);
         const i=reviews.findIndex(r=>r.id===b.id||r.id===+b.id);
-        if(i<0)return R({error:"Not found"},404);
+        if(i<0)return RR({error:"Not found"},404);
         if(b.approved!==undefined)reviews[i].approved=b.approved;
-        await kvSet(env,"reviews",reviews);return R(reviews[i]);
+        await kvSet(env,"reviews",reviews);return RR(reviews[i]);
       }
       if(method==="DELETE"){
         const rid=+url.searchParams.get("id");
         let reviews=await kvGet(env,"reviews",[]);
         reviews=reviews.filter(r=>r.id!==rid);
-        await kvSet(env,"reviews",reviews);return R({ok:true});
+        await kvSet(env,"reviews",reviews);return RR({ok:true});
       }
     }
 
     // ══ TESTIMONIALS ═════════════════════════════════════════════════
     if(path==="/api/testimonials"){
-      if(method==="GET")return R((await kvGet(env,"testimonials",[])).filter(t=>t.approved));
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      if(method==="GET")return RR((await kvGet(env,"testimonials",[])).filter(t=>t.approved));
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
       if(method==="POST"){
         const b=await request.json().catch(()=>({}));
         const tl=await kvGet(env,"testimonials",[]);
         tl.push({id:Date.now(),name:(b.name||"").substring(0,60),
           body:(b.body||"").substring(0,300),rating:Math.min(5,Math.max(1,parseInt(b.rating)||5)),
           avatar:(b.avatar||"").substring(0,200),approved:true,t:new Date().toISOString()});
-        await kvSet(env,"testimonials",tl.slice(0,50));return R({ok:true});
+        await kvSet(env,"testimonials",tl.slice(0,50));return RR({ok:true});
       }
       if(method==="DELETE"){
         const tid=+url.searchParams.get("id");
         let tl=await kvGet(env,"testimonials",[]);
-        tl=tl.filter(t=>t.id!==tid);await kvSet(env,"testimonials",tl);return R({ok:true});
+        tl=tl.filter(t=>t.id!==tid);await kvSet(env,"testimonials",tl);return RR({ok:true});
       }
     }
 
@@ -876,7 +873,7 @@ export default {
     if(path==="/about"){
       const sets=await kvGet(env,"settings",{storeName:"WOW Store"});
       const about=sets.about||"";
-      return R(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>عن ${_escSrv(sets.storeName||"WOW Store")}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0016;color:#e0d0ff;padding:20px;min-height:100vh}.wrap{max-width:680px;margin:0 auto;padding:30px 0}.brand{font-family:Georgia,serif;font-size:40px;font-weight:900;letter-spacing:7px;color:#c084fc;text-align:center;margin-bottom:8px}.sub{text-align:center;font-size:11px;color:rgba(255,255,255,.25);letter-spacing:4px;margin-bottom:40px}.body{font-size:14px;line-height:2;color:rgba(255,255,255,.65)}.back{display:inline-block;margin-bottom:24px;color:rgba(168,85,247,.7);font-size:12px;cursor:pointer;text-decoration:none;border:1px solid rgba(168,85,247,.2);padding:6px 14px;border-radius:7px}
+      return RR(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>عن ${_escSrv(sets.storeName||"WOW Store")}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0016;color:#e0d0ff;padding:20px;min-height:100vh}.wrap{max-width:680px;margin:0 auto;padding:30px 0}.brand{font-family:Georgia,serif;font-size:40px;font-weight:900;letter-spacing:7px;color:#c084fc;text-align:center;margin-bottom:8px}.sub{text-align:center;font-size:11px;color:rgba(255,255,255,.25);letter-spacing:4px;margin-bottom:40px}.body{font-size:14px;line-height:2;color:rgba(255,255,255,.65)}.back{display:inline-block;margin-bottom:24px;color:rgba(168,85,247,.7);font-size:12px;cursor:pointer;text-decoration:none;border:1px solid rgba(168,85,247,.2);padding:6px 14px;border-radius:7px}
 /* ══ FLASH SALE BADGE ══ */
 .flash-badge{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(251,191,36,.1));border:1px solid rgba(239,68,68,.3);color:rgba(252,165,165,.9);font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.5px}
 .flash-timer{font-size:9px;color:rgba(251,191,36,.8);letter-spacing:.5px;margin-top:2px}
@@ -974,7 +971,7 @@ export default {
       const pname=p?_escSrv(p.name||""):"منتج";
       const pdesc=p?_escSrv(p.desc||""):"تسوق الآن";
       // Redirect to home with hash to open product modal
-      return R(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+      return RR(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
 <title>${pname} — ${sn}</title>
 <meta property="og:title" content="${pname} — ${sn}">
 <meta property="og:description" content="${pdesc}">
@@ -989,34 +986,34 @@ ${img?`<meta property="og:image" content="${img}">`:``}
 
     // ══ ARCHIVED PRODUCTS ═══════════════════════════════════════════
     if(path==="/api/products/archive"){
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
-      if(method==="GET")return R(await kvGet(env,"archived_products",[]));
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
+      if(method==="GET")return RR(await kvGet(env,"archived_products",[]));
       if(method==="POST"){
         const{id,action}=await request.json().catch(()=>({}));
         if(action==="restore"){
           const arch=await kvGet(env,"archived_products",[]);
           const ai=arch.findIndex(p=>p.id===id||p.id===+id);
-          if(ai<0)return R({error:"Not found"},404);
+          if(ai<0)return RR({error:"Not found"},404);
           const p=arch.splice(ai,1)[0];delete p.archivedAt;
           const prods=await kvGet(env,"products",[]);prods.unshift(p);
           await Promise.all([kvSet(env,"products",prods),kvSet(env,"archived_products",arch)]);
           await logActivity(env,"product_restore","استعادة: "+p.name);
-          return R({ok:true});
+          return RR({ok:true});
         }
-        return R({error:"Invalid action"},400);
+        return RR({error:"Invalid action"},400);
       }
     }
 
     // ══ COUPONS ══════════════════════════════════════════════════════
     if(path==="/api/coupons"){
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
-      if(method==="GET")return R(await kvGet(env,"coupons",[]));
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
+      if(method==="GET")return RR(await kvGet(env,"coupons",[]));
       if(method==="POST"){
         const b=await request.json().catch(()=>({}));
         const code=(b.code||"").toUpperCase().replace(/[^A-Z0-9]/g,"").substring(0,20);
-        if(!code)return R({error:"كود غير صالح"},400);
+        if(!code)return RR({error:"كود غير صالح"},400);
         const coupons=await kvGet(env,"coupons",[]);
-        if(coupons.find(c=>c.code===code))return R({error:"الكود موجود مسبقاً"},400);
+        if(coupons.find(c=>c.code===code))return RR({error:"الكود موجود مسبقاً"},400);
         const discType=b.discType==="fixed"?"fixed":"percent";
         let discVal=Math.max(0,parseFloat(b.discVal)||0);
         if(discType==="percent")discVal=Math.min(11,discVal);
@@ -1025,53 +1022,53 @@ ${img?`<meta property="og:image" content="${img}">`:``}
           usedCount:0,expiresAt:b.expiresAt||null,active:true,createdAt:new Date().toISOString()};
         coupons.push(c);await kvSet(env,"coupons",coupons);
         await logActivity(env,"coupon_create","كوبون: "+code+" ("+discVal+(discType==="percent"?"%":" دج")+")");
-        return R(c);
+        return RR(c);
       }
       if(method==="PATCH"){
         const b=await request.json().catch(()=>({}));
         const coupons=await kvGet(env,"coupons",[]);
         const i=coupons.findIndex(c=>c.id===b.id||c.id===+b.id);
-        if(i<0)return R({error:"Not found"},404);
+        if(i<0)return RR({error:"Not found"},404);
         if(b.active!==undefined)coupons[i].active=b.active;
-        await kvSet(env,"coupons",coupons);return R(coupons[i]);
+        await kvSet(env,"coupons",coupons);return RR(coupons[i]);
       }
       if(method==="DELETE"){
         const cid=+url.searchParams.get("id");
         let coupons=await kvGet(env,"coupons",[]);
         coupons=coupons.filter(c=>c.id!==cid);
-        await kvSet(env,"coupons",coupons);return R({ok:true});
+        await kvSet(env,"coupons",coupons);return RR({ok:true});
       }
     }
 
     // ══ COUPON CHECK (public) ════════════════════════════════════════
     if(path==="/api/coupon-check"&&method==="POST"){
       const{code,sub}=await request.json().catch(()=>({}));
-      if(!code)return R({ok:false,msg:"أدخل كود الخصم"});
+      if(!code)return RR({ok:false,msg:"أدخل كود الخصم"});
       const coupons=await kvGet(env,"coupons",[]);
       const c=coupons.find(x=>x.code===(code||"").toUpperCase()&&x.active);
-      if(!c)return R({ok:false,msg:"الكود غير صالح"});
-      if(c.expiresAt&&Date.now()>new Date(c.expiresAt).getTime())return R({ok:false,msg:"الكود منتهي الصلاحية"});
-      if(c.maxUses>0&&c.usedCount>=c.maxUses)return R({ok:false,msg:"تم استنفاد هذا الكود"});
+      if(!c)return RR({ok:false,msg:"الكود غير صالح"});
+      if(c.expiresAt&&Date.now()>new Date(c.expiresAt).getTime())return RR({ok:false,msg:"الكود منتهي الصلاحية"});
+      if(c.maxUses>0&&c.usedCount>=c.maxUses)return RR({ok:false,msg:"تم استنفاد هذا الكود"});
       const orderSub=parseFloat(sub)||0;
       let discAmt=0;
       if(c.discType==="percent")discAmt=Math.round(orderSub*(c.discVal/100));
       else discAmt=Math.min(c.discVal,orderSub);
-      return R({ok:true,code:c.code,discType:c.discType,discVal:c.discVal,discAmt,msg:"✅ تم تطبيق الخصم"});
+      return RR({ok:true,code:c.code,discType:c.discType,discVal:c.discVal,discAmt,msg:"✅ تم تطبيق الخصم"});
     }
 
     // ══ STOCK HISTORY ════════════════════════════════════════════════
     if(path==="/api/stock-history"){
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
       if(method==="GET"){
         const pid=url.searchParams.get("id");
         const hist=await kvGet(env,"stock_history",[]);
-        return R(pid?hist.filter(h=>String(h.productId)===String(pid)):hist.slice(0,200));
+        return RR(pid?hist.filter(h=>String(h.productId)===String(pid)):hist.slice(0,200));
       }
       if(method==="POST"){
         const b=await request.json().catch(()=>({}));
         const prods=await kvGet(env,"products",[]);
         const pi=prods.findIndex(p=>String(p.id)===String(b.productId));
-        if(pi<0)return R({error:"Not found"},404);
+        if(pi<0)return RR({error:"Not found"},404);
         const qty=parseInt(b.qty)||0;
         prods[pi].quantity=Math.max(0,(prods[pi].quantity||0)+qty);
         await kvSet(env,"products",prods);
@@ -1079,33 +1076,33 @@ ${img?`<meta property="og:image" content="${img}">`:``}
         hist.unshift({t:new Date().toISOString(),productId:prods[pi].id,productName:prods[pi].name||"",type:"manual",qty,balanceAfter:prods[pi].quantity});
         await kvSet(env,"stock_history",hist.slice(0,1000));
         await logActivity(env,"stock_add","إضافة "+qty+" قطعة: "+prods[pi].name);
-        return R({ok:true,newQty:prods[pi].quantity});
+        return RR({ok:true,newQty:prods[pi].quantity});
       }
     }
 
     // ══ ACTIVITY LOG ════════════════════════════════════════════════
     if(path==="/api/activity-log"&&method==="GET"){
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
-      return R(await kvGet(env,"activity_log",[]));
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
+      return RR(await kvGet(env,"activity_log",[]));
     }
 
     // ══ INVOICE PAGE ════════════════════════════════════════════════
     if(path==="/invoice"&&method==="GET"){
-      if(!await isAdmin(request,env))return R("Unauthorized",401);
-      const oid=url.searchParams.get("id");if(!oid)return R("Missing id",400);
+      if(!await isAdmin(request,env))return RR("Unauthorized",401);
+      const oid=url.searchParams.get("id");if(!oid)return RR("Missing id",400);
       const orders=await kvGet(env,"orders",[]);const o=orders.find(x=>x.id===oid);
-      if(!o)return R("Not found",404);
+      if(!o)return RR("Not found",404);
       const sets=await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322"});
       return new Response(buildInvoiceHTML(o,sets),{headers:{"Content-Type":"text/html;charset=utf-8","Cache-Control":"no-cache"}});
     }
 
     // ══ SHIPPING LABEL PAGE ═════════════════════════════════════════
     if(path==="/shipping-label"&&method==="GET"){
-      if(!await isAdmin(request,env))return R("Unauthorized",401);
+      if(!await isAdmin(request,env))return RR("Unauthorized",401);
       const oid=url.searchParams.get("id");const fmt=url.searchParams.get("fmt")||"yalidine";
-      if(!oid)return R("Missing id",400);
+      if(!oid)return RR("Missing id",400);
       const orders=await kvGet(env,"orders",[]);const o=orders.find(x=>x.id===oid);
-      if(!o)return R("Not found",404);
+      if(!o)return RR("Not found",404);
       const sets=await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322"});
       return new Response(buildShippingLabel(o,sets,fmt),{headers:{"Content-Type":"text/html;charset=utf-8","Cache-Control":"no-cache"}});
     }
@@ -1113,21 +1110,21 @@ ${img?`<meta property="og:image" content="${img}">`:``}
 
     // ══ PRODUCT REORDER (م43) ═══════════════════════════════════════
     if(path==="/api/products/reorder"&&method==="POST"){
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
       const{ids}=await request.json().catch(()=>({}));
-      if(!Array.isArray(ids))return R({error:"Invalid"},400);
+      if(!Array.isArray(ids))return RR({error:"Invalid"},400);
       const prods=await kvGet(env,"products",[]);
       const sorted=ids.map(id=>prods.find(p=>String(p.id)===String(id))).filter(Boolean);
       const rest=prods.filter(p=>!ids.find(id=>String(id)===String(p.id)));
       await kvSet(env,"products",[...sorted,...rest]);
       await logActivity(env,"product_reorder","إعادة ترتيب "+sorted.length+" منتج");
-      return R({ok:true});
+      return RR({ok:true});
     }
 
     // ══ STORIES (م48) ════════════════════════════════════════════════
     if(path==="/api/stories"){
-      if(method==="GET")return R((await kvGet(env,"stories",[])).filter(s=>s.active));
-      if(!await isAdmin(request,env))return R({error:"Unauthorized"},401);
+      if(method==="GET")return RR((await kvGet(env,"stories",[])).filter(s=>s.active));
+      if(!await isAdmin(request,env))return RR({error:"Unauthorized"},401);
       if(method==="POST"){
         const b=await request.json().catch(()=>({}));
         const stories=await kvGet(env,"stories",[]);
@@ -1135,13 +1132,13 @@ ${img?`<meta property="og:image" content="${img}">`:``}
           body:(b.body||"").substring(0,1000),img:(b.img||"").substring(0,500),
           active:true,createdAt:new Date().toISOString()});
         await kvSet(env,"stories",stories.slice(0,50));
-        return R({ok:true});
+        return RR({ok:true});
       }
       if(method==="DELETE"){
         const sid=+url.searchParams.get("id");
         let stories=await kvGet(env,"stories",[]);
         stories=stories.filter(s=>s.id!==sid);
-        await kvSet(env,"stories",stories);return R({ok:true});
+        await kvSet(env,"stories",stories);return RR({ok:true});
       }
     }
 
@@ -1155,21 +1152,20 @@ ${img?`<meta property="og:image" content="${img}">`:``}
           ${s.img?`<img src="${_escSrv(s.img)}" style="width:100%;height:200px;object-fit:cover">`:``}
           <div style="padding:18px">
             <h2 style="font-family:Georgia,serif;font-size:18px;color:rgba(192,132,252,.95);margin-bottom:10px">${_escSrv(s.title||"")}</h2>
-            <p style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.8">${_escSrv(s.body||"").replace(/
-/g,"<br>")}</p>
+            <p style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.8">${_escSrv(s.body||"").replace(/\n/g,"<br>")}</p>
           </div>
         </div>`).join("");
-      return R(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+      return RR(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>قصص النجاح — ${sn}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0016;color:#e0d0ff;padding:20px;min-height:100vh}.wrap{max-width:700px;margin:0 auto}.brand{font-family:Georgia,serif;font-size:36px;font-weight:900;letter-spacing:6px;color:#c084fc;text-align:center;margin-bottom:6px}.sub{text-align:center;font-size:10px;color:rgba(255,255,255,.25);letter-spacing:4px;margin-bottom:36px}a.back{display:inline-block;margin-bottom:20px;color:rgba(168,85,247,.7);font-size:12px;border:1px solid rgba(168,85,247,.2);padding:6px 14px;border-radius:7px;text-decoration:none}</style></head>
 <body><div class="wrap"><a class="back" href="/">&#8594; العودة للمتجر</a><div class="brand">${sn}</div><div class="sub">SUCCESS STORIES</div>${cards||"<p style='text-align:center;color:rgba(255,255,255,.3);padding:40px'>لا توجد قصص نجاح بعد</p>"}</div></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
     }
 
     // ══ API DOCS (م49) ════════════════════════════════════════════════
     if(path==="/api-docs"&&method==="GET"){
-      if(!await isAdmin(request,env))return R("Unauthorized",401);
+      if(!await isAdmin(request,env))return RR("Unauthorized",401);
       const sets=await kvGet(env,"settings",{storeName:"WOW Store"});
       const sn=_escSrv(sets.storeName||"WOW Store");
-      return R(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>API Docs — ${sn}</title>
+      return RR(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>API Docs — ${sn}</title>
 <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',monospace;background:#0a0016;color:#e0d0ff;padding:20px}h1{font-family:Georgia,serif;font-size:28px;color:#c084fc;margin-bottom:4px}.sub{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:2px;margin-bottom:30px}.ep{background:rgba(255,255,255,.02);border:1px solid rgba(168,85,247,.12);border-radius:10px;padding:14px;margin-bottom:12px}.method{display:inline-block;padding:2px 9px;border-radius:4px;font-size:10px;font-weight:700;margin-right:8px;letter-spacing:1px}.get{background:rgba(34,197,94,.12);color:rgba(74,222,128,.9)}.post{background:rgba(99,102,241,.12);color:rgba(165,180,252,.9)}.patch{background:rgba(251,191,36,.12);color:rgba(253,224,71,.9)}.del{background:rgba(239,68,68,.12);color:rgba(252,165,165,.9)}.path{font-family:monospace;font-size:13px;color:rgba(192,132,252,.9)}.desc{font-size:11px;color:rgba(255,255,255,.45);margin-top:5px}.auth{font-size:9px;color:rgba(251,191,36,.7);margin-top:3px}</style></head>
 <body><h1>${sn} API</h1><div class="sub">DEVELOPER DOCS · v11.0</div>
 ${[
@@ -1208,7 +1204,7 @@ ${[
     }
 
     const settings=await kvGet(env,"settings",{storeName:"WOW Store",whatsapp:"0667881322",email:"wowastore15@gmail.com",instagram:"wow.7a"});
-    return R(buildHTML(settings),200,{"Cache-Control":"public,max-age=60","X-Content-Type-Options":"nosniff","X-Frame-Options":"DENY"});
+    return RR(buildHTML(settings),200,{"Cache-Control":"public,max-age=60","X-Content-Type-Options":"nosniff","X-Frame-Options":"DENY"});
   }
 };
 
@@ -2822,7 +2818,7 @@ var WOW = (function(){
   }
 
   /* ── SESSION ── */
-  function _getCookie(n){try{var m=document.cookie.match(new RegExp("(?:^|; )"+n+"=([^;]*)"));return m?m[1]:null;}catch(e){return null;}}
+  function _getCookie(n){try{var m=document.cookie.match(new RegExp("(?:^|; )"+n+"=([^;]*)"));return m?decodeURIComponent(m[1]):null;}catch(e){return null;}}
   function _restoreSession(){
     try{
       var sess=sessionStorage.getItem(SESSION_KEY);
@@ -2835,11 +2831,11 @@ var WOW = (function(){
   function _saveSession(t,rem){
     try{
       _adminToken=t;sessionStorage.setItem(SESSION_KEY,t);
-      if(rem){var e=new Date(Date.now()+30*24*36e5).toUTCString();document.cookie=REMEMBER_KEY+"="+btoa(t)+";expires="+e+";path=/;SameSite=Strict";}
+      if(rem){var e=new Date(Date.now()+30*24*36e5).toUTCString();var sec=location.protocol==="https:"?";Secure":"";document.cookie=REMEMBER_KEY+"="+encodeURIComponent(btoa(t))+";expires="+e+";path=/;SameSite=Strict"+sec;}
     }catch(e){_adminToken=t;}
   }
   function _clearSession(){
-    try{_adminToken="";sessionStorage.removeItem(SESSION_KEY);document.cookie=REMEMBER_KEY+"=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/";}catch(e){_adminToken="";}
+    try{_adminToken="";sessionStorage.removeItem(SESSION_KEY);document.cookie=REMEMBER_KEY+"=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Strict";}catch(e){_adminToken="";}
   }
 
   /* ── API ── */
@@ -3069,13 +3065,18 @@ var WOW = (function(){
           scarHtml="<div class='scarcity-bar'><div class='scarcity-fill "+cls+"' style='width:"+pct+"%'></div></div>"
                   +"<div class='scarcity-txt'>تبقى "+p.quantity+" قطعة فقط</div>";
         }
+        var badgesHtml=(p.salesCount>0?"<div class='sales-counter'>🔥 "+p.salesCount+" مباع</div>":"")
+          +(p.flashDisc?"<div class='flash-badge'>⚡ Flash "+_esc(p.flashDisc)+"%</div>":"");
+        var actionHtml=(!p.stock||(p.quantity!==null&&p.quantity!==undefined&&p.quantity===0))
+          ?"<button class='waitlist-btn' data-wl-pid='"+p.id+"' data-wl-name='"+_esc(p.name||"")+"'>⏳ نبهني حين يتوفر</button>"
+          :"<button class='addbtn' data-pid='"+p.id+"'>+ اضف للسلة</button>";
         html+="<div class='embla__slide'><div class='card' data-pid='"+p.id+"' data-name='"+_esc(p.name)+"' data-cat='"+_esc(p.cat)+"'>"
              +_makeSlider(imgs,p.id)
              +"<div class='card-body'><div class='card-cat'>"+_esc(CAT[p.cat]||p.cat)+"</div>"
              +"<div class='card-name'>"+_esc(p.name)+"</div>"+ph
              +spHtml+scarHtml
              +"<div class='fomo-txt'>قطع محدودة جداً من هذا التصميم هذا الاسبوع</div>"
-             +"<button class='addbtn' data-pid='"+p.id+(p.salesCount>0?"<div class=\'sales-counter\'>🔥 "+p.salesCount+" مباع</div>":"") +(p.flashDisc?"<div class=\'flash-badge\'>⚡ Flash "+p.flashDisc+"%</div>":"") +(!p.stock||(p.quantity!==null&&p.quantity!==undefined&&p.quantity===0)?"<button class=\'waitlist-btn\' data-wl-pid=\'"+p.id+"\' data-wl-name=\'"+_esc(p.name||"")+"\'>⏳ نبهني حين يتوفر</button>":"<button class=\'addbtn\' data-pid=\'"+p.id+"\'>+ اضف للسلة</button>") +"</div></div></div>";
+             +badgesHtml+actionHtml+"</div></div></div>";
       });
       g.innerHTML=html;
       g.querySelectorAll(".card").forEach(function(card){
@@ -3090,6 +3091,18 @@ var WOW = (function(){
             e.stopPropagation();
             var pid=parseInt(addbtn.getAttribute("data-pid"));
             if(pid)_openSizeMod(pid);
+          });
+        }
+        var wlbtn=card.querySelector(".waitlist-btn");
+        if(wlbtn){
+          wlbtn.addEventListener("click",function(e){
+            e.stopPropagation();
+            var pid=wlbtn.getAttribute("data-wl-pid");
+            var phone=prompt("أدخل رقم هاتفك للتنبيه عند توفر المنتج");
+            if(!phone)return;
+            _api("/api/waitlist",{method:"POST",body:JSON.stringify({productId:pid,phone:phone})})
+              .then(function(r){return r.json();}).then(function(d){_toast(d.msg||d.error||"تم التسجيل");})
+              .catch(function(){_toast("خطأ في التسجيل");});
           });
         }
         // Slider arrows via delegation
@@ -3462,15 +3475,12 @@ var WOW = (function(){
     if(!("Notification" in window)){_toast("المتصفح لا يدعم الاشعارات");return;}
     Notification.requestPermission().then(function(p){
       if(p!=="granted"){_toast("تم رفض الاذن");return;}
-      if("serviceWorker" in navigator){
-        var sw="self.addEventListener('push',function(e){var d=e.data?e.data.json():{title:'WOW',body:''};e.waitUntil(self.registration.showNotification(d.title,{body:d.body}));});";
-        navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"}))).then(function(reg){
-          reg.showNotification&&reg.showNotification("WOW Store","الاشعارات مفعلة");
-          var bn=document.getElementById("push-banner");if(bn)bn.style.display="none";
-          _toast("الاشعارات مفعلة");
-          _api("/api/push-subscribe",{method:"POST",body:JSON.stringify({endpoint:"local",keys:{}})}).catch(function(){});
-        }).catch(function(){_toast("خطا في SW");});
-      }
+      if(!("serviceWorker" in navigator)){_toast("المتصفح لا يدعم Service Worker");return;}
+      navigator.serviceWorker.register("/sw.js").then(function(reg){
+        if(reg.showNotification)reg.showNotification("WOW Store",{body:"الإشعارات المحلية مفعلة"});
+        var bn=document.getElementById("push-banner");if(bn)bn.style.display="none";
+        _toast("تم تفعيل الإشعارات المحلية");
+      }).catch(function(){_toast("خطا في تفعيل Service Worker");});
     });
   }
 
