@@ -158,7 +158,7 @@ function encodeCode128(text){
   var dataVals=[];
   for(var i=0;i<safe.length;i++){var v=BVALS[safe[i]];if(v!==undefined)dataVals.push(v);}
   var chk=START_B;
-  for(var i=0;i<dataVals.length;i++)chk=(chk+dataVals[i]*(i+1))%103;
+  for(var dataIdx=0;dataIdx<dataVals.length;dataIdx++)chk=(chk+dataVals[dataIdx]*(dataIdx+1))%103;
   var allVals=[START_B].concat(dataVals).concat([chk,STOP]);
   var bits="";
   allVals.forEach(function(v){bits+=BARS[v]||"";});
@@ -168,8 +168,8 @@ function encodeCode128(text){
   var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">'
     +'<rect width="'+W+'" height="'+H+'" fill="#fff"/>';
   var x=PAD;
-  for(var i=0;i<bits.length;i++){
-    if(bits[i]==="1")svg+='<rect x="'+x+'" y="4" width="'+M+'" height="'+(H-16)+'" fill="#111"/>';
+  for(var bitIdx=0;bitIdx<bits.length;bitIdx++){
+    if(bits[bitIdx]==="1")svg+='<rect x="'+x+'" y="4" width="'+M+'" height="'+(H-16)+'" fill="#111"/>';
     x+=M;
   }
   svg+='<text x="'+(W/2)+'" y="'+(H-3)+'" text-anchor="middle" font-size="8" font-family="monospace" fill="#333">'+safe+'</text></svg>';
@@ -3421,8 +3421,7 @@ var WOW = (function(){
       var badge=document.createElement("span");
       badge.id=badgeId;
       badge.style.cssText="background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.35);color:rgba(239,68,68,.9);font-size:9px;padding:2px 7px;border-radius:10px;margin-right:6px;vertical-align:middle;cursor:pointer";
-      badge.title=alerts.map(function(p){return p.name+" ("+p.quantity+" متبقي)";}).join("
-");
+      badge.title=alerts.map(function(p){return p.name+" ("+p.quantity+" متبقي)";}).join("\\n");
       badge.textContent=alerts.length+" منتج على وشك النفاد";
       hdr.parentNode&&hdr.parentNode.insertBefore(badge,hdr.nextSibling);
     }
@@ -3543,7 +3542,7 @@ var WOW = (function(){
   /* ── PRODUCT DETAIL ── */
   function _openProd(id){
     try{
-      var p=_prods.find(function(x){return x.id===id;});if(!p)return;
+      var p=_prods.find(function(x){return String(x.id)===String(id);});if(!p)return;
       var imgs=p.images&&p.images.length?p.images:(p.img?[p.img]:[]);
       var ep=_effPrice(p);
       var pmName=document.getElementById("pm-name");if(pmName)pmName.textContent=p.name;
@@ -3578,6 +3577,10 @@ var WOW = (function(){
       _updateMeta(p.name+" — WOW Store",p.desc||"",imgs[0]||"");
       _openMod("prod-mod");
     }catch(e){}
+  }
+  function _openProdMod(prod){
+    if(prod&&typeof prod==="object")_openProd(prod.id);
+    else _openProd(prod);
   }
 
   /* ── SIZE ── */
@@ -4235,6 +4238,18 @@ var WOW = (function(){
       if(ad){ad.style.background="#ef4444";}if(al)al.textContent="Error";
     });
   }
+
+  function _loadKvStats(){
+    var c=document.getElementById("kv-stats-c");if(c)c.innerHTML="<span class='spin'></span> Loading...";
+    _api("/api/kv-stats").then(function(r){return r.json();}).then(function(d){
+      if(d.error){if(c)c.textContent=d.error;return;}
+      var pct=Math.round((d.pctUsed||0)*100)/100;
+      var keys=(d.keyDetails||[]).map(function(k){return "<div style='display:flex;justify-content:space-between;border-top:1px solid var(--b1);padding:5px 0'><span>"+_esc(k.key)+"</span><span>"+_fmt(Math.round((k.bytes||0)/1024))+" KB</span></div>";}).join("");
+      if(c)c.innerHTML="<div style='margin-bottom:8px'>"+_fmt(Math.round(d.usedMB||0))+" MB / "+_fmt(Math.round(d.totalMB||1024))+" MB — "+pct+"%</div>"
+        +"<div style='height:7px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;margin-bottom:8px'><div style='height:100%;width:"+Math.min(100,pct)+"%;background:linear-gradient(90deg,#22c55e,#a855f7)'></div></div>"+keys;
+    }).catch(function(){if(c)c.textContent="خطأ في تحميل الإحصائيات";});
+  }
+
     function _loadAdmProds(){
     _api("/api/products").then(function(r){return r.json();}).then(function(data){
       var tb=document.getElementById("adm-tbody");if(!tb)return;
@@ -4445,8 +4460,7 @@ var WOW = (function(){
     _api("/api/products").then(function(r){return r.json();}).then(function(data){
       var p=(data||[]).find(function(x){return x.id===id||x.id===+id;});
       _showConfirmMod({
-        info:(p?p.name:"المنتج")+"
-الحذف النهائي لا يمكن التراجع عنه.",
+        info:(p?p.name:"المنتج")+"\\nالحذف النهائي لا يمكن التراجع عنه.",
         onArchive:function(){_api("/api/products?id="+id+"&archive=1",{method:"DELETE"}).then(function(){_loadAdmProds();_toast("تمت الارشفة");}).catch(function(){_toast("خطا");});},
         onDelete:function(){_api("/api/products?id="+id,{method:"DELETE"}).then(function(){_loadAdmProds();_toast("تم الحذف النهائي");}).catch(function(){_toast("خطا");});}
       });
@@ -5134,7 +5148,7 @@ var WOW = (function(){
     var rows=_ordersCache.map(function(o){
       return usedCols.map(function(col){return '"'+String(col.fn(o)||"").replace(/"/g,'""')+'"';});
     });
-    var csv="\uFEFF"+h.join(",")+"\n"+rows.map(function(r){return r.join(",");}).join("\n");
+    var csv="\uFEFF"+h.join(",")+"\\n"+rows.map(function(r){return r.join(",");}).join("\\n");
     var blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
     var a=document.createElement("a");a.href=URL.createObjectURL(blob);
     a.download="orders_"+new Date().toISOString().slice(0,10)+".csv";
@@ -5719,8 +5733,9 @@ var WOW = (function(){
       _initKeyboardShortcuts();
       _initFullscreen();
       _initLang();
+    }catch(e){console.error("WOW init error:",e);}
+  });
 
-    
   // ══ COUPONS ══════════════════════════════════════════════════════
   function _loadCoupons(){
     _api("/api/coupons").then(function(r){return r.json();}).then(function(coupons){
@@ -5798,14 +5813,14 @@ var WOW = (function(){
         if(row2)row2.style.display="none";
         _updCartTotals();
         el.style.borderColor="";
-        var st=document.getElementById("coupon-status");
-        if(st)st.textContent="";
+        var clearStatus=document.getElementById("coupon-status");
+        if(clearStatus)clearStatus.textContent="";
         return;
       }
       if(raw===_lastCheckedCode)return;
       el.style.borderColor="rgba(168,85,247,.35)";
-      var st=document.getElementById("coupon-status");
-      if(st)st.textContent="جاري التحقق...";
+      var liveStatus=document.getElementById("coupon-status");
+      if(liveStatus)liveStatus.textContent="جاري التحقق...";
       clearTimeout(_liveCouponTimer);
       _liveCouponTimer=setTimeout(function(){
         _liveCouponTimer=null;
@@ -5837,16 +5852,16 @@ var WOW = (function(){
         if(st)st.textContent=d.msg||(d.ok?"تم تطبيق الخصم":"كود غير صالح");
         if(!d.ok){
           _couponApplied=null;
-          var row=document.getElementById("op-coupon-row");
-          if(row)row.style.display="none";
+          var badCouponRow=document.getElementById("op-coupon-row");
+          if(badCouponRow)badCouponRow.style.display="none";
           _updCartTotals();
           return;
         }
         _couponApplied={code:d.code,discAmt:d.discAmt,discType:d.discType,discVal:d.discVal};
-        var row=document.getElementById("op-coupon-row");
+        var goodCouponRow=document.getElementById("op-coupon-row");
         var lbl=document.getElementById("op-coupon-lbl");
         var val=document.getElementById("op-coupon-val");
-        if(row)row.style.display="flex";
+        if(goodCouponRow)goodCouponRow.style.display="flex";
         if(lbl)lbl.textContent="كوبون ("+_esc(d.code)+")";
         if(val)val.textContent="- "+_fmt(d.discAmt)+" دج";
         _updCartTotals();
@@ -5950,6 +5965,12 @@ var WOW = (function(){
         }).join("")+"</div>";
     }).catch(function(){c.innerHTML="<div style='color:rgba(239,68,68,.7)'>خطأ</div>";});
   }
+  function _populateStockProds(){
+    var sel=document.getElementById("sh-prod-sel");if(!sel)return;
+    _api("/api/products").then(function(r){return r.json();}).then(function(prods){
+      sel.innerHTML="<option value=''>اختر منتج...</option>"+(prods||[]).map(function(p){return "<option value='"+p.id+"'>"+_esc(p.name||"")+" ("+(p.quantity!==null&&p.quantity!==undefined?p.quantity:"∞")+")</option>";}).join("");
+    }).catch(function(){});
+  }
   function _addStock(){
     var sel=document.getElementById("sh-prod-sel");var qtyEl=document.getElementById("sh-qty");
     if(!sel||!qtyEl){return;}
@@ -5996,7 +6017,7 @@ var WOW = (function(){
 
   // ══ _updCartTotals patch for coupon ═════════════════════════════
   var _origUpdCartTotals=null;
-
+  function _updCartTotals(){_updPreview();}
 
   
   // ══ FLASH SALES (admin) ══════════════════════════════════════════
@@ -6463,7 +6484,7 @@ var WOW = (function(){
     /* Encode chars as UTF-8 byte array */
     function toBytes(str){
       var r=[];
-      for(var i=0;i<str.length;i++){
+      for(let i=0;i<str.length;i++){
         var c=str.charCodeAt(i);
         if(c<128){r.push(c);}
         else if(c<2048){r.push(192|(c>>6));r.push(128|(c&63));}
@@ -6473,16 +6494,16 @@ var WOW = (function(){
     }
     /* GF(256) arithmetic for Reed-Solomon */
     var EXP=new Array(512),LOG=new Array(256);
-    (function(){var x=1;for(var i=0;i<255;i++){EXP[i]=x;LOG[x]=i;x<<=1;if(x>=256)x^=285;}
-      for(var i=255;i<512;i++)EXP[i]=EXP[i-255];})();
+    (function(){var x=1;for(let i=0;i<255;i++){EXP[i]=x;LOG[x]=i;x<<=1;if(x>=256)x^=285;}
+      for(let i=255;i<512;i++)EXP[i]=EXP[i-255];})();
     function gmul(a,b){if(a===0||b===0)return 0;return EXP[(LOG[a]+LOG[b])%255];}
     /* QR data encoding — byte mode */
     function encodeData(bytes){
       var bits=[];
-      function pushBits(v,n){for(var i=n-1;i>=0;i--)bits.push((v>>i)&1);}
+      function pushBits(v,n){for(let i=n-1;i>=0;i--)bits.push((v>>i)&1);}
       pushBits(4,4);          // mode: byte
       pushBits(bytes.length,8); // char count
-      for(var i=0;i<bytes.length;i++)pushBits(bytes[i],8);
+      for(let i=0;i<bytes.length;i++)pushBits(bytes[i],8);
       pushBits(0,4);          // terminator
       while(bits.length%8)bits.push(0);
       var pads=[236,17];var pi=0;
@@ -6492,7 +6513,7 @@ var WOW = (function(){
     /* Build codewords */
     function bitsToBytes(bits){
       var r=[];
-      for(var i=0;i<bits.length;i+=8){var v=0;for(var j=0;j<8;j++)v=(v<<1)|(bits[i+j]||0);r.push(v);}
+      for(let i=0;i<bits.length;i+=8){var v=0;for(let j=0;j<8;j++)v=(v<<1)|(bits[i+j]||0);r.push(v);}
       return r;
     }
     /* RS error correction (7 EC codewords for version 1-M) */
@@ -6500,7 +6521,7 @@ var WOW = (function(){
       /* generator polynomial for n=7 */
       var gen=[0,87,229,146,149,238,102,21];
       var res=data.slice();
-      for(var i=0;i<res.length;i++)for(var j=1;j<gen.length;j++)res[i+j]^=gmul(res[i],EXP[(LOG[EXP[gen[j]]]+i)%255]||EXP[gen[j]]);
+      for(let i=0;i<res.length;i++)for(let j=1;j<gen.length;j++)res[i+j]^=gmul(res[i],EXP[(LOG[EXP[gen[j]]]+i)%255]||EXP[gen[j]]);
       return res.slice(data.length);
     }
     var bytes=toBytes(text.slice(0,17)); /* version 1-M max 14 bytes; trim for safety */
@@ -6510,35 +6531,35 @@ var WOW = (function(){
     var allBytes=dataBytes.concat(ecBytes);
     /* Convert to bit stream */
     var stream=[];
-    for(var i=0;i<allBytes.length;i++)for(var b=7;b>=0;b--)stream.push((allBytes[i]>>b)&1);
+    for(let i=0;i<allBytes.length;i++)for(let b=7;b>=0;b--)stream.push((allBytes[i]>>b)&1);
     /* Version 1 QR: 21x21 — place bits using standard zigzag */
     var N=21;
-    var mod=[];for(var r=0;r<N;r++){mod.push(new Array(N).fill(-1));}
-    var func=[];for(var r=0;r<N;r++){func.push(new Array(N).fill(false));}
+    var mod=[];for(let r=0;r<N;r++){mod.push(new Array(N).fill(-1));}
+    var func=[];for(let r=0;r<N;r++){func.push(new Array(N).fill(false));}
     /* Finder patterns */
     function finder(tr,tc){
-      for(var r=-1;r<=7;r++)for(var c=-1;c<=7;c++){
+      for(let r=-1;r<=7;r++)for(let c=-1;c<=7;c++){
         if(r<0||r>6||c<0||c>6)continue;
         var rv=tr+r,cv=tc+c;if(rv<0||rv>=N||cv<0||cv>=N)continue;
         var v=(r===0||r===6||c===0||c===6)?1:(r>=2&&r<=4&&c>=2&&c<=4?1:0);
         mod[rv][cv]=v;func[rv][cv]=true;
       }
       /* separators */
-      for(var i=-1;i<=7;i++){
+      for(let i=-1;i<=7;i++){
         if(tr+i>=0&&tr+i<N&&tc+7<N){if(!func[tr+i][tc+7]){mod[tr+i][tc+7]=0;func[tr+i][tc+7]=true;}}
         if(tr+7<N&&tc+i>=0&&tc+i<N){if(!func[tr+7][tc+i]){mod[tr+7][tc+i]=0;func[tr+7][tc+i]=true;}}
       }
     }
     finder(0,0);finder(0,14);finder(14,0);
     /* Timing patterns */
-    for(var i=8;i<13;i++){mod[6][i]=i%2===0?1:0;func[6][i]=true;mod[i][6]=i%2===0?1:0;func[i][6]=true;}
+    for(let i=8;i<13;i++){mod[6][i]=i%2===0?1:0;func[6][i]=true;mod[i][6]=i%2===0?1:0;func[i][6]=true;}
     /* Dark module */
     mod[13][8]=1;func[13][8]=true;
     /* Format info (mask 0, error M) — precomputed */
     var fmt=[1,0,1,0,1,0,0,0,0,0,1,0,0,1,0];
     var fp=[[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[7,8],[8,8],[8,7],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0]];
     var fp2=[[8,13],[8,14],[8,15],[8,16],[8,17],[8,18],[8,19],[8,20],[13,8],[14,8],[15,8],[16,8],[17,8],[18,8],[19,8]];
-    for(var i=0;i<15;i++){mod[fp[i][0]][fp[i][1]]=fmt[i];func[fp[i][0]][fp[i][1]]=true;mod[fp2[i][0]][fp2[i][1]]=fmt[14-i];func[fp2[i][0]][fp2[i][1]]=true;}
+    for(let i=0;i<15;i++){mod[fp[i][0]][fp[i][1]]=fmt[i];func[fp[i][0]][fp[i][1]]=true;mod[fp2[i][0]][fp2[i][1]]=fmt[14-i];func[fp2[i][0]][fp2[i][1]]=true;}
     /* Place data bits — zigzag */
     var si=0;var up=true;
     for(var col=N-1;col>=1;col-=2){
@@ -6725,7 +6746,7 @@ var WOW = (function(){
       if(e.key==="Escape"&&!e.ctrlKey){
         var openMods=document.querySelectorAll(".mod-ov");
         var closed=false;
-        openMods.forEach(function(m){if(m.style.display!=="none"&&m.style.display!==""){m.style.display="none";closed=true;},false);
+        openMods.forEach(function(m){if(m.style.display!=="none"&&m.style.display!==""){m.style.display="none";closed=true;}});
         if(!closed)_closeAdm();
         return;
       }
@@ -6994,7 +7015,9 @@ var WOW = (function(){
   }
 
 
-    // ── مض17: HEATMAP ──
+  document.addEventListener("DOMContentLoaded",function(){
+    try{
+      // ── مض17: HEATMAP ──
       (function(){
         var _clicks=[];var _hmActive=false;var _hmOverlay=null;
         document.addEventListener("click",function(e){
