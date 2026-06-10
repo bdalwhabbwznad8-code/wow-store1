@@ -1481,7 +1481,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .pay-opt-sub{font-size:10px;color:var(--mu);letter-spacing:.3px}
 
 /* ══ SCROLL PROGRESS ══ */
-#scroll-prog{position:fixed;top:0;right:0;left:0;height:2px;background:linear-gradient(90deg,#6d28d9,#a855f7,#c084fc);transform-origin:right;transform:scaleX(0);z-index:9999;transition:transform .1s linear}
+#scroll-prog{position:fixed;top:0;right:0;left:0;height:2px;background:linear-gradient(90deg,#6d28d9,#a855f7,#c084fc);transform-origin:left;transform:scaleX(0);z-index:9999;transition:transform .1s linear}
 #main-content{}
 
 /* ══ HEADER ══ */
@@ -1544,7 +1544,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .embla-wrap{position:relative;max-width:100%;overflow:visible}
 .embla__btn{position:fixed;top:50vh;z-index:15;background:rgba(8,6,16,.85);border:1px solid rgba(168,85,247,.3);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(192,132,252,.9);font-size:18px;transition:.18s;pointer-events:auto}
 .embla__btn:hover{background:rgba(168,85,247,.25);border-color:rgba(168,85,247,.6)}
-.embla__btn--prev{right:6px}.embla__btn--next{left:6px}
+.embla__btn--prev{left:6px}.embla__btn--next{right:6px}
 .embla__btn:disabled{opacity:.2;cursor:not-allowed}
 @media(min-width:768px){.embla__slide{flex:0 0 220px}}
 @media(min-width:1024px){.embla__slide{flex:0 0 240px}}
@@ -5529,7 +5529,7 @@ var WOW = (function(){
     var next=document.getElementById("embla-next");
     function _scroll(dir){
       var w=window.innerWidth*0.75;
-      vp.scrollBy({left:dir==="next"?-w:w,behavior:"smooth"});
+      vp.scrollBy({left:dir==="next"?w:-w,behavior:"smooth"});
     }
     function _updBtns(){
       if(!prev||!next)return;
