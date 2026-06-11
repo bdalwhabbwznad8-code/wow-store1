@@ -221,7 +221,7 @@ ${o.couponCode?`<div class="tr" style="color:#22c55e"><span>\u0643\u0648\u0628\u
 ${o.ccpDisc>0?`<div class="tr" style="color:#22c55e"><span>\u062e\u0635\u0645 CCP</span><span>- ${o.ccpDisc} \u062f\u062c</span></div>`:""}
 <div class="tr final"><span>\u0627\u0644\u0645\u062c\u0645\u0648\u0639 \u0627\u0644\u0643\u0644\u064a</span><span>${(o.total||0).toLocaleString()} \u062f\u062c</span></div>
 </div>
-${o.note||extraNote?`<div style="margin-top:12px;background:#fff9e6;border:1px solid #fcd34d;border-radius:6px;padding:9px 11px;font-size:${Math.round(11*scale)}px;color:#92400e"><strong>\u0645\u0644\u0627\u062d\u0638\u0629:</strong> ${_escSrv(o.note||"")}${extraNote?` — ${_escSrv(extraNote)}`:""}`:""}
+${o.note||extraNote?`<div style="margin-top:12px;background:#fff9e6;border:1px solid #fcd34d;border-radius:6px;padding:9px 11px;font-size:${Math.round(11*scale)}px;color:#92400e"><strong>\u0645\u0644\u0627\u062d\u0638\u0629:</strong> ${_escSrv(o.note||"")}${extraNote?` — ${_escSrv(extraNote)}`:""}</div>`:""}
 ${opts.printTracked?printedAt:""}
 </div>
 <div class="ft">${sn} &middot; ${wa}</div>
@@ -1463,12 +1463,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .hero-tagline{position:absolute;bottom:22px;right:0;left:0;text-align:center;z-index:2;color:rgba(255,255,255,.75);font-size:12px;letter-spacing:4px;text-transform:uppercase}
 
 /* ══ AMBIENT BACKGROUND — static gradient only ══ */
-.ambient-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 75% 55% at 30% 40%,rgba(88,28,135,.05),transparent 60%),radial-gradient(ellipse 55% 45% at 70% 60%,rgba(55,48,163,.035),transparent 55%)}
+.ambient-bg{position:fixed;inset:0;pointer-events:none;z-index:-1;background:radial-gradient(ellipse 75% 55% at 30% 40%,rgba(88,28,135,.05),transparent 60%),radial-gradient(ellipse 55% 45% at 70% 60%,rgba(55,48,163,.035),transparent 55%); isolation: isolate;}
 .ambient-bg2{display:none}
 .mist{display:none}.mist3{display:none}.grad-overlay{display:none}
 
 /* ══ VOID GLITCH ENTITY ══ */
-#void-glitch{position:fixed;pointer-events:none;z-index:2;mix-blend-mode:screen;will-change:transform,opacity}
+#void-glitch{position:fixed;pointer-events:none;z-index:-1;mix-blend-mode:screen;will-change:transform,opacity}
 #void-glitch canvas{display:block}
 #robot-doll{position:fixed;bottom:80px;left:12px;pointer-events:none;z-index:3;opacity:.55;font-size:18px;line-height:1;user-select:none;will-change:transform}
 
@@ -1534,7 +1534,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 @keyframes tscroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
 /* ══ GRID & CARDS ══ */
-.grid{max-width:1200px;margin:0 auto;padding:0 20px 100px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;position:relative;z-index:5}
+.grid{max-width:1200px;margin:0 auto;padding:0 20px 100px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;position:relative;z-index:5;min-height:400px}
 
 /* ══ HORIZONTAL SCROLL CAROUSEL — CSS only, no JS deps ══ */
 .embla{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:relative;z-index:5;padding:0 20px 100px}
@@ -1567,7 +1567,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* img zoom removed */
 
 /* ══ HOVER LIFT + SCALE + DEPTH SHADOW ══ */
-.card{background:rgba(10,5,18,.96);border:1px solid rgba(168,85,247,.1);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;position:relative}
+.card{background:rgba(10,5,18,.96);border:1px solid rgba(168,85,247,.1);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;position:relative;contain: content;}
 .card:hover{transform:translateY(-4px);border-color:rgba(168,85,247,.25);box-shadow:0 14px 40px rgba(0,0,0,.5),0 0 18px rgba(168,85,247,.06)}
 .card:active{transform:translateY(-1px)}
 .card.hidden{display:none!important}
@@ -1585,7 +1585,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* Image slider depth shadow on hover */
 .card:hover .img-slider{box-shadow:0 10px 35px rgba(0,0,0,.5),inset 0 1px 0 rgba(168,85,247,.06)}
-.img-slider{position:relative;overflow:hidden;aspect-ratio:3/4;background:#0a0016;transition:box-shadow .3s;border-radius:var(--r) var(--r) 0 0}
+.img-slider{position:relative;overflow:hidden;aspect-ratio:3/4;background:#0a0016;transition:box-shadow .3s;border-radius:var(--r) var(--r) 0 0;contain: strict;}
 .img-slider::after{content:'';position:absolute;inset:0;z-index:4;pointer-events:none;box-shadow:inset 0 0 22px rgba(88,28,135,.22),inset 0 0 1px rgba(168,85,247,.25);border-radius:inherit}
 .img-slider img{width:100%;height:100%;object-fit:cover;filter:brightness(.82) saturate(.72);transition:filter .4s,opacity .3s;position:absolute;top:0;left:0;opacity:0}
 .img-slider img.active{opacity:1;position:relative}
@@ -2046,7 +2046,7 @@ label[for],
           </style>
 
           <!-- Neon glow filter — same as v2 -->
-          <filter id="wn" x="-40%" y="-40%" width="180%" height="180%">
+          <filter id="wn" x="-15%" y="-15%" width="130%" height="130%">
             <feGaussianBlur stdDeviation="3" result="b1"/>
             <feGaussianBlur stdDeviation="1.2" result="b2"/>
             <feMerge><feMergeNode in="b1"/><feMergeNode in="b2"/><feMergeNode in="SourceGraphic"/></feMerge>
@@ -2301,7 +2301,7 @@ label[for],
         <svg width="90" height="35" viewBox="0 0 340 213" xmlns="http://www.w3.org/2000/svg"
              style="overflow:visible;opacity:.35;display:block;margin-bottom:6px">
           <defs>
-            <filter id="fn" x="-40%" y="-40%" width="180%" height="180%">
+            <filter id="fn" x="-15%" y="-15%" width="130%" height="130%">
               <feGaussianBlur stdDeviation="2.5" result="b1"/>
               <feGaussianBlur stdDeviation="1" result="b2"/>
               <feMerge><feMergeNode in="b1"/><feMergeNode in="b2"/><feMergeNode in="SourceGraphic"/></feMerge>
@@ -2648,7 +2648,7 @@ label[for],
     <div class="adm-logo">
       <svg width="52" height="20" viewBox="0 0 340 133" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;opacity:.8">
         <defs>
-          <filter id="an" x="-40%" y="-40%" width="180%" height="180%">
+          <filter id="an" x="-15%" y="-15%" width="130%" height="130%">
             <feGaussianBlur stdDeviation="2.5" result="b1"/>
             <feGaussianBlur stdDeviation="1" result="b2"/>
             <feMerge><feMergeNode in="b1"/><feMergeNode in="b2"/><feMergeNode in="SourceGraphic"/></feMerge>
