@@ -1,5 +1,0 @@
-.wrangler
-node_modules
-wrangler.log
-.dev.vars
-dist
