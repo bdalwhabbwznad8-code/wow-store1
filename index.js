@@ -1065,7 +1065,7 @@ export default {
     if(path==="/about"){
       const sets=await kvGet(env,"settings",{storeName:"WOW Store"});
       const about=sets.about||"";
-      return RR(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>عن ${_escSrv(sets.storeName||"WOW Store")}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0016;color:#e0d0ff;padding:20px;min-height:100vh}.wrap{max-width:680px;margin:0 auto;padding:30px 0}.brand{font-family:Georgia,serif;font-size:40px;font-weight:900;letter-spacing:7px;color:#c084fc;text-align:center;margin-bottom:8px}.sub{text-align:center;font-size:11px;color:rgba(255,255,255,.25);letter-spacing:4px;margin-bottom:40px}.body{font-size:14px;line-height:2;color:rgba(255,255,255,.65)}.back{display:inline-block;margin-bottom:24px;color:rgba(168,85,247,.7);font-size:12px;cursor:pointer;text-decoration:none;border:1px solid rgba(168,85,247,.2);padding:6px 14px;border-radius:7px}
+      return RR(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>عن ${_escSrv(sets.storeName||"WOW Store")}</title><style>*{margin:0;padding:0;box-sizing:border-box}:root{--b1:rgba(255,255,255,.08);--dim:rgba(255,255,255,.4);--mu:rgba(255,255,255,.22)}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0016;color:#e0d0ff;padding:20px;min-height:100vh}.wrap{max-width:680px;margin:0 auto;padding:30px 0}.brand{font-family:Georgia,serif;font-size:40px;font-weight:900;letter-spacing:7px;color:#c084fc;text-align:center;margin-bottom:8px}.sub{text-align:center;font-size:11px;color:rgba(255,255,255,.25);letter-spacing:4px;margin-bottom:40px}.body{font-size:14px;line-height:2;color:rgba(255,255,255,.65)}.back{display:inline-block;margin-bottom:24px;color:rgba(168,85,247,.7);font-size:12px;cursor:pointer;text-decoration:none;border:1px solid rgba(168,85,247,.2);padding:6px 14px;border-radius:7px}
 /* ══ FLASH SALE BADGE ══ */
 .flash-badge{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(251,191,36,.1));border:1px solid rgba(239,68,68,.3);color:rgba(252,165,165,.9);font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.5px}
 .flash-timer{font-size:9px;color:rgba(251,191,36,.8);letter-spacing:.5px;margin-top:2px}
@@ -1148,7 +1148,7 @@ export default {
 .var-chip{padding:5px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(168,85,247,.15);border-radius:20px;font-size:11px;color:var(--dim);cursor:pointer;transition:.15s}
 .var-chip:hover,.var-chip.on{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.4);color:rgba(192,132,252,.9)}
 
-</style></head><body><div class="wrap"><a class="back" href="/">&#8594; العودة للمتجر</a><div class="brand">${_escSrv(sets.storeName||"WOW STORE")}</div><div class="sub">ABOUT US</div><div class="body">${about.replace(/\n/g,"<br>")}</div></div></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
+</style></head><body><div class="wrap"><a class="back" href="/">&#8592; العودة للمتجر</a><div class="brand">${_escSrv(sets.storeName||"WOW STORE")}</div><div class="sub">ABOUT US</div><div class="body">${about.replace(/\n/g,"<br>")}</div></div></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
     }
 
 
@@ -1373,7 +1373,7 @@ ${img?`<meta property="og:image" content="${img}">`:``}
         </div>`).join("");
       return RR(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>قصص النجاح — ${sn}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0016;color:#e0d0ff;padding:20px;min-height:100vh}.wrap{max-width:700px;margin:0 auto}.brand{font-family:Georgia,serif;font-size:36px;font-weight:900;letter-spacing:6px;color:#c084fc;text-align:center;margin-bottom:6px}.sub{text-align:center;font-size:10px;color:rgba(255,255,255,.25);letter-spacing:4px;margin-bottom:36px}a.back{display:inline-block;margin-bottom:20px;color:rgba(168,85,247,.7);font-size:12px;border:1px solid rgba(168,85,247,.2);padding:6px 14px;border-radius:7px;text-decoration:none}</style></head>
-<body><div class="wrap"><a class="back" href="/">&#8594; العودة للمتجر</a><div class="brand">${sn}</div><div class="sub">SUCCESS STORIES</div>${cards||"<p style='text-align:center;color:rgba(255,255,255,.3);padding:40px'>لا توجد قصص نجاح بعد</p>"}</div></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
+<body><div class="wrap"><a class="back" href="/">&#8592; العودة للمتجر</a><div class="brand">${sn}</div><div class="sub">SUCCESS STORIES</div>${cards||"<p style='text-align:center;color:rgba(255,255,255,.3);padding:40px'>لا توجد قصص نجاح بعد</p>"}</div></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
     }
 
     // ══ API DOCS (م49) ════════════════════════════════════════════════
@@ -1496,7 +1496,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* wow text in pupil glows on hover */
 .logo:hover .wow-pupil{opacity:.95!important}
 .search-wrap{flex:1;max-width:340px;position:relative}
-.search-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:var(--rs);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;padding:8px 34px 8px 12px;outline:none;transition:.25s}
+.search-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:var(--rs);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;padding:8px 12px 8px 34px;outline:none;transition:.25s}
 .search-inp::placeholder{color:var(--mu)}
 .search-inp:focus{border-color:rgba(168,85,247,.5);background:rgba(168,85,247,.06);box-shadow:0 0 0 3px rgba(168,85,247,.1)}
 .search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mu);font-size:13px;pointer-events:none}
@@ -1749,14 +1749,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .adm-side{width:190px;background:rgba(255,255,255,.015);border-left:1px solid rgba(168,85,247,.08);
   display:flex;flex-direction:column;padding:16px 0;flex-shrink:0;overflow-y:auto;gap:2px}
 .anav{padding:10px 18px;font-size:11px;font-weight:500;color:rgba(255,255,255,.38);
-  cursor:pointer;transition:.18s;border-right:2px solid transparent;
+  cursor:pointer;transition:.18s;border-left:2px solid transparent;
   display:flex;align-items:center;gap:8px;letter-spacing:.3px}
 .anav::before{content:'';width:5px;height:5px;border-radius:50%;
   background:rgba(168,85,247,.25);flex-shrink:0;transition:.18s}
 .anav:hover{color:rgba(192,132,252,.75);background:rgba(168,85,247,.04)}
 .anav:hover::before{background:rgba(168,85,247,.5)}
 .anav.on{color:rgba(192,132,252,.95);background:rgba(168,85,247,.08);
-  border-right-color:rgba(168,85,247,.7)}
+  border-left-color:rgba(168,85,247,.7)}
 .anav.on::before{background:rgba(192,132,252,.9)}
 .adm-c{flex:1;overflow-y:auto;padding:24px 28px}
 .adm-c::-webkit-scrollbar{width:3px}
@@ -1798,7 +1798,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   border-radius:2px;transition:width .6s cubic-bezier(.4,0,.2,1)}
 .brv{width:50px;color:rgba(192,132,252,.75);font-weight:600;font-size:10px;
   font-family:Georgia,serif}
-.at tr:hover td{background:rgba(255,255,255,.02)}
 .ath{width:36px;height:45px;object-fit:cover;border-radius:5px;filter:brightness(.8)}
 .aact{background:none;border:1px solid var(--b1);border-radius:5px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--dim);transition:.15s;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
 .aact.e:hover{border-color:rgba(168,85,247,.4);color:rgba(192,132,252,.9)}
@@ -1943,7 +1942,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* == SALES CHART m15 == */
 #sales-chart svg{display:block}
 #sales-chart circle{cursor:pointer;transition:r .15s}
-#sales-chart circle:hover{r:6}
+#sales-chart circle:hover{r:6px}
 #algeria-map-c svg{display:block;margin:0 auto}
 #algeria-map-c circle{cursor:pointer;transition:r .15s,fill .2s}
 
