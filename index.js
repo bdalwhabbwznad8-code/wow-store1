@@ -1148,7 +1148,7 @@ export default {
 .var-chip{padding:5px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(168,85,247,.15);border-radius:20px;font-size:11px;color:var(--dim);cursor:pointer;transition:.15s}
 .var-chip:hover,.var-chip.on{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.4);color:rgba(192,132,252,.9)}
 
-</style></head><body><div class="wrap"><a class="back" href="/">&#8592; العودة للمتجر</a><div class="brand">${_escSrv(sets.storeName||"WOW STORE")}</div><div class="sub">ABOUT US</div><div class="body">${about.replace(/\n/g,"<br>")}</div></div></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
+</style></head><body><div class="wrap"><a class="back" href="/">&#8594; العودة للمتجر</a><div class="brand">${_escSrv(sets.storeName||"WOW STORE")}</div><div class="sub">ABOUT US</div><div class="body">${about.replace(/\n/g,"<br>")}</div></div></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
     }
 
 
@@ -1373,7 +1373,7 @@ ${img?`<meta property="og:image" content="${img}">`:``}
         </div>`).join("");
       return RR(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>قصص النجاح — ${sn}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0016;color:#e0d0ff;padding:20px;min-height:100vh}.wrap{max-width:700px;margin:0 auto}.brand{font-family:Georgia,serif;font-size:36px;font-weight:900;letter-spacing:6px;color:#c084fc;text-align:center;margin-bottom:6px}.sub{text-align:center;font-size:10px;color:rgba(255,255,255,.25);letter-spacing:4px;margin-bottom:36px}a.back{display:inline-block;margin-bottom:20px;color:rgba(168,85,247,.7);font-size:12px;border:1px solid rgba(168,85,247,.2);padding:6px 14px;border-radius:7px;text-decoration:none}</style></head>
-<body><div class="wrap"><a class="back" href="/">&#8592; العودة للمتجر</a><div class="brand">${sn}</div><div class="sub">SUCCESS STORIES</div>${cards||"<p style='text-align:center;color:rgba(255,255,255,.3);padding:40px'>لا توجد قصص نجاح بعد</p>"}</div></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
+<body><div class="wrap"><a class="back" href="/">&#8594; العودة للمتجر</a><div class="brand">${sn}</div><div class="sub">SUCCESS STORIES</div>${cards||"<p style='text-align:center;color:rgba(255,255,255,.3);padding:40px'>لا توجد قصص نجاح بعد</p>"}</div></body></html>`,200,{"Content-Type":"text/html;charset=utf-8"});
     }
 
     // ══ API DOCS (م49) ════════════════════════════════════════════════
@@ -1452,7 +1452,7 @@ html{scroll-behavior:smooth}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);overflow-x:hidden;min-height:100vh}
 
 /* ══ SUBTLE VIGNETTE ══ */
-.vignette{position:fixed;inset:0;pointer-events:none;z-index:9996;background:radial-gradient(ellipse 90% 90% at 50% 50%,transparent 55%,rgba(0,0,0,.45) 100%)}
+.vignette{position:fixed;inset:0;pointer-events:none;z-index:900;background:radial-gradient(ellipse 90% 90% at 50% 50%,transparent 55%,rgba(0,0,0,.45) 100%)}
 
 /* ══ HERO BACKGROUND ══ */
 .hero-bg{position:relative;width:100%;overflow:hidden;z-index:3;margin-top:0;min-height:180px;max-height:75vh;background:#050505}
@@ -1464,8 +1464,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* ══ AMBIENT BACKGROUND — static gradient only ══ */
 .ambient-bg{position:fixed;inset:0;pointer-events:none;z-index:-1;background:radial-gradient(ellipse 75% 55% at 30% 40%,rgba(88,28,135,.05),transparent 60%),radial-gradient(ellipse 55% 45% at 70% 60%,rgba(55,48,163,.035),transparent 55%); isolation: isolate;}
-.ambient-bg2{display:none}
-.mist{display:none}.mist3{display:none}.grad-overlay{display:none}
 
 /* ══ VOID GLITCH ENTITY ══ */
 #void-glitch{position:fixed;pointer-events:none;z-index:-1;mix-blend-mode:screen;will-change:transform,opacity}
@@ -1496,10 +1494,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* wow text in pupil glows on hover */
 .logo:hover .wow-pupil{opacity:.95!important}
 .search-wrap{flex:1;max-width:340px;position:relative}
-.search-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:var(--rs);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;padding:8px 12px 8px 34px;outline:none;transition:.25s}
+.search-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:var(--rs);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;padding:8px 34px 8px 12px;outline:none;transition:.25s}
 .search-inp::placeholder{color:var(--mu)}
 .search-inp:focus{border-color:rgba(168,85,247,.5);background:rgba(168,85,247,.06);box-shadow:0 0 0 3px rgba(168,85,247,.1)}
-.search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mu);font-size:13px;pointer-events:none}
+.search-ico{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--mu);font-size:13px;pointer-events:none}
 .hdr-r{display:flex;align-items:center;gap:7px;flex-shrink:0}
 
 .cart-btn{display:flex;align-items:center;gap:6px;background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.25);border-radius:var(--rs);padding:8px 12px;cursor:pointer;color:rgba(192,132,252,.9);font-size:12px;font-weight:500;white-space:nowrap;transition:.2s}
@@ -1520,7 +1518,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .pill.on{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.4);color:rgba(192,132,252,.95)}
 .pill-sep{width:1px;height:14px;background:var(--b1);flex-shrink:0}
 .tb{max-width:1200px;margin:0 auto;padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;position:relative;z-index:5}
-.pc{font-size:11px;color:var(--mu);letter-spacing:2px;text-transform:uppercase}
+.pc{font-size:11px;color:var(--mu);text-transform:uppercase}
 .ss{appearance:none;background:var(--p1);border:1px solid var(--b1);border-radius:var(--rs);color:var(--dim);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:11px;padding:6px 24px 6px 10px;outline:none;cursor:pointer}
 .ss option{background:#111}
 
@@ -1529,7 +1527,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* trust-bar stripe removed */
 .trust-scroll{display:flex;animation:tscroll 50s linear infinite;width:max-content}
 .trust-scroll:hover{animation-play-state:paused}
-.trust-item{padding:11px 36px;font-size:9px;color:rgba(168,85,247,.52);letter-spacing:3px;text-transform:uppercase;white-space:nowrap;display:flex;align-items:center;gap:10px}
+.trust-item{padding:11px 36px;font-size:9px;color:rgba(168,85,247,.52);text-transform:uppercase;white-space:nowrap;display:flex;align-items:center;gap:10px}
 .trust-item::before{content:'✦';font-size:7px;color:rgba(168,85,247,.28);flex-shrink:0}
 @keyframes tscroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
@@ -1557,7 +1555,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .step-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;border:1.5px solid rgba(255,255,255,.12);color:var(--mu);transition:.25s}
 .step-item.active .step-dot{border-color:rgba(168,85,247,.8);color:rgba(192,132,252,.95);background:rgba(168,85,247,.15);box-shadow:0 0 10px rgba(168,85,247,.25)}
 .step-item.done .step-dot{border-color:rgba(168,85,247,.6);color:rgba(192,132,252,.8);background:rgba(168,85,247,.1)}
-.step-lbl{font-size:8px;color:var(--mu);letter-spacing:.5px;text-align:center;transition:.2s}
+.step-lbl{font-size:8px;color:var(--mu);text-align:center;transition:.2s}
 .step-item.active .step-lbl{color:rgba(192,132,252,.7)}
 .chk-step{display:none}.chk-step.active{display:block}
 .step-nav{display:flex;gap:9px;margin-top:14px}
@@ -1603,27 +1601,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .slide-dot.on{background:rgba(192,132,252,.9);width:12px;border-radius:3px}
 
 .card-body{padding:11px;flex:1;display:flex;flex-direction:column;gap:5px;position:relative;z-index:2}
-.card-cat{font-size:9px;color:rgba(168,85,247,.45);letter-spacing:2.5px;text-transform:uppercase}
+.card-cat{font-size:9px;color:rgba(168,85,247,.45);text-transform:uppercase}
 
 .price-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px}
 .card-price{font-family:Georgia,serif;font-size:16px;font-weight:700;color:rgba(192,132,252,.95);letter-spacing:.3px}
-.card-name{font-size:12px;font-weight:400;color:rgba(255,255,255,.48);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;letter-spacing:.2px}
+.card-name{font-size:12px;font-weight:400;color:rgba(255,255,255,.48);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .card-price-old{font-size:11px;color:var(--mu);text-decoration:line-through}
 .disc-badge{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.25);color:rgba(252,165,165,.85);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.5px}
 
 /* ══ SOCIAL PROOF PULSE ══ */
-.social-proof{font-size:9px;color:rgba(168,85,247,.42);letter-spacing:.5px;display:flex;align-items:center;gap:4px}
+.social-proof{font-size:9px;color:rgba(168,85,247,.42);display:flex;align-items:center;gap:4px}
 
 /* ══ REAL SCARCITY INDICATOR ══ */
 .scarcity-bar{height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-top:3px}
 .scarcity-fill{height:100%;border-radius:2px;transition:width .5s}
 .scarcity-low{background:linear-gradient(90deg,#ef4444,#f97316)}
 .scarcity-med{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
-.scarcity-txt{font-size:9px;color:rgba(252,165,165,.68);letter-spacing:.5px;margin-top:2px}
-.fomo-txt{font-size:9px;color:rgba(168,85,247,.35);letter-spacing:.5px;font-style:italic;margin-top:auto}
+.scarcity-txt{font-size:9px;color:rgba(252,165,165,.68);margin-top:2px}
+.fomo-txt{font-size:9px;color:rgba(168,85,247,.35);font-style:italic;margin-top:auto}
 
 /* ══ HOVER LIFT ADD BUTTON ══ */
-.addbtn{background:rgba(109,40,217,.16);border:1px solid rgba(168,85,247,.25);border-radius:10px;color:rgba(216,180,254,.9);font-size:11px;font-weight:600;letter-spacing:.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;padding:10px 8px;cursor:pointer;transition:transform .22s cubic-bezier(.34,1.2,.64,1),background .22s,border-color .22s,box-shadow .22s;margin-top:8px;position:relative;overflow:hidden;text-align:center}
+.addbtn{background:rgba(109,40,217,.16);border:1px solid rgba(168,85,247,.25);border-radius:10px;color:rgba(216,180,254,.9);font-size:11px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;padding:10px 8px;cursor:pointer;transition:transform .22s cubic-bezier(.34,1.2,.64,1),background .22s,border-color .22s,box-shadow .22s;margin-top:8px;position:relative;overflow:hidden;text-align:center}
 .addbtn:hover{background:rgba(109,40,217,.3);border-color:rgba(168,85,247,.52);transform:translateY(-2px);box-shadow:0 8px 24px rgba(109,40,217,.25)}
 .addbtn:active{transform:scale(.96)}
 
@@ -1649,7 +1647,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .cart-sb{position:fixed;top:0;right:-105%;width:360px;max-width:100vw;height:100%;background:rgba(8,6,16,.98);border-right:1px solid var(--b1);z-index:400;display:flex;flex-direction:column;transition:right .32s cubic-bezier(.4,0,.2,1)}
 .cart-sb.on{right:0}
 .cart-hdr{padding:16px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.cart-title{font-family:Georgia,serif;font-size:15px;color:rgba(192,132,252,.9);letter-spacing:3px}
+.cart-title{font-family:Georgia,serif;font-size:15px;color:rgba(192,132,252,.9);}
 .cart-items{flex:1;overflow-y:auto;padding:13px;display:flex;flex-direction:column;gap:8px}
 .cart-items::-webkit-scrollbar{width:3px}
 .cart-items::-webkit-scrollbar-thumb{background:rgba(168,85,247,.3);border-radius:2px}
@@ -1676,7 +1674,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .mod::-webkit-scrollbar{width:3px}
 .mod::-webkit-scrollbar-thumb{background:rgba(168,85,247,.3);border-radius:2px}
 @keyframes pop{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-.mod-title{font-family:Georgia,serif;font-size:16px;color:rgba(192,132,252,.9);letter-spacing:2px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+.mod-title{font-family:Georgia,serif;font-size:16px;color:rgba(192,132,252,.9);margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
 .fl{margin-bottom:12px}
 .fl label{display:block;font-size:10px;font-weight:500;color:rgba(168,85,247,.75);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px}
 .inp{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:9px;color:rgba(255,255,255,.88);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;padding:9px 12px;outline:none;transition:.2s}
@@ -2695,7 +2693,7 @@ label[for],
     <div style="display:flex;align-items:center;gap:8px">
       <div class="api-s" id="adm-api-s"><div class="api-d ld" id="adm-api-d"></div><span id="adm-api-l" style="color:var(--mu);font-size:10px">Cloudflare KV</span></div>
       <span style="font-size:11px;color:var(--mu)" id="adm-clock"></span>
-      <div id="adm-hdr-actions" style="display:flex;gap:5px;align-items:center"><a href="/api-docs" target="_blank" class="aact" style="font-size:9px;text-decoration:none;padding:4px 8px" title="API Docs">API</a><button onclick="window._showHeatmap&&window._showHeatmap()" class="aact" style="font-size:9px;padding:4px 7px">خريطة</button><button onclick="WOW._toggleFullscreen()" class="aact" style="font-size:11px;padding:4px 7px" title="F11">▣</button></div><button class="xbtn" id="adm-close-btn" style="width:auto;padding:6px 12px;font-size:11px">&#8592; خروج</button>
+      <div id="adm-hdr-actions" style="display:flex;gap:5px;align-items:center"><a href="/api-docs" target="_blank" class="aact" style="font-size:9px;text-decoration:none;padding:4px 8px" title="API Docs">API</a><button onclick="window._showHeatmap&&window._showHeatmap()" class="aact" style="font-size:9px;padding:4px 7px">خريطة</button><button onclick="WOW._toggleFullscreen()" class="aact" style="font-size:11px;padding:4px 7px" title="F11">▣</button></div><button class="xbtn" id="adm-close-btn" style="width:auto;padding:6px 12px;font-size:11px">&#8594; خروج</button>
     </div>
   </div>
   <div class="adm-body">
