@@ -1939,10 +1939,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* == SALES CHART m15 == */
 #sales-chart svg{display:block}
-#sales-chart circle{cursor:pointer;transition:r .15s}
-#sales-chart circle:hover{r:6px}
+#sales-chart circle{cursor:pointer;transform-box:fill-box;transform-origin:center;transition:transform .15s}
+#sales-chart circle:hover{transform:scale(1.35)}
 #algeria-map-c svg{display:block;margin:0 auto}
-#algeria-map-c circle{cursor:pointer;transition:r .15s,fill .2s}
+#algeria-map-c circle{cursor:pointer;transform-box:fill-box;transform-origin:center;transition:transform .15s,fill .2s}
+#algeria-map-c circle:hover{transform:scale(1.2)}
 
 /* == TESTIMONIALS SLIDER m30 == */
 #testimonials-slider{display:flex;overflow-x:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth}
